@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { loadEnvironment } from "../../config/environment.js";
+import { createLogger } from "../../observability/logger.js";
 import {
   closeDatabaseConnection,
   createDatabaseConnection,
@@ -8,7 +9,8 @@ import {
 
 async function seedDatabase(): Promise<void> {
   const environment = loadEnvironment();
-  const connection = createDatabaseConnection(environment.database);
+  const logger = createLogger({ level: environment.logLevel });
+  const connection = createDatabaseConnection(environment.database, logger);
 
   try {
     await verifyDatabaseConnection(connection.pool);

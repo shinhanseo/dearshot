@@ -10,6 +10,7 @@ const integerFromEnvironment = (name: string, fallback: number, minimum: number,
 
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   PORT: integerFromEnvironment("PORT", 3000, 1, 65_535),
   DATABASE_URL: z
     .string()
@@ -36,6 +37,7 @@ export type DatabaseConfig = {
 
 export type Environment = {
   nodeEnvironment: "development" | "test" | "production";
+  logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   port: number;
   database: DatabaseConfig;
 };
@@ -52,6 +54,7 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
 
   return {
     nodeEnvironment: parsed.data.NODE_ENV,
+    logLevel: parsed.data.LOG_LEVEL,
     port: parsed.data.PORT,
     database: {
       connectionString: parsed.data.DATABASE_URL,

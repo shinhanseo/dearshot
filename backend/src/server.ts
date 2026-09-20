@@ -6,10 +6,12 @@ import {
   createDatabaseConnection,
   verifyDatabaseConnection,
 } from "./db/client.js";
+import { createLogger } from "./observability/logger.js";
 
 async function main() {
   const environment = loadEnvironment();
-  const database = createDatabaseConnection(environment.database);
+  const logger = createLogger({ level: environment.logLevel });
+  const database = createDatabaseConnection(environment.database, logger);
 
   try {
     await verifyDatabaseConnection(database.pool);
@@ -20,8 +22,9 @@ async function main() {
 
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
+    logger,
   }).listen(environment.port, () => {
-    console.log(`DearShot API listening on http://localhost:${environment.port}`);
+    logger.info({ port: environment.port }, "DearShot API listening");
   });
 
   let shuttingDown = false;
@@ -29,14 +32,14 @@ async function main() {
   const shutdown = (signal: NodeJS.Signals) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`Received ${signal}; shutting down DearShot API.`);
+    logger.info({ signal }, "Shutting down DearShot API");
 
     server.close(async (error) => {
       try {
         await closeDatabaseConnection(database.pool);
       } finally {
         if (error) {
-          console.error("HTTP server failed to close cleanly.", error);
+          logger.error({ err: error }, "HTTP server failed to close cleanly");
           process.exitCode = 1;
         }
       }
@@ -48,6 +51,7 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error("DearShot API failed to start.", error);
+  const logger = createLogger();
+  logger.fatal({ err: error }, "DearShot API failed to start");
   process.exitCode = 1;
 });

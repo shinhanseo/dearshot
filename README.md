@@ -74,6 +74,16 @@ docker compose exec api npm run db:test:reset
 docker compose exec api npm run db:generate -- --name=feature_name
 ```
 
+백엔드 unit test와 HTTP integration test는 DB 없이 서로 독립적으로 실행할 수 있습니다.
+
+```bash
+cd backend
+npm run test:unit
+npm run test:integration
+```
+
+API 로그는 Pino JSON으로 stdout에 기록합니다. HTTP 로그에는 request ID, 메서드, query string을 제외한 경로, 상태 코드와 응답 시간만 포함하며 Authorization, Cookie와 요청 본문은 기록하지 않습니다. Docker `json-file` 로그는 컨테이너마다 파일당 10MB, 최대 5개로 회전합니다.
+
 구성과 health check, 비공개 DB port, volume 지속성을 한 번에 검증할 수 있습니다.
 
 ```bash
