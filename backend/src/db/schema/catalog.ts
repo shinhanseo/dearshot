@@ -11,9 +11,10 @@ import {
   primaryKey,
   text,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { aspectRatioEnum } from "./identity.js";
+import { aspectRatioEnum, users } from "./identity.js";
 
 export const templateStatusEnum = pgEnum("template_status", [
   "DRAFT",
@@ -158,5 +159,48 @@ export const templateVersionLocalizations = pgTable(
       foreignColumns: [templateVersions.templateId, templateVersions.version],
       name: "template_version_localizations_version_fk",
     }).onDelete("cascade"),
+  ],
+);
+
+export const templateLikes = pgTable(
+  "template_likes",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    templateId: varchar("template_id", { length: 80 })
+      .notNull()
+      .references(() => templates.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.templateId] }),
+    index("template_likes_user_created_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+      table.templateId.desc(),
+    ),
+    index("template_likes_template_created_idx").on(table.templateId, table.createdAt),
+  ],
+);
+
+export const templateBookmarks = pgTable(
+  "template_bookmarks",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    templateId: varchar("template_id", { length: 80 })
+      .notNull()
+      .references(() => templates.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.templateId] }),
+    index("template_bookmarks_user_created_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+      table.templateId.desc(),
+    ),
   ],
 );

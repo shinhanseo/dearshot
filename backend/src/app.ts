@@ -7,6 +7,7 @@ import type { GoogleAuthService } from "./auth/google/google-auth-service.js";
 import type { KakaoAuthService } from "./auth/kakao/kakao-auth-service.js";
 import type { TokenService } from "./auth/token-service.js";
 import type { CatalogService } from "./catalog/catalog-service.js";
+import type { TemplateInteractionService } from "./catalog/template-interaction-service.js";
 import { ApiError } from "./http/api-error.js";
 import { errorHandler } from "./http/error-handler.js";
 import { createHttpLogger } from "./http/http-logger.js";
@@ -24,7 +25,11 @@ type AppDependencies = {
     kakaoAuthService: KakaoAuthService;
     tokenService: TokenService;
   };
-  catalog?: { service: CatalogService; assetRoot: string };
+  catalog?: {
+    service: CatalogService;
+    assetRoot: string;
+    interactionService?: TemplateInteractionService;
+  };
 };
 
 export function createApp({ checkDatabase, logger, auth, catalog }: AppDependencies) {
@@ -60,7 +65,17 @@ export function createApp({ checkDatabase, logger, auth, catalog }: AppDependenc
   });
 
   if (auth) app.use("/api/v1", createAuthRouter(auth));
-  if (catalog) app.use("/api/v1", createCatalogRouter(catalog.service));
+  if (catalog) {
+    app.use(
+      "/api/v1",
+      createCatalogRouter(
+        catalog.service,
+        auth && catalog.interactionService
+          ? { tokenService: auth.tokenService, interactionService: catalog.interactionService }
+          : undefined,
+      ),
+    );
+  }
   app.use("/api/v1/scene-analysis", sceneAnalysisRouter);
 
   app.use((_request, _response, next) => {

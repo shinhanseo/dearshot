@@ -1,9 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import {
   catalogState,
   sceneLocalizations,
   scenes,
+  templateBookmarks,
+  templateLikes,
   templateScenes,
   templateVersionLocalizations,
   templateVersions,
@@ -22,6 +24,13 @@ export type ListTemplatesQuery = {
   limit: number;
 };
 
+export type MemberCollectionKind = "liked" | "bookmarked";
+export type MemberCollectionQuery = {
+  locale: string;
+  cursor?: string;
+  limit: number;
+};
+
 type CursorPayload = {
   v: 1;
   sort: TemplateSort;
@@ -33,6 +42,14 @@ type CursorPayload = {
 type TemplateRow = {
   template: typeof templates.$inferSelect;
   version: typeof templateVersions.$inferSelect;
+};
+
+type CollectionCursor = {
+  v: 1;
+  kind: MemberCollectionKind;
+  userId: string;
+  createdAt: string;
+  templateId: string;
 };
 
 const FALLBACK_LOCALE = "en-US";
@@ -78,6 +95,37 @@ function decodeCursor(value: string, query: ListTemplatesQuery): CursorPayload {
       statusCode: 400,
       code: "INVALID_CURSOR",
       message: "Cursor is invalid for this catalog query",
+      cause,
+    });
+  }
+}
+
+function encodeCollectionCursor(payload: CollectionCursor) {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+function decodeCollectionCursor(
+  value: string,
+  userId: string,
+  kind: MemberCollectionKind,
+): CollectionCursor {
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as CollectionCursor;
+    if (
+      parsed.v !== 1 ||
+      parsed.kind !== kind ||
+      parsed.userId !== userId ||
+      typeof parsed.templateId !== "string" ||
+      Number.isNaN(Date.parse(parsed.createdAt))
+    ) {
+      throw new Error("collection cursor mismatch");
+    }
+    return parsed;
+  } catch (cause) {
+    throw new ApiError({
+      statusCode: 400,
+      code: "INVALID_CURSOR",
+      message: "Cursor is invalid for this member collection",
       cause,
     });
   }
@@ -148,7 +196,7 @@ export class CatalogService {
       );
   }
 
-  async listTemplates(query: ListTemplatesQuery) {
+  async listTemplates(query: ListTemplatesQuery, memberId?: string) {
     const [catalogVersion, allRows, mappings, localizations] = await Promise.all([
       this.version(),
       this.loadPublishedTemplates(),
@@ -215,7 +263,13 @@ export class CatalogService {
 
     const hasNext = rows.length > query.limit;
     const pageRows = rows.slice(0, query.limit);
-    const items = pageRows.map((row) => this.summary(row, mappings, localizations, query.locale));
+    const states = await this.loadInteractionStates(
+      memberId,
+      pageRows.map((row) => row.template.id),
+    );
+    const items = pageRows.map((row) =>
+      this.summary(row, mappings, localizations, query.locale, states),
+    );
     const last = pageRows.at(-1);
 
     return {
@@ -235,7 +289,12 @@ export class CatalogService {
     };
   }
 
-  async getTemplate(templateId: string, locale: string, requestedVersion?: number) {
+  async getTemplate(
+    templateId: string,
+    locale: string,
+    requestedVersion?: number,
+    memberId?: string,
+  ) {
     const template = await this.database.query.templates.findFirst({
       where: and(eq(templates.id, templateId), eq(templates.status, "PUBLISHED")),
     });
@@ -264,10 +323,11 @@ export class CatalogService {
     ]);
     if (!version) return this.notFound();
     const localization = selectLocalization(localizations, locale);
+    const states = await this.loadInteractionStates(memberId, [templateId]);
 
     return {
       catalogVersion,
-      ...this.summary({ template, version }, mappings, localizations, locale),
+      ...this.summary({ template, version }, mappings, localizations, locale, states),
       guide: {
         type: version.guideType,
         assetUrl: assetUrl(this.assetBaseUrl, version.guideAssetPath),
@@ -278,11 +338,92 @@ export class CatalogService {
     };
   }
 
+  async listMemberTemplates(
+    userId: string,
+    kind: MemberCollectionKind,
+    query: MemberCollectionQuery,
+  ) {
+    const cursor = query.cursor
+      ? decodeCollectionCursor(query.cursor, userId, kind)
+      : undefined;
+    const relation = kind === "liked" ? templateLikes : templateBookmarks;
+    const cursorCondition = cursor
+      ? or(
+          lt(relation.createdAt, new Date(cursor.createdAt)),
+          and(
+            eq(relation.createdAt, new Date(cursor.createdAt)),
+            lt(relation.templateId, cursor.templateId),
+          ),
+        )
+      : undefined;
+    const relations = await this.database
+      .select({ templateId: relation.templateId, createdAt: relation.createdAt })
+      .from(relation)
+      .innerJoin(templates, eq(templates.id, relation.templateId))
+      .where(
+        and(
+          eq(relation.userId, userId),
+          eq(templates.status, "PUBLISHED"),
+          cursorCondition,
+        ),
+      )
+      .orderBy(desc(relation.createdAt), desc(relation.templateId))
+      .limit(query.limit + 1);
+
+    const hasNext = relations.length > query.limit;
+    const pageRelations = relations.slice(0, query.limit);
+    const ids = pageRelations.map((item) => item.templateId);
+    const [catalogVersion, allRows, mappings, localizations, states] = await Promise.all([
+      this.version(),
+      this.loadPublishedTemplates(),
+      ids.length
+        ? this.database.select().from(templateScenes).where(inArray(templateScenes.templateId, ids))
+        : [],
+      ids.length
+        ? this.database
+            .select()
+            .from(templateVersionLocalizations)
+            .where(inArray(templateVersionLocalizations.templateId, ids))
+        : [],
+      this.loadInteractionStates(userId, ids),
+    ]);
+    const rowsById = new Map(
+      allRows
+        .filter((row) => ids.includes(row.template.id))
+        .map((row) => [row.template.id, row] as const),
+    );
+    const items = pageRelations.flatMap((relationRow) => {
+      const row = rowsById.get(relationRow.templateId);
+      return row ? [this.summary(row, mappings, localizations, query.locale, states)] : [];
+    });
+    const last = pageRelations.at(-1);
+
+    return {
+      catalogVersion,
+      items,
+      nextCursor:
+        hasNext && last
+          ? encodeCollectionCursor({
+              v: 1,
+              kind,
+              userId,
+              createdAt: last.createdAt.toISOString(),
+              templateId: last.templateId,
+            })
+          : null,
+      hasNext,
+    };
+  }
+
   private summary(
     row: TemplateRow,
     mappings: Array<typeof templateScenes.$inferSelect>,
     localizations: Array<typeof templateVersionLocalizations.$inferSelect>,
     locale: string,
+    states: { liked: Set<string>; bookmarked: Set<string> } = {
+      liked: new Set(),
+      bookmarked: new Set(),
+    },
   ) {
     const localization = selectLocalization(
       localizations.filter(
@@ -304,8 +445,35 @@ export class CatalogService {
       supportedAspectRatios: row.template.supportedAspectRatios,
       peopleCount: row.template.peopleCount,
       likeCount: row.template.likeCount,
-      liked: false,
-      bookmarked: false,
+      liked: states.liked.has(row.template.id),
+      bookmarked: states.bookmarked.has(row.template.id),
+    };
+  }
+
+  private async loadInteractionStates(userId: string | undefined, templateIds: string[]) {
+    if (!userId || templateIds.length === 0) {
+      return { liked: new Set<string>(), bookmarked: new Set<string>() };
+    }
+    const [likes, bookmarks] = await Promise.all([
+      this.database
+        .select({ templateId: templateLikes.templateId })
+        .from(templateLikes)
+        .where(
+          and(eq(templateLikes.userId, userId), inArray(templateLikes.templateId, templateIds)),
+        ),
+      this.database
+        .select({ templateId: templateBookmarks.templateId })
+        .from(templateBookmarks)
+        .where(
+          and(
+            eq(templateBookmarks.userId, userId),
+            inArray(templateBookmarks.templateId, templateIds),
+          ),
+        ),
+    ]);
+    return {
+      liked: new Set(likes.map((item) => item.templateId)),
+      bookmarked: new Set(bookmarks.map((item) => item.templateId)),
     };
   }
 
