@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { validateBody } from "../http/validation.js";
 
 const requestSchema = z.object({
   imageReference: z.string().min(1),
@@ -15,18 +16,7 @@ const requestSchema = z.object({
 
 export const sceneAnalysisRouter = Router();
 
-sceneAnalysisRouter.post("/", (request, response) => {
-  const parsed = requestSchema.safeParse(request.body);
-
-  if (!parsed.success) {
-    response.status(400).json({
-      code: "INVALID_REQUEST",
-      message: "Scene analysis request is invalid",
-      details: parsed.error.flatten(),
-    });
-    return;
-  }
-
+sceneAnalysisRouter.post("/", validateBody(requestSchema), (_request, response) => {
   response.status(200).json({
     analysisId: crypto.randomUUID(),
     scene: {
@@ -41,4 +31,3 @@ sceneAnalysisRouter.post("/", (request, response) => {
     source: "mock",
   });
 });
-

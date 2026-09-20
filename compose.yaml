@@ -1,5 +1,11 @@
 name: dearshot
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:17.11-alpine@sha256:f02121de6f74d30d8a94cd1d9584125e2178d7e6c377d8130112d4e52d867995
@@ -15,6 +21,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - database
+    logging: *default-logging
 
   api:
     build:
@@ -44,6 +51,7 @@ services:
     networks:
       - database
       - api_egress
+    logging: *default-logging
 
 networks:
   database:

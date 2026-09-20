@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DearShot API
-  version: 0.3.0-draft
+  version: 0.3.1-draft
   license:
     name: All rights reserved
     identifier: LicenseRef-Proprietary
@@ -52,11 +52,14 @@ paths:
       responses:
         '200':
           description: 서버 정상
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
           content:
             application/json:
               schema:
                 type: object
-                required: [status, service]
+                required: [status, service, database]
                 properties:
                   status:
                     type: string
@@ -64,10 +67,16 @@ paths:
                   service:
                     type: string
                     const: dearshot-api
+                  database:
+                    type: string
+                    const: ready
         '400':
           $ref: '#/components/responses/BadRequest'
         '503':
           description: 서비스 점검 또는 일시적 장애
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
           content:
             application/json:
               schema:
@@ -881,6 +890,13 @@ paths:
           $ref: '#/components/responses/NotFound'
 
 components:
+  headers:
+    RequestId:
+      description: 요청 추적에 사용하는 UUID. 유효한 클라이언트 값을 유지하거나 서버가 생성한다.
+      schema:
+        type: string
+        format: uuid
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -957,48 +973,72 @@ components:
   responses:
     BadRequest:
       description: 요청 형식 오류
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     Unauthorized:
       description: 인증 실패
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     Forbidden:
       description: 권한 부족
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     NotFound:
       description: 리소스 없음
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     Conflict:
       description: 리소스 상태 충돌
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     PayloadTooLarge:
       description: 이미지 크기 제한 초과
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     UnsupportedMediaType:
       description: 지원하지 않는 multipart 이미지 Content-Type
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     Unprocessable:
       description: 파일 signature 불일치, decode 실패 또는 해상도 제한 초과
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
       content:
         application/json:
           schema:
@@ -1006,6 +1046,8 @@ components:
     RateLimited:
       description: 요청 한도 초과
       headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
         Retry-After:
           schema:
             type: integer

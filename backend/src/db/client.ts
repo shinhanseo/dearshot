@@ -1,5 +1,6 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import type { Logger } from "pino";
 import type { DatabaseConfig } from "../config/environment.js";
 import * as schema from "./schema/index.js";
 
@@ -12,7 +13,10 @@ export type DatabaseConnection = {
   pool: pg.Pool;
 };
 
-export function createDatabaseConnection(config: DatabaseConfig): DatabaseConnection {
+export function createDatabaseConnection(
+  config: DatabaseConfig,
+  logger: Pick<Logger, "error">,
+): DatabaseConnection {
   const pool = new Pool({
     connectionString: config.connectionString,
     max: config.maxConnections,
@@ -21,7 +25,7 @@ export function createDatabaseConnection(config: DatabaseConfig): DatabaseConnec
   });
 
   pool.on("error", (error) => {
-    console.error("Unexpected PostgreSQL pool error.", error);
+    logger.error({ err: error }, "Unexpected PostgreSQL pool error");
   });
 
   return {

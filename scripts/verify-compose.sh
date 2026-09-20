@@ -37,6 +37,22 @@ docker compose config --quiet
 docker compose up --detach --build
 wait_for_api
 
+api_container_id="$(docker compose ps --quiet api)"
+api_log_config="$(docker inspect "$api_container_id" --format \
+  '{{.HostConfig.LogConfig.Type}}:{{index .HostConfig.LogConfig.Config "max-size"}}:{{index .HostConfig.LogConfig.Config "max-file"}}')"
+
+if [ "$api_log_config" != "json-file:10m:5" ]; then
+  echo "API Docker logs must use json-file rotation with 10m x 5." >&2
+  show_logs
+  exit 1
+fi
+
+if ! docker logs "$api_container_id" 2>&1 | grep -q '"service":"dearshot-api"'; then
+  echo "API did not emit structured Pino JSON logs to stdout." >&2
+  show_logs
+  exit 1
+fi
+
 docker compose exec --no-TTY postgres sh -c \
   'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 

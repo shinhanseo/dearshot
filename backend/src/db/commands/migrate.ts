@@ -2,12 +2,14 @@ import "dotenv/config";
 import path from "node:path";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { loadEnvironment } from "../../config/environment.js";
+import { createLogger } from "../../observability/logger.js";
 import { closeDatabaseConnection, createDatabaseConnection } from "../client.js";
 
 export async function migrateDatabase(databaseUrl?: string): Promise<void> {
   const source = databaseUrl ? { ...process.env, DATABASE_URL: databaseUrl } : process.env;
   const environment = loadEnvironment(source);
-  const connection = createDatabaseConnection(environment.database);
+  const logger = createLogger({ level: environment.logLevel });
+  const connection = createDatabaseConnection(environment.database, logger);
 
   try {
     await migrate(connection.db, {
