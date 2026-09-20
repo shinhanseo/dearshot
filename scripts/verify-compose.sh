@@ -40,6 +40,43 @@ wait_for_api
 docker compose exec --no-TTY postgres sh -c \
   'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
+docker compose exec --no-TTY api npm run db:migrate
+migration_count_before_repeat="$(docker compose exec --no-TTY postgres sh -c \
+  'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) FROM drizzle.__drizzle_migrations;"')"
+docker compose exec --no-TTY api npm run db:migrate
+migration_count_after_repeat="$(docker compose exec --no-TTY postgres sh -c \
+  'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) FROM drizzle.__drizzle_migrations;"')"
+docker compose exec --no-TTY api npm run db:seed
+
+if [ "$migration_count_before_repeat" -lt 1 ] || \
+  [ "$migration_count_before_repeat" != "$migration_count_after_repeat" ]; then
+  echo "Drizzle migration repeat changed the applied migration count." >&2
+  show_logs
+  exit 1
+fi
+
+docker compose exec --no-TTY api npm run db:test:reset
+docker compose exec --no-TTY api npm run db:test:reset
+
+test_database_name="$(docker compose exec --no-TTY api node -e \
+  'process.stdout.write(new URL(process.env.TEST_DATABASE_URL).pathname.slice(1))')"
+
+test_migration_count="$(docker compose exec --no-TTY postgres sh -c \
+  "psql -At -U \"\$POSTGRES_USER\" -d '$test_database_name' -c 'SELECT count(*) FROM drizzle.__drizzle_migrations;'")"
+
+if [ "$test_migration_count" -lt 1 ]; then
+  echo "Test database reset did not apply Drizzle migrations." >&2
+  show_logs
+  exit 1
+fi
+
+if docker compose exec --no-TTY api sh -c \
+  'TEST_DATABASE_URL="$DATABASE_URL" npm run db:test:reset' >/dev/null 2>&1; then
+  echo "Test database reset must reject the development database." >&2
+  show_logs
+  exit 1
+fi
+
 postgres_container_id="$(docker compose ps --quiet postgres)"
 published_postgres_binding="$(docker inspect "$postgres_container_id" --format '{{json (index .NetworkSettings.Ports "5432/tcp")}}')"
 if [ "$published_postgres_binding" != "null" ]; then
@@ -66,4 +103,4 @@ fi
 docker compose exec --no-TTY postgres sh -c \
   'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP TABLE compose_persistence_probe;"'
 
-echo "Compose verification passed: API healthy, PostgreSQL private, volume persistent."
+echo "Compose verification passed: API and database healthy, migrations repeatable, test DB isolated, PostgreSQL private, volume persistent."
