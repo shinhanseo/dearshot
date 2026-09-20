@@ -89,6 +89,12 @@ erDiagram
 
 `UNIQUE(provider, provider_subject)`를 적용합니다. OAuth access token과 ID token 원문은 보관하지 않습니다.
 
+한 사용자가 같은 공급자의 identity를 여러 개 연결하지 않도록 `UNIQUE(user_id, provider)`도 적용합니다. 동일 Google identity의 첫 로그인 요청은 PostgreSQL advisory transaction lock으로 직렬화해 동시 가입에서도 사용자 행이 하나만 생기게 합니다.
+
+### `oauth_nonce_uses`
+
+Google ID Token의 nonce 원문 대신 SHA-256 해시를 PK로 저장하고 provider, token 만료 시각, 사용 시각을 기록합니다. 이미 존재하는 해시는 재사용 공격으로 거부하며 만료된 행은 B-17 retention 작업에서 삭제합니다.
+
 ### `refresh_sessions`
 
 `user_id`, `installation_id`, `token_hash`, `token_family_id`, `expires_at`, `revoked_at`, `replaced_by_id`, `last_used_at`을 저장합니다. Refresh token은 SHA-256 해시만 저장하고 회전된 token family 재사용을 감지하면 해당 family를 모두 폐기합니다.

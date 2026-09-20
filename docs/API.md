@@ -1,6 +1,6 @@
 # DearShot API 명세
 
-> 문서 버전: `0.4.0-draft`
+> 문서 버전: `0.5.0-draft`
 >
 > 기준일: 2026-09-20
 >
@@ -8,7 +8,7 @@
 >
 > 기계 판독 명세: [`openapi.yaml`](./openapi.yaml)
 
-이 문서는 Android 앱과 DearShot 백엔드 사이의 계약을 정의한다. 현재 백엔드에는 Health와 목 장면 분석만 구현되어 있으며, 아래 API가 MVP 구현 목표다. 요청·응답 필드가 바뀌면 이 문서와 `openapi.yaml`을 함께 수정한다.
+이 문서는 Android 앱과 DearShot 백엔드 사이의 계약을 정의한다. 아래 표는 현재 구현과 MVP 목표를 구분한다. 요청·응답 필드가 바뀌면 이 문서와 `openapi.yaml`을 함께 수정한다.
 
 ## 현재 구현 범위와 목표 계약
 
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | 현재 | `GET /health` | 구현됨 | 프로세스와 PostgreSQL readiness 확인 |
 | 현재 | `POST /auth/guest` | 구현됨 | 설치 UUID별 게스트 principal과 토큰 발급 |
+| 현재 | `POST /auth/google` | 구현됨 | Google ID Token 검증, nonce 재사용 방지, 게스트 승격 |
 | 현재 | `POST /auth/refresh` | 구현됨 | Refresh Token 회전과 재사용 탐지 |
 | 현재 | `POST /auth/logout` | 구현됨 | 현재 Refresh Session 폐기 |
 | 현재 | `GET /me` | 구현됨 | 회원 전용이며 게스트는 `403 AUTH_REQUIRED` |
@@ -206,6 +207,8 @@
 
 Android Credential Manager에서 받은 Google ID Token을 보낸다. 백엔드는 서명, `aud`, `iss`, `exp`, `nonce`를 검증한다.
 
+Android는 로그인 시마다 최소 128비트 난수 nonce를 새로 만들고 Credential Manager의 Google 요청과 이 API에 같은 값을 전달한다. 서버는 검증된 ID Token의 nonce와 요청 nonce를 비교하며, nonce의 SHA-256 해시를 토큰 만료 시각까지 보관해 재사용을 거부한다. Google ID Token 원문은 저장하지 않는다.
+
 ```json
 {
   "idToken": "google-id-token",
@@ -262,7 +265,7 @@ Google과 Kakao 로그인 성공 응답 `200 OK`:
 }
 ```
 
-`guestAccessToken`이 있으면 게스트의 사용량 등을 새 회원에 병합할 수 있다. 사진 원본은 병합하지 않는다.
+`isNewUser`는 해당 공급자 identity가 처음 연결된 경우 `true`다. 유효한 `guestAccessToken`과 같은 `installationId`가 전달되고 Google identity가 아직 사용되지 않았다면 기존 게스트 `users.id`를 그대로 회원으로 승격한다. identity가 이미 다른 회원 소유라면 그 회원으로 로그인하며 게스트 데이터를 자동 병합하지 않고 게스트를 정리 대기 상태로 전환한다. 사진 원본은 서버 계정에 병합하지 않는다.
 
 ### 4.4 토큰 재발급
 

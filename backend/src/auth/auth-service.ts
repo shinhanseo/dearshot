@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import type { AuthConfig } from "../config/environment.js";
 import type { Database } from "../db/client.js";
-import { refreshSessions, userPreferences, users } from "../db/schema/identity.js";
+import { authIdentities, refreshSessions, userPreferences, users } from "../db/schema/identity.js";
 import { ApiError } from "../http/api-error.js";
 import type { AccessPrincipal, TokenService } from "./token-service.js";
 
@@ -322,16 +322,48 @@ export class AuthService {
       });
     }
 
+    return this.getMemberResponse(result.id);
+  }
+
+  private async getMemberResponse(userId: string) {
+    const [result, identities] = await Promise.all([
+      this.db
+        .select({
+          id: users.id,
+          displayName: users.displayName,
+          profileImageUrl: users.profileImageUrl,
+          locale: userPreferences.locale,
+          defaultAspectRatio: userPreferences.defaultAspectRatio,
+          allowLocationContext: userPreferences.allowLocationContext,
+          aiProcessingConsentVersion: userPreferences.aiProcessingConsentVersion,
+        })
+        .from(users)
+        .innerJoin(userPreferences, eq(userPreferences.userId, users.id))
+        .where(eq(users.id, userId))
+        .limit(1),
+      this.db
+        .select({ provider: authIdentities.provider })
+        .from(authIdentities)
+        .where(eq(authIdentities.userId, userId)),
+    ]);
+    const member = result[0];
+    if (!member) {
+      throw new ApiError({
+        statusCode: 401,
+        code: "INVALID_TOKEN",
+        message: "User is unavailable",
+      });
+    }
     return {
-      id: result.id,
-      displayName: result.displayName ?? "DearShot user",
-      profileImageUrl: result.profileImageUrl,
-      providers: [],
+      id: member.id,
+      displayName: member.displayName ?? "DearShot user",
+      profileImageUrl: member.profileImageUrl,
+      providers: identities.map(({ provider }) => provider),
       preferences: {
-        locale: result.locale,
-        defaultAspectRatio: result.defaultAspectRatio,
-        allowLocationContext: result.allowLocationContext,
-        aiProcessingConsentVersion: result.aiProcessingConsentVersion ?? "unconfirmed",
+        locale: member.locale,
+        defaultAspectRatio: member.defaultAspectRatio,
+        allowLocationContext: member.allowLocationContext,
+        aiProcessingConsentVersion: member.aiProcessingConsentVersion ?? "unconfirmed",
       },
       counts: { likedTemplates: 0, bookmarkedTemplates: 0 },
     };

@@ -6,6 +6,9 @@ import pino from "pino";
 import request from "supertest";
 import { createApp } from "../../src/app.js";
 import { AuthService } from "../../src/auth/auth-service.js";
+import { FakeGoogleIdentityVerifier } from "../../src/auth/google/fake-google-identity-verifier.js";
+import { GoogleAuthService } from "../../src/auth/google/google-auth-service.js";
+import type { VerifiedGoogleIdentity } from "../../src/auth/google/google-identity-verifier.js";
 import { TokenService } from "../../src/auth/token-service.js";
 import type { AuthConfig, DatabaseConfig } from "../../src/config/environment.js";
 import {
@@ -14,7 +17,12 @@ import {
   type DatabaseConnection,
   verifyDatabaseConnection,
 } from "../../src/db/client.js";
-import { refreshSessions, users } from "../../src/db/schema/identity.js";
+import {
+  authIdentities,
+  oauthNonceUses,
+  refreshSessions,
+  users,
+} from "../../src/db/schema/identity.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (!databaseUrl) throw new Error("TEST_DATABASE_URL is required for database tests.");
@@ -38,12 +46,14 @@ const logger = pino({ level: "silent" });
 let connection: DatabaseConnection;
 let authService: AuthService;
 let tokenService: TokenService;
+let googleAuthService: GoogleAuthService;
+const googleIdentities = new Map<string, VerifiedGoogleIdentity>();
 
 function createTestApp() {
   return createApp({
     logger,
     checkDatabase: () => verifyDatabaseConnection(connection.pool),
-    auth: { authService, tokenService },
+    auth: { authService, googleAuthService, tokenService },
   });
 }
 
@@ -64,12 +74,19 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     connection = createDatabaseConnection(databaseConfig, logger);
     tokenService = new TokenService(authConfig);
     authService = new AuthService(connection.db, tokenService, authConfig);
+    googleAuthService = new GoogleAuthService(
+      connection.db,
+      tokenService,
+      new FakeGoogleIdentityVerifier(googleIdentities),
+      authConfig,
+    );
     await verifyDatabaseConnection(connection.pool);
   });
 
   beforeEach(async () => {
+    googleIdentities.clear();
     await connection.db.execute(
-      sql`truncate table refresh_sessions, user_preferences, users restart identity cascade`,
+      sql`truncate table oauth_nonce_uses, auth_identities, refresh_sessions, user_preferences, users restart identity cascade`,
     );
   });
 
@@ -202,8 +219,171 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     assert.equal(response.status, 403);
     assert.equal(response.body.code, "AUTH_REQUIRED");
   });
+
+  it("promotes the same guest user after verifying Google identity", async () => {
+    const installationId = randomUUID();
+    const guest = await createGuest(installationId);
+    registerGoogle("google-token-promote", "google-subject-promote", "nonce-for-promote-1234");
+
+    const response = await googleLogin({
+      idToken: "google-token-promote",
+      nonce: "nonce-for-promote-1234",
+      installationId,
+      guestAccessToken: guest.accessToken,
+    });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.isNewUser, true);
+    assert.equal(response.body.user.id, guest.principal.id);
+    assert.deepEqual(response.body.user.providers, ["GOOGLE"]);
+
+    const [storedUser] = await connection.db
+      .select()
+      .from(users)
+      .where(eq(users.id, guest.principal.id));
+    assert.equal(storedUser.accountType, "MEMBER");
+    assert.equal(storedUser.status, "ACTIVE");
+    assert.doesNotMatch(
+      JSON.stringify({
+        identities: await connection.db.select().from(authIdentities),
+        nonces: await connection.db.select().from(oauthNonceUses),
+        sessions: await connection.db.select().from(refreshSessions),
+      }),
+      /google-token-promote|nonce-for-promote-1234/,
+    );
+
+    const oldGuestRefresh = await refreshToken(guest.refreshToken);
+    assert.equal(oldGuestRefresh.status, 401);
+
+    const profile = await request(createTestApp())
+      .get("/api/v1/me")
+      .set("Authorization", `Bearer ${response.body.accessToken}`);
+    assert.equal(profile.status, 200, JSON.stringify(profile.body));
+    assert.deepEqual(profile.body.providers, ["GOOGLE"]);
+  });
+
+  it("rejects a nonce replay and stores only its hash", async () => {
+    const nonce = "one-time-google-nonce-1234";
+    registerGoogle("google-token-first", "google-subject-first", nonce);
+    registerGoogle("google-token-replay", "google-subject-first", nonce);
+
+    const first = await googleLogin({ idToken: "google-token-first", nonce });
+    const replay = await googleLogin({ idToken: "google-token-replay", nonce });
+
+    assert.equal(first.status, 200, JSON.stringify(first.body));
+    assert.equal(replay.status, 401);
+    assert.equal(replay.body.code, "INVALID_TOKEN");
+    const nonces = await connection.db.select().from(oauthNonceUses);
+    assert.equal(nonces.length, 1);
+    assert.notEqual(nonces[0].nonceHash, nonce);
+    assert.equal(nonces[0].nonceHash.length, 64);
+  });
+
+  it("authenticates the identity owner and schedules an unrelated guest for cleanup", async () => {
+    registerGoogle("google-token-owner", "shared-google-subject", "owner-google-nonce-1234");
+    const owner = await googleLogin({
+      idToken: "google-token-owner",
+      nonce: "owner-google-nonce-1234",
+    });
+    assert.equal(owner.status, 200, JSON.stringify(owner.body));
+
+    const installationId = randomUUID();
+    const guest = await createGuest(installationId);
+    registerGoogle("google-token-collision", "shared-google-subject", "collision-nonce-12345");
+    const collision = await googleLogin({
+      idToken: "google-token-collision",
+      nonce: "collision-nonce-12345",
+      installationId,
+      guestAccessToken: guest.accessToken,
+    });
+
+    assert.equal(collision.status, 200, JSON.stringify(collision.body));
+    assert.equal(collision.body.isNewUser, false);
+    assert.equal(collision.body.user.id, owner.body.user.id);
+    assert.notEqual(collision.body.user.id, guest.principal.id);
+
+    const [guestAfterCollision] = await connection.db
+      .select()
+      .from(users)
+      .where(eq(users.id, guest.principal.id));
+    assert.equal(guestAfterCollision.status, "DELETION_PENDING");
+    const identities = await connection.db.select().from(authIdentities);
+    assert.equal(identities.length, 1);
+    assert.equal(identities[0].userId, owner.body.user.id);
+  });
+
+  it("serializes concurrent first logins for the same Google subject", async () => {
+    registerGoogle("google-token-concurrent-a", "concurrent-subject", "concurrent-nonce-a-1234");
+    registerGoogle("google-token-concurrent-b", "concurrent-subject", "concurrent-nonce-b-1234");
+
+    const [first, second] = await Promise.all([
+      googleLogin({
+        idToken: "google-token-concurrent-a",
+        nonce: "concurrent-nonce-a-1234",
+      }),
+      googleLogin({
+        idToken: "google-token-concurrent-b",
+        nonce: "concurrent-nonce-b-1234",
+      }),
+    ]);
+
+    assert.equal(first.status, 200, JSON.stringify(first.body));
+    assert.equal(second.status, 200, JSON.stringify(second.body));
+    assert.equal(first.body.user.id, second.body.user.id);
+    assert.deepEqual([first.body.isNewUser, second.body.isNewUser].sort(), [false, true]);
+    assert.equal((await connection.db.select().from(users)).length, 1);
+    assert.equal((await connection.db.select().from(authIdentities)).length, 1);
+  });
+
+  it("rejects a guest token presented from another installation", async () => {
+    const guest = await createGuest();
+    registerGoogle("google-token-device", "device-subject", "device-bound-nonce-1234");
+    const response = await googleLogin({
+      idToken: "google-token-device",
+      nonce: "device-bound-nonce-1234",
+      installationId: randomUUID(),
+      guestAccessToken: guest.accessToken,
+    });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.code, "INVALID_TOKEN");
+    assert.equal((await connection.db.select().from(authIdentities)).length, 0);
+    assert.equal((await connection.db.select().from(oauthNonceUses)).length, 0);
+  });
 });
 
 function refreshToken(token: string) {
   return request(createTestApp()).post("/api/v1/auth/refresh").send({ refreshToken: token });
+}
+
+function registerGoogle(idToken: string, subject: string, nonce: string) {
+  googleIdentities.set(idToken, {
+    subject,
+    nonce,
+    displayName: "Verified Google User",
+    profileImageUrl: "https://example.com/profile.jpg",
+    locale: "ko-KR",
+    tokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+}
+
+function googleLogin({
+  idToken,
+  nonce,
+  installationId = randomUUID(),
+  guestAccessToken,
+}: {
+  idToken: string;
+  nonce: string;
+  installationId?: string;
+  guestAccessToken?: string;
+}) {
+  return request(createTestApp())
+    .post("/api/v1/auth/google")
+    .send({
+      idToken,
+      nonce,
+      ...(guestAccessToken ? { guestAccessToken } : {}),
+      device: { installationId, platform: "ANDROID", appVersion: "1.0.0" },
+    });
 }
