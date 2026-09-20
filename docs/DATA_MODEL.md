@@ -122,13 +122,13 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 | 필드 | 설명 |
 | --- | --- |
 | `template_id`, `version` | 복합 PK |
-| `status` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
+| `status` | `DRAFT`, `PUBLISHED` |
 | `preview_path`, `thumbnail_path` | 버전 고정 정적 자산 |
 | `guide_type`, `guide_asset_path` | SVG 또는 raster 가이드 |
 | `guide_config` | 정규화 좌표, reference size, safe area JSONB |
 | `created_at`, `published_at` | 생성·배포 시각 |
 
-`PUBLISHED` 상태의 행은 수정하지 않습니다. 템플릿 수정은 새 version을 추가하고 `templates.current_version`을 원자적으로 교체합니다.
+`PUBLISHED` 상태의 행은 애플리케이션 규칙뿐 아니라 PostgreSQL trigger로 수정·삭제를 거부합니다. 템플릿 수정은 새 version을 추가하고 `templates.current_version`을 한 import transaction 안에서 교체합니다.
 
 ### `template_version_localizations`
 

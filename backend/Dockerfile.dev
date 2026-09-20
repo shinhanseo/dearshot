@@ -11,6 +11,7 @@ COPY --chown=node:node tsconfig.json tsconfig.test.json drizzle.config.ts ./
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node src ./src
 COPY --chown=node:node test ./test
+COPY --chown=node:node catalog ./catalog
 
 USER node
 

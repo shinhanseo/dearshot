@@ -1,33 +1,33 @@
 import "dotenv/config";
 import path from "node:path";
-import { importCatalog } from "../../catalog/import-catalog.js";
-import { readCatalogManifest } from "../../catalog/manifest.js";
 import { loadEnvironment } from "../../config/environment.js";
-import { createLogger } from "../../observability/logger.js";
 import {
   closeDatabaseConnection,
   createDatabaseConnection,
   verifyDatabaseConnection,
-} from "../client.js";
+} from "../../db/client.js";
+import { createLogger } from "../../observability/logger.js";
+import { importCatalog } from "../import-catalog.js";
+import { readCatalogManifest } from "../manifest.js";
 
-async function seedDatabase(): Promise<void> {
+async function main() {
   const environment = loadEnvironment();
   const logger = createLogger({ level: environment.logLevel });
   const connection = createDatabaseConnection(environment.database, logger);
-
+  const manifestPath = path.resolve(process.argv[2] ?? "catalog/seed.json");
   try {
     await verifyDatabaseConnection(connection.pool);
-    const manifestPath = path.resolve("catalog/seed.json");
-    await importCatalog(connection.db, await readCatalogManifest(manifestPath), {
+    const manifest = await readCatalogManifest(manifestPath);
+    await importCatalog(connection.db, manifest, {
       assetRoot: path.resolve(environment.catalog.assetRoot),
     });
-    console.log("Development catalog fixtures imported.");
+    console.log(`Catalog ${manifest.catalogVersion} imported from ${manifestPath}`);
   } finally {
     await closeDatabaseConnection(connection.pool);
   }
 }
 
-seedDatabase().catch((error: unknown) => {
-  console.error("Database seed failed.", error);
+main().catch((error: unknown) => {
+  console.error("Catalog import failed.", error);
   process.exitCode = 1;
 });

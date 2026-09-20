@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/commands/migrate.ts",
     "db:seed": "tsx src/db/commands/seed.ts",
+    "catalog:import": "tsx src/catalog/commands/import.ts",
     "db:test:reset": "tsx src/db/commands/reset-test.ts"
   },
   "dependencies": {

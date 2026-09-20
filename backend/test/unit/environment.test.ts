@@ -17,6 +17,8 @@ describe("environment configuration", () => {
     assert.equal(environment.google.webClientId, "replace-with-google-web-client-id");
     assert.equal(environment.kakao.appId, "replace-with-kakao-app-id");
     assert.equal(environment.kakao.apiTimeoutMillis, 3_000);
+    assert.equal(environment.catalog.assetBaseUrl, "http://localhost:3000/assets/catalog");
+    assert.equal(environment.catalog.assetRoot, "catalog/assets");
   });
 
   it("requires a real Google web client ID in production", () => {
@@ -55,6 +57,21 @@ describe("environment configuration", () => {
     assert.throws(
       () => loadEnvironment({ ...baseEnvironment, NODE_ENV: "production" }),
       /JWT_ACCESS_SECRET must be replaced in production/,
+    );
+  });
+
+  it("requires HTTPS for public catalog assets in production", () => {
+    assert.throws(
+      () =>
+        loadEnvironment({
+          ...baseEnvironment,
+          NODE_ENV: "production",
+          JWT_ACCESS_SECRET: "a-production-secret-with-at-least-32-characters",
+          GOOGLE_WEB_CLIENT_ID: "google-client.apps.googleusercontent.com",
+          KAKAO_APP_ID: "123456",
+          PUBLIC_ASSET_BASE_URL: "http://assets.dearshot.example/catalog",
+        }),
+      /PUBLIC_ASSET_BASE_URL must use HTTPS in production/u,
     );
   });
 });

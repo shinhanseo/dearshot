@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="880" viewBox="0 0 660 880">
+  <rect width="660" height="880" fill="#D8E2D2"/>
+  <rect y="510" width="660" height="370" fill="#587358" opacity=".62"/>
+  <circle cx="530" cy="120" r="54" fill="#FFF7E8" opacity=".9"/>
+  <path d="M0 560 Q160 510 330 560 T660 550 V650 H0Z" fill="#FFF" opacity=".35"/>
+  <path d="M120 160 C180 90 260 90 320 160 S460 230 540 150" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" opacity=".85"/>
+  <circle cx="330" cy="250" r="84" fill="none" stroke="white" stroke-width="6" stroke-dasharray="14 12" opacity=".8"/>
+  <text x="32" y="824" font-family="sans-serif" font-size="26" fill="#292824">Seated By Sea</text>
+</svg>

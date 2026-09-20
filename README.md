@@ -62,6 +62,12 @@ docker compose exec api npm run db:migrate
 docker compose exec api npm run db:seed
 ```
 
+`db:seed`는 실제 출시 콘텐츠가 아니라 `dev-` 접두사의 개발용 템플릿 fixture를 반복 가능하게 import합니다. 별도 manifest를 적용할 때는 다음 명령을 사용합니다.
+
+```bash
+docker compose exec api npm run catalog:import -- catalog/seed.json
+```
+
 독립된 `dearshot_test` DB를 삭제·재생성하고 migration을 다시 적용하려면 다음 명령을 사용합니다. 안전을 위해 `db:test:reset`은 `TEST_DATABASE_URL`의 DB 이름이 `_test`로 끝날 때만 동작하며 운영 환경에서는 실행되지 않습니다.
 
 ```bash
@@ -103,7 +109,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 `GET /api/v1/scenes`, `GET /api/v1/templates`, `GET /api/v1/templates/{templateId}`와 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 
@@ -112,6 +118,7 @@ Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_UR
 - [API 명세](docs/API.md)
 - [OpenAPI 계약](docs/openapi.yaml)
 - [백엔드 구현 계획](docs/backend/BACKEND_IMPLEMENTATION_PLAN.md)
+- [카탈로그 운영 가이드](docs/backend/CATALOG_OPERATIONS.md)
 - [데이터 모델](docs/DATA_MODEL.md)
 - [개인정보와 권한](docs/PRIVACY.md)
 - [8주 로드맵](docs/ROADMAP.md)
