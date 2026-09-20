@@ -5,11 +5,14 @@
 ## 구현 원칙
 
 - Android 앱이 사용하는 계약은 `docs/openapi.yaml`을 기준으로 관리합니다.
-- 모듈형 모놀리스로 시작하고, 인증·템플릿·분석·피드백의 경계를 코드에서 분리합니다.
-- 사진 원본은 서버에 영구 보관하지 않습니다. 분석용 이미지는 압축해 전송하고 처리 후 삭제합니다.
-- 액세스 토큰, OAuth 토큰, 개인 식별 정보와 이미지 내용은 로그에 남기지 않습니다.
-- 외부 OAuth와 AI 제공자는 인터페이스 뒤에 두어 테스트 대역과 교체할 수 있게 합니다.
-- 모든 DB 변경은 마이그레이션으로 관리하고, 배포 전에 복구 절차를 확인합니다.
+- DB 코드를 작성하기 전에 `docs/DATA_MODEL.md`에서 관계, 수명주기, 보존 기간을 확정합니다.
+- PostgreSQL과 Drizzle을 사용하고 기능별 migration으로 스키마를 추가합니다.
+- 모듈형 모놀리스로 시작하고 인증·템플릿·분석·피드백·관찰 경계를 분리합니다.
+- 사진 원본은 서버에 영구 보관하지 않고 분석용 파일은 처리 직후 삭제합니다.
+- 일반 서버 로그, 사용자 작업 상태, AI 호출 시도, 제품 이벤트를 서로 다른 목적으로 관리합니다.
+- 액세스 토큰, OAuth 토큰, 정확한 위치 이력, 이미지 내용, AI 원본 프롬프트와 응답은 로그에 남기지 않습니다.
+- 외부 OAuth와 AI provider는 인터페이스 뒤에 두어 테스트 대역과 교체할 수 있게 합니다.
+- 모든 DB 변경은 migration으로 관리하고 배포 전에 백업과 복구 절차를 확인합니다.
 
 ## 목표 아키텍처
 
@@ -20,6 +23,7 @@ Android app
 Caddy :80/:443
     ├── /api/* ──────► Node.js + TypeScript API :3000
     │                       ├── PostgreSQL :5432
+    │                       ├── EC2 temporary uploads
     │                       ├── Google / Kakao OAuth
     │                       └── Gemini scene analysis
     └── /assets/templates/* ─► versioned template assets
@@ -29,80 +33,91 @@ Caddy :80/:443
 
 ## 작업 순서
 
-| 순서 | 작업 | 결과물 | 선행 작업 |
+| 순서 | 작업 | 핵심 결과물 | 선행 작업 |
 | ---: | --- | --- | --- |
-| B-01 | API 계약과 아키텍처 정합성 | multipart 업로드와 목표 배포 구조를 반영한 API·아키텍처 문서 | 없음 |
-| B-02 | 로컬 Docker Compose | API와 PostgreSQL을 한 명령으로 실행하는 개발 환경 | B-01 |
-| B-03 | PostgreSQL과 마이그레이션 | Drizzle 스키마, 초기 마이그레이션, seed | B-02 |
-| B-04 | HTTP 공통 기반 | 요청 ID, 공통 오류 응답, 로깅, 테스트 환경 | B-02 |
-| B-05 | 인증 기반 | guest 로그인, JWT 액세스 토큰, refresh rotation과 폐기 | B-03, B-04 |
-| B-06 | Google 로그인 | ID token 서버 검증과 계정 연결 | B-05 |
-| B-07 | Kakao 로그인 | authorization code 서버 교환과 계정 연결 | B-05 |
-| B-08 | 템플릿 카탈로그 | 장소·구도별 목록/상세 조회와 import CLI | B-03, B-04 |
-| B-09 | 좋아요와 북마크 | 인증 사용자 상호작용과 중복 방지 | B-05, B-08 |
-| B-10 | 분석 이미지 업로드 | 크기·형식 제한 multipart 업로드와 임시 파일 수명 관리 | B-04 |
-| B-11 | 사용량과 앱 설정 | 일일 제한, idempotency, 원격 앱 설정 조회 | B-05 |
-| B-12 | 장면 분석과 SSE | 비동기 분석 작업, 키워드 이벤트, 재연결 가능한 결과 스트림 | B-08, B-10, B-11 |
-| B-13 | Gemini 장면 분석 | 구조화 응답 검증, timeout/retry, mock fallback | B-12 |
-| B-14 | 촬영 피드백 | 한 가지 실행 가능한 피드백 생성과 결과 저장 | B-10, B-11, B-13 |
-| B-15 | 개인정보 수명 관리 | 임시 이미지 정리, 회원 탈퇴, 관련 데이터 삭제 | B-05, B-10 |
-| B-16 | 운영 컨테이너 | multi-stage 이미지, non-root 실행, Caddy HTTPS | B-01~B-15 |
-| B-17 | EC2 배포 자동화 | GHCR 이미지 배포, migration, health check, rollback | B-16 |
-| B-18 | 출시 검증 | 핵심 E2E, 보안 점검, 백업·복구 리허설 | B-17 |
+| B-01 | API·아키텍처 계약 정리 | multipart 업로드, 현재/목표 API, EC2 운영 구조 | 없음 |
+| B-02 | PostgreSQL 데이터 모델 확정 | 서버 ERD, 관계·인덱스·삭제·보존 정책 | B-01 |
+| B-03 | 로컬 Docker Compose | API와 PostgreSQL을 한 명령으로 실행하는 환경 | B-01 |
+| B-04 | Drizzle과 migration 기반 | DB 연결, schema 모듈, migration/seed/test 명령 | B-02, B-03 |
+| B-05 | HTTP·오류·테스트 기반 | request ID, 표준 오류, Pino 로그, 통합 테스트 | B-03 |
+| B-06 | 인증 기반 | guest principal, JWT, refresh rotation, 계정 테이블 | B-04, B-05 |
+| B-07 | Google 로그인 | ID token 서버 검증과 게스트 승격 | B-06 |
+| B-08 | Kakao 로그인 | access token 서버 검증과 게스트 승격 | B-06 |
+| B-09 | 템플릿 카탈로그 | 장소·버전·지역화 스키마, 목록/상세, import CLI | B-04, B-05 |
+| B-10 | 좋아요와 북마크 | 관계 테이블, 멱등 API, like count 일관성 | B-06, B-09 |
+| B-11 | 분석 이미지 업로드 | multipart 검증, 임시 파일 메타데이터와 수명 관리 | B-04, B-05 |
+| B-12 | 사용량·멱등성·앱 설정 | 일일 AI 제한, 중복 비용 방지, 원격 설정 | B-06 |
+| B-13 | 제품 이벤트 수집 | guest/member 퍼널 이벤트, schema 제한, 90일 보존 | B-06, B-05 |
+| B-14 | 장면 분석과 SSE | 비동기 작업, 키워드 이벤트, 재연결 가능한 스트림 | B-09, B-11, B-12 |
+| B-15 | Gemini와 AI 시도 이력 | 구조화 응답, timeout/retry, `ai_job_attempts` | B-14 |
+| B-16 | 촬영 피드백 | 템플릿 버전 기반 피드백, 비교·재촬영 결과 | B-11, B-12, B-15 |
+| B-17 | 개인정보와 retention | 임시 파일, 결과, 이벤트, 게스트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-16 |
+| B-18 | 운영 컨테이너 | multi-stage API, non-root, Caddy, PostgreSQL volume | B-01~B-17 |
+| B-19 | GHCR·EC2 배포 | SHA 이미지, migration, health check, rollback | B-18 |
+| B-20 | 출시 검증 | E2E, 보안 점검, 로그·지표 확인, 백업·복구 | B-19 |
 
-## 작업별 완료 조건
+## 단계별 완료 조건
 
-### B-01. API 계약과 아키텍처 정합성
+### B-01~B-02. 계약과 데이터 설계
 
-- 업로드 API가 presigned URL 방식이 아닌 Node 서버의 multipart 수신 방식으로 정의되어 있습니다.
-- 현재 구현된 API와 목표 API가 문서에서 구분됩니다.
-- OpenAPI 문서가 정적 검증을 통과합니다.
+- 업로드 API가 presigned URL이 아닌 Node의 multipart 수신 방식으로 정의되어 있습니다.
+- API의 request/response 필드가 데이터 모델 또는 명시적인 비영구 값에 대응합니다.
+- 게스트가 회원으로 승격되거나 기존 회원 identity와 충돌할 때의 처리가 정의되어 있습니다.
+- Android Room, PostgreSQL 영구 데이터, EC2 임시 파일의 경계가 명확합니다.
+- AI 최종 작업과 provider별 시도 이력, 제품 이벤트와 일반 서버 로그가 구분됩니다.
+- OpenAPI와 Mermaid 문서가 정적 검증을 통과합니다.
 
-### B-02~B-04. 실행 및 공통 기반
+### B-03~B-05. 실행·DB·공통 기반
 
-- 새 환경에서 문서에 적힌 명령만으로 API와 DB를 실행할 수 있습니다.
-- DB 포트는 외부에 공개되지 않고 health check가 준비 상태를 반영합니다.
-- 성공·실패 응답과 로그에 요청 ID가 연결됩니다.
-- 단위·통합 테스트가 독립된 테스트 DB에서 반복 실행됩니다.
+- 새 환경에서 문서에 적힌 명령만으로 API와 PostgreSQL을 실행할 수 있습니다.
+- PostgreSQL 5432는 외부에 공개되지 않고 health check가 준비 상태를 반영합니다.
+- migration을 빈 DB와 기존 DB에 반복 적용할 수 있고 test DB를 독립적으로 초기화할 수 있습니다.
+- schema는 identity, catalog, jobs, analytics 경계로 나뉘며 기능 PR이 자기 migration을 소유합니다.
+- 성공·실패 응답, Pino JSON 로그, AI 작업에 동일한 request ID가 연결됩니다.
 
-### B-05~B-07. 인증
+### B-06~B-08. 인증
 
+- 게스트도 서버 `users.id`를 갖고 Google/Kakao 로그인 시 가능한 경우 동일한 사용자 행을 승격합니다.
 - 액세스 토큰은 짧게 유지하고 refresh token은 해시로 저장해 회전·폐기합니다.
-- Google과 Kakao가 발급한 값은 서버에서 검증하며 클라이언트의 사용자 정보를 신뢰하지 않습니다.
-- 재사용된 refresh token, 잘못된 issuer/audience, 탈퇴 계정의 접근을 테스트합니다.
+- Google과 Kakao가 발급한 값을 서버에서 검증하며 클라이언트의 사용자 정보를 신뢰하지 않습니다.
+- token family 재사용, 잘못된 issuer/audience, identity 충돌, 탈퇴 계정 접근을 테스트합니다.
 
-### B-08~B-09. 템플릿과 상호작용
+### B-09~B-10. 템플릿과 상호작용
 
-- 앱 배포 없이 템플릿 메타데이터와 자산 버전을 갱신할 수 있습니다.
-- 장소, 카테고리, locale, 페이지네이션 조건이 API 계약과 일치합니다.
-- 좋아요와 북마크는 멱등적으로 동작하며 사용자별 중복 데이터가 생기지 않습니다.
+- 앱 배포 없이 scene, locale, 템플릿 자산과 새 버전을 배포할 수 있습니다.
+- 배포된 템플릿 버전은 불변이며 진행 중 촬영이 참조한 버전을 유지합니다.
+- 좋아요와 북마크는 멱등적으로 동작하고 동시 요청에도 중복 행이나 잘못된 like count가 생기지 않습니다.
 
-### B-10~B-15. 이미지 분석과 개인정보
+### B-11~B-17. AI 작업, 관찰, 개인정보
 
-- 허용된 이미지 형식과 크기만 받고 파일 내용도 검증합니다.
-- SSE는 분석 단계와 키워드를 순차적으로 전달하고 재연결 시 최종 상태를 복구합니다.
-- AI 응답은 스키마로 검증하며 timeout, 제한 초과, 제공자 장애를 사용자 오류로 변환합니다.
-- 피드백은 해당 템플릿에서 다음 촬영에 바로 적용할 한 가지 행동을 우선합니다.
-- 성공, 실패, 만료된 분석 이미지가 정해진 시간 안에 삭제됩니다.
+- 허용한 이미지 형식·실제 파일 signature·크기를 검사하고 외부에 storage path를 노출하지 않습니다.
+- 사용량 증가, upload 소비, AI 작업 생성은 중복 비용이 생기지 않게 트랜잭션으로 처리합니다.
+- SSE는 증가하는 event ID를 사용하고 `Last-Event-ID` 재연결 시 누락된 이벤트를 복구합니다.
+- AI 호출마다 provider/model, prompt/schema version, latency, token 수, 표준화된 오류를 `ai_job_attempts`에 남깁니다.
+- AI 원본 프롬프트·응답, 이미지, provider token, 정확한 위치 이력은 저장하지 않습니다.
+- `app_events`는 허용된 이벤트와 속성만 받고 guest/member 퍼널을 동일한 actor 흐름으로 연결합니다.
+- 이미지 최대 1시간, SSE 이벤트 24시간, AI 결과 7일, AI 시도 30일, 제품 이벤트 90일 정책을 자동 검증합니다.
 
-### B-16~B-18. 배포와 출시 검증
+### B-18~B-20. 배포와 출시 검증
 
-- 운영 이미지는 multi-stage build와 non-root 사용자로 실행됩니다.
+- 운영 API 이미지는 multi-stage build와 non-root 사용자로 실행됩니다.
 - EC2 보안 그룹은 80/443과 제한된 22만 허용하고 3000/5432를 공개하지 않습니다.
-- 배포는 commit SHA 이미지, 일회성 migration, health check와 이전 이미지 rollback을 사용합니다.
-- 인증, 템플릿, 분석 SSE, 피드백, 탈퇴 흐름을 E2E로 검증합니다.
-- PostgreSQL 백업을 실제 새 데이터베이스에 복원해 확인합니다.
+- 배포는 commit SHA 이미지, 배포 전 백업, 일회성 migration, health check와 이전 이미지 rollback을 사용합니다.
+- 인증, 템플릿, 업로드, 분석 SSE, 피드백, 제품 이벤트, 탈퇴 흐름을 E2E로 검증합니다.
+- PostgreSQL 백업을 새 데이터베이스에 복원하고 행 수와 핵심 관계를 확인합니다.
+- 장애 상황에서도 Pino 로그로 request ID를 추적하고 DB의 AI 시도 이력과 연결할 수 있습니다.
 
 ## PR 검증 체크리스트
 
 - [ ] 한 PR이 하나의 Issue 범위만 다룹니다.
 - [ ] API 변경이 `docs/openapi.yaml`과 일치합니다.
-- [ ] 필요한 DB 변경에 migration과 rollback 고려가 포함됩니다.
-- [ ] 정상 경로와 핵심 실패 경로를 테스트했습니다.
-- [ ] 로그에 토큰, 개인정보, 이미지 내용이 포함되지 않습니다.
-- [ ] `npm run typecheck`, 테스트, 빌드와 OpenAPI 검증이 통과합니다.
-- [ ] PR 설명에 변경 이유, 검증 결과, 남은 제약을 기록했습니다.
+- [ ] DB 변경에 forward migration, 기존 데이터 영향, rollback 전략이 포함됩니다.
+- [ ] 정상 경로와 핵심 실패·동시성 경로를 테스트했습니다.
+- [ ] 로그와 이벤트에 토큰, 개인정보, 이미지, 자유 입력 원문이 포함되지 않습니다.
+- [ ] 새 이벤트와 오류 코드는 허용 목록과 보존 정책에 등록했습니다.
+- [ ] `npm run typecheck`, 테스트, 빌드, migration과 OpenAPI 검증이 통과합니다.
+- [ ] PR 설명에 변경 이유, 검증 결과, 운영 영향, 남은 제약을 기록했습니다.
 
 ## 포트폴리오에서 설명할 범위
 
-백엔드는 Android 경험을 지탱하는 제품 인프라로 구현합니다. 면접에서는 API 계약 설계, OAuth 서버 검증, SSE 재연결, 이미지 수명 관리, 멱등성과 AI 비용 제한, Docker 기반 배포와 장애 복구를 직접 설명할 수 있어야 합니다. AI의 도움을 받은 코드는 작은 PR과 테스트, CI를 통해 동작과 설계를 검증합니다.
+백엔드는 Android 촬영 경험을 지탱하는 제품 인프라로 구현합니다. 면접에서는 관계형 데이터 모델, 게스트 계정 승격, OAuth 서버 검증, 템플릿 불변 버전, upload 수명주기, SSE 재연결, 멱등성과 AI 비용 제한, provider 시도 이력, 제품 퍼널, Docker 배포와 PostgreSQL 복구를 직접 설명할 수 있어야 합니다. AI의 도움을 받은 코드는 작은 PR과 테스트, CI로 동작과 설계를 검증합니다.
