@@ -1,14 +1,16 @@
 openapi: 3.1.0
 info:
   title: DearShot API
-  version: 0.2.0-draft
+  version: 0.3.0-draft
   license:
     name: All rights reserved
     identifier: LicenseRef-Proprietary
   description: |
     Android 앱용 DearShot HTTP API 계약입니다.
     장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
-    이 파일은 구현 목표 명세이며, 현재 서버의 구현 완료 범위와는 다를 수 있습니다.
+    분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
+    이 파일은 구현 목표 명세입니다. 현재 서버에는 GET /health와 계약에 포함되지 않는
+    임시 POST /api/v1/scene-analysis mock만 구현되어 있습니다.
 servers:
   - url: /api/v1
     description: Same-origin development or deployment
@@ -257,7 +259,11 @@ paths:
     post:
       tags: [Uploads]
       operationId: createUpload
-      summary: 임시 이미지 업로드 URL 발급
+      summary: 분석용 임시 이미지 업로드
+      description: |
+        JPEG 또는 WebP 이미지 하나를 Node API에 직접 전송합니다.
+        서버는 전송 크기, part Content-Type, 파일 signature, decode 결과와 해상도를 검증하고
+        내부 임시 파일 경로나 URL을 노출하지 않습니다. 성공 응답은 즉시 READY 상태입니다.
       security:
         - bearerAuth: []
       parameters:
@@ -265,55 +271,35 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CreateUploadRequest'
+              $ref: '#/components/schemas/CreateUploadMultipartRequest'
+            encoding:
+              purpose:
+                contentType: text/plain
+              image:
+                contentType: image/jpeg, image/webp
       responses:
         '201':
-          description: 서명 업로드 URL 발급 완료
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreateUploadResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-
-  /uploads/{uploadId}/complete:
-    post:
-      tags: [Uploads]
-      operationId: completeUpload
-      summary: 객체 저장소 업로드 완료 알림
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/UploadId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CompleteUploadRequest'
-      responses:
-        '200':
-          description: 업로드 사용 준비 완료
+          description: 검증과 임시 저장 완료
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UploadResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '422':
           $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 
   /uploads/{uploadId}:
     delete:
@@ -1005,8 +991,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    UnsupportedMediaType:
+      description: 지원하지 않는 multipart 이미지 Content-Type
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
     Unprocessable:
-      description: 지원하지 않거나 처리할 수 없는 이미지
+      description: 파일 signature 불일치, decode 실패 또는 해상도 제한 초과
       content:
         application/json:
           schema:
@@ -1240,68 +1232,48 @@ components:
           type: string
           format: date-time
 
-    CreateUploadRequest:
+    CreateUploadMultipartRequest:
       type: object
-      required: [purpose, contentType, contentLength, width, height, sha256]
+      required: [purpose, image]
+      additionalProperties: false
       properties:
         purpose:
           type: string
           enum: [SCENE_ANALYSIS, PHOTO_FEEDBACK]
-        contentType:
+        image:
           type: string
-          enum: [image/jpeg, image/webp]
-        contentLength:
-          type: integer
-          minimum: 1
-          maximum: 10485760
-        width:
-          type: integer
-          minimum: 1
-        height:
-          type: integer
-          minimum: 1
-        sha256:
-          type: string
-
-    CreateUploadResponse:
-      type: object
-      required: [uploadId, method, uploadUrl, requiredHeaders, expiresAt, maxBytes]
-      properties:
-        uploadId:
-          type: string
-          format: uuid
-        method:
-          type: string
-          const: PUT
-        uploadUrl:
-          type: string
-          format: uri
-        requiredHeaders:
-          type: object
-          additionalProperties:
-            type: string
-        expiresAt:
-          type: string
-          format: date-time
-        maxBytes:
-          type: integer
-
-    CompleteUploadRequest:
-      type: object
-      properties:
-        etag:
-          type: [string, 'null']
+          format: binary
+          description: JPEG 또는 WebP binary. 최대 크기와 해상도는 AppConfig.upload 정책을 따릅니다.
 
     UploadResource:
       type: object
-      required: [uploadId, status, expiresAt]
+      required: [uploadId, status, purpose, contentType, byteSize, width, height, expiresAt]
+      additionalProperties: false
       properties:
         uploadId:
           type: string
           format: uuid
         status:
           type: string
-          enum: [READY]
+          const: READY
+        purpose:
+          type: string
+          enum: [SCENE_ANALYSIS, PHOTO_FEEDBACK]
+        contentType:
+          type: string
+          enum: [image/jpeg, image/webp]
+        byteSize:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        width:
+          type: integer
+          minimum: 1
+          maximum: 8192
+        height:
+          type: integer
+          minimum: 1
+          maximum: 8192
         expiresAt:
           type: string
           format: date-time
