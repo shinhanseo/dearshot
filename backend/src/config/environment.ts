@@ -30,6 +30,7 @@ const environmentSchema = z
       3_600,
       7_776_000,
     ),
+    GOOGLE_WEB_CLIENT_ID: z.string().min(1).default("replace-with-google-web-client-id"),
     DATABASE_URL: z
       .string()
       .min(1, "DATABASE_URL is required")
@@ -56,6 +57,16 @@ const environmentSchema = z
         message: "JWT_ACCESS_SECRET must be replaced in production",
       });
     }
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.GOOGLE_WEB_CLIENT_ID.startsWith("replace-with-")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["GOOGLE_WEB_CLIENT_ID"],
+        message: "GOOGLE_WEB_CLIENT_ID must be replaced in production",
+      });
+    }
   });
 
 export type DatabaseConfig = {
@@ -79,6 +90,7 @@ export type Environment = {
   port: number;
   database: DatabaseConfig;
   auth: AuthConfig;
+  google: { webClientId: string };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -102,6 +114,7 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       accessTokenTtlSeconds: parsed.data.ACCESS_TOKEN_TTL_SECONDS,
       refreshTokenTtlSeconds: parsed.data.REFRESH_TOKEN_TTL_SECONDS,
     },
+    google: { webClientId: parsed.data.GOOGLE_WEB_CLIENT_ID },
     database: {
       connectionString: parsed.data.DATABASE_URL,
       maxConnections: parsed.data.DB_POOL_MAX,

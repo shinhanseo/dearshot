@@ -21,6 +21,7 @@ export const userStatusEnum = pgEnum("user_status", [
   "DELETED",
 ]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["4:3", "9:16", "1:1"]);
+export const authProviderEnum = pgEnum("auth_provider", ["GOOGLE", "KAKAO"]);
 
 export const users = pgTable(
   "users",
@@ -76,4 +77,35 @@ export const refreshSessions = pgTable(
       .on(table.replacedById)
       .where(sql`${table.replacedById} is not null`),
   ],
+);
+
+export const authIdentities = pgTable(
+  "auth_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: authProviderEnum("provider").notNull(),
+    providerSubject: varchar("provider_subject", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("auth_identities_provider_subject_uidx").on(
+      table.provider,
+      table.providerSubject,
+    ),
+    uniqueIndex("auth_identities_user_provider_uidx").on(table.userId, table.provider),
+  ],
+);
+
+export const oauthNonceUses = pgTable(
+  "oauth_nonce_uses",
+  {
+    nonceHash: char("nonce_hash", { length: 64 }).primaryKey(),
+    provider: authProviderEnum("provider").notNull(),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("oauth_nonce_uses_expires_idx").on(table.tokenExpiresAt)],
 );

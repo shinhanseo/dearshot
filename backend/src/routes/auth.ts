@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAccessToken } from "../auth/authentication.js";
 import type { AuthService } from "../auth/auth-service.js";
+import type { GoogleAuthService } from "../auth/google/google-auth-service.js";
 import type { TokenService } from "../auth/token-service.js";
 import { validateBody } from "../http/validation.js";
 
@@ -15,12 +16,28 @@ const refreshTokenSchema = z.strictObject({
   refreshToken: z.string().min(32).max(256),
 });
 
+const googleAuthSchema = z.strictObject({
+  idToken: z.string().min(1).max(8_192),
+  nonce: z.string().min(16).max(256),
+  guestAccessToken: z.string().min(1).max(4_096).nullish(),
+  device: z.strictObject({
+    installationId: z.uuid(),
+    platform: z.literal("ANDROID"),
+    appVersion: z.string().min(1).max(32),
+  }),
+});
+
 type AuthRouterDependencies = {
   authService: AuthService;
+  googleAuthService: GoogleAuthService;
   tokenService: TokenService;
 };
 
-export function createAuthRouter({ authService, tokenService }: AuthRouterDependencies) {
+export function createAuthRouter({
+  authService,
+  googleAuthService,
+  tokenService,
+}: AuthRouterDependencies) {
   const router = Router();
   const authenticate = requireAccessToken(tokenService);
 
@@ -33,6 +50,11 @@ export function createAuthRouter({ authService, tokenService }: AuthRouterDepend
   router.post("/auth/guest", validateBody(guestAuthSchema), async (request, response) => {
     const result = await authService.createGuest(request.body);
     response.status(201).json(result);
+  });
+
+  router.post("/auth/google", validateBody(googleAuthSchema), async (request, response) => {
+    const result = await googleAuthService.authenticate(request.body);
+    response.json(result);
   });
 
   router.post("/auth/refresh", validateBody(refreshTokenSchema), async (request, response) => {
