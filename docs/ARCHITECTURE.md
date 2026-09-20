@@ -1,5 +1,11 @@
 # DearShot 시스템 아키텍처
 
+## 현재와 목표 범위
+
+현재 백엔드는 `GET /health`와 동기 mock `POST /api/v1/scene-analysis`만 구현되어 있습니다. mock은 JSON의 `imageReference`를 받아 고정된 장면 추천을 반환하며 인증, 실제 파일 업로드, PostgreSQL, AI provider, SSE를 사용하지 않습니다.
+
+아래 구성은 MVP 목표입니다. 목표 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-01 이후 기능 Issue는 이 목표 계약을 기준으로 구현하고, 목표 분석이 준비되면 단수형 mock route를 제거합니다.
+
 ## 전체 구성
 
 ```text
@@ -91,7 +97,7 @@ src/
 
 ```text
 compressed image upload
-  → file validation
+  → Node multipart stream and file validation
   → usage and idempotency transaction
   → analysis job created
   → SSE progress and clue events

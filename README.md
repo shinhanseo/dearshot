@@ -40,7 +40,7 @@ cp .env.example .env
 npm run dev
 ```
 
-서버가 실행되면 `GET /health`와 `POST /api/v1/scene-analysis`를 사용할 수 있습니다. 현재 장면 분석 응답은 앱·서버 계약을 먼저 검증하기 위한 목 응답입니다.
+서버가 실행되면 현재 `GET /health`와 `POST /api/v1/scene-analysis`를 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 

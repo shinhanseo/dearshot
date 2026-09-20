@@ -1,6 +1,6 @@
 # DearShot API 명세
 
-> 문서 버전: `0.2.0-draft`
+> 문서 버전: `0.3.0-draft`
 >
 > 기준일: 2026-09-20
 >
@@ -10,18 +10,30 @@
 
 이 문서는 Android 앱과 DearShot 백엔드 사이의 계약을 정의한다. 현재 백엔드에는 Health와 목 장면 분석만 구현되어 있으며, 아래 API가 MVP 구현 목표다. 요청·응답 필드가 바뀌면 이 문서와 `openapi.yaml`을 함께 수정한다.
 
+## 현재 구현 범위와 목표 계약
+
+| 구분 | 엔드포인트 | 상태 | 비고 |
+|---|---|---|---|
+| 현재 | `GET /health` | 구현됨 | 프로세스 상태만 반환하며 DB readiness는 아직 확인하지 않음 |
+| 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
+| MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
+| MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
+
+단수형 `/scene-analysis`는 앱·서버 연결을 확인하기 위한 임시 라우트이며 공개 계약이 아니다. 목표 API가 구현되면 제거한다. Android 신규 코드는 임시 mock 형식에 의존하지 않는다.
+
 ## 1. MVP에서 확정할 원칙
 
 - Android 앱은 Google 또는 Kakao SDK로 공급자 인증을 마친 뒤 공급자 토큰을 백엔드에 전달한다.
 - 백엔드는 공급자 토큰을 검증하고 DearShot 전용 Access Token과 Refresh Token을 발급한다.
 - 로그인하지 않은 사용자도 게스트 토큰을 받아 장면 분석과 템플릿 조회를 사용할 수 있다.
 - 좋아요, 북마크, 사용자 설정 동기화는 회원 토큰이 필요하다.
-- 분석 이미지는 임시 객체 저장소에 올리고 분석 또는 피드백 완료 후 최대 24시간 안에 삭제한다.
+- Android는 EXIF를 제거하고 긴 변 2048px 이하로 압축한 분석 이미지를 Node API에 multipart로 전송한다.
+- 서버는 분석 이미지를 EC2 임시 저장소에만 두고 작업 완료 후 즉시, 장애 상황에서도 최대 1시간 안에 삭제한다.
 - 장면 분석 진행 상황과 키워드는 SSE(Server-Sent Events)로 전달한다.
 - 촬영 피드백은 비동기로 처리하며 앱이 결과를 조회한다. 이후 필요하면 SSE를 추가한다.
 - 촬영 세션, 원본 사진 목록, 최종 갤러리 저장은 Android 로컬에서 관리한다.
 - 템플릿은 관리자 API로 등록·수정·배포해 앱 업데이트 없이 교체한다.
-- 모든 날짜는 UTC ISO 8601 문자열, 모든 ID는 UUID를 사용한다.
+- 모든 날짜는 UTC ISO 8601 문자열을 사용한다. 사용자·업로드·작업 ID는 UUID, scene과 template ID는 변경되지 않는 slug를 사용한다.
 
 ## 2. 공통 규칙
 
@@ -69,7 +81,7 @@
   "message": "요청 형식이 올바르지 않습니다.",
   "details": {
     "fieldErrors": {
-      "contentLength": ["10MB 이하여야 합니다."]
+      "image": ["JPEG 또는 WebP 파일이 필요합니다."]
     }
   }
 }
@@ -83,7 +95,8 @@
 | 404 | `RESOURCE_NOT_FOUND` | 대상 없음 |
 | 409 | `RESOURCE_CONFLICT`, `UPLOAD_ALREADY_USED` | 현재 상태와 요청이 충돌 |
 | 413 | `IMAGE_TOO_LARGE` | 이미지 제한 초과 |
-| 422 | `SCENE_UNCERTAIN`, `UNSUPPORTED_IMAGE` | 형식은 맞지만 분석 불가 |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | 지원하지 않는 multipart 이미지 Content-Type |
+| 422 | `SCENE_UNCERTAIN`, `INVALID_IMAGE`, `IMAGE_DIMENSIONS_UNSUPPORTED` | 형식은 맞지만 분석 불가 |
 | 429 | `RATE_LIMITED` | 요청 한도 초과. `Retry-After` 확인 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 | 502 | `AI_PROVIDER_FAILED` | 외부 AI 제공자 오류 |
@@ -110,8 +123,7 @@
 
 | Method | Path | 권한 | 용도 |
 |---|---|---|---|
-| `POST` | `/uploads` | 회원/게스트 | 임시 업로드 URL 발급 |
-| `POST` | `/uploads/{uploadId}/complete` | 회원/게스트 | 업로드 완료 알림 |
+| `POST` | `/uploads` | 회원/게스트 | multipart 분석 이미지 업로드 |
 | `DELETE` | `/uploads/{uploadId}` | 회원/게스트 | 미사용 업로드 폐기 |
 | `POST` | `/scene-analyses` | 회원/게스트 | 장면 분석 작업 생성 |
 | `GET` | `/scene-analyses/{analysisId}` | 회원/게스트 | 분석 현재 상태·결과 조회 |
@@ -319,21 +331,15 @@ Access Token과 Refresh Token은 즉시 폐기하고 계정 데이터는 개인�
 
 장면 분석과 피드백은 동일한 업로드 API를 사용한다.
 
-### 6.1 업로드 생성
+### 6.1 이미지 업로드
 
 `POST /uploads`
 
-`Idempotency-Key` 필수.
+`Authorization`, `Idempotency-Key` 필수. Content-Type은 `multipart/form-data`이며 JSON이나 Base64 이미지를 받지 않는다.
 
-```json
-{
-  "purpose": "SCENE_ANALYSIS",
-  "contentType": "image/jpeg",
-  "contentLength": 2384102,
-  "width": 1536,
-  "height": 2048,
-  "sha256": "base64-encoded-sha256"
-}
+```text
+purpose = SCENE_ANALYSIS | PHOTO_FEEDBACK
+image   = JPEG 또는 WebP binary file
 ```
 
 제약:
@@ -341,44 +347,45 @@ Access Token과 Refresh Token은 즉시 폐기하고 계정 데이터는 개인�
 - 지원 형식: `image/jpeg`, `image/webp`
 - 최대 크기: 앱 설정값 기준, MVP 기본 10MB
 - 권장 긴 변 길이: 2048px 이하
+- 서버 hard limit: 가로·세로 각각 8192px 이하, 총 40MP 이하
 - EXIF 위치 정보는 Android에서 제거한 뒤 업로드
+- 서버는 multipart 헤더뿐 아니라 파일 signature, 실제 이미지 decode, 크기를 검증
+- 서버가 SHA-256, 실제 MIME, width, height를 계산하므로 클라이언트가 해당 값을 선언하지 않음
 
 응답 `201 Created`:
 
 ```json
 {
   "uploadId": "29928e5b-ed75-4e47-af53-53b8d47b5bcb",
-  "method": "PUT",
-  "uploadUrl": "https://storage.example.com/signed-url",
-  "requiredHeaders": {"Content-Type": "image/jpeg"},
-  "expiresAt": "2026-09-20T12:10:00Z",
-  "maxBytes": 10485760
-}
-```
-
-`uploadUrl`은 DearShot API가 아니라 객체 저장소로 직접 요청한다.
-
-### 6.2 업로드 완료
-
-`POST /uploads/{uploadId}/complete`
-
-```json
-{
-  "etag": "optional-storage-etag"
-}
-```
-
-응답:
-
-```json
-{
-  "uploadId": "29928e5b-ed75-4e47-af53-53b8d47b5bcb",
   "status": "READY",
-  "expiresAt": "2026-09-21T12:00:00Z"
+  "purpose": "SCENE_ANALYSIS",
+  "contentType": "image/jpeg",
+  "byteSize": 2384102,
+  "width": 1536,
+  "height": 2048,
+  "expiresAt": "2026-09-20T12:10:00Z"
 }
 ```
 
-완료된 `uploadId`만 AI 작업에 사용할 수 있다. 다른 사용자의 업로드는 참조할 수 없고, 한 작업에 소비된 업로드를 다른 작업에서 재사용하면 `409 UPLOAD_ALREADY_USED`를 반환한다.
+파일 쓰기, 검증, 메타데이터 저장이 모두 끝난 뒤에만 `READY`를 반환한다. 응답에는 서버 파일 경로나 외부 URL을 포함하지 않는다. 실패한 요청의 부분 파일은 제거한다.
+
+동일한 사용자와 `Idempotency-Key`, purpose, 파일 내용으로 재시도하면 기존 `UploadResource`를 반환한다. 같은 key에 다른 purpose나 파일을 사용하면 `409 IDEMPOTENCY_CONFLICT`를 반환한다.
+
+다른 사용자의 업로드는 참조할 수 없고, 한 AI 작업에 소비된 업로드를 다시 사용하면 `409 UPLOAD_ALREADY_USED`를 반환한다. 업로드 purpose와 생성할 작업 종류가 다르면 `409 UPLOAD_PURPOSE_MISMATCH`를 반환한다.
+
+| HTTP | 코드 | 조건 |
+|---:|---|---|
+| 400 | `INVALID_MULTIPART`, `INVALID_PURPOSE` | 필수 part 누락 또는 purpose 오류 |
+| 401 | `INVALID_TOKEN`, `TOKEN_EXPIRED` | 인증 실패 |
+| 409 | `IDEMPOTENCY_CONFLICT` | 같은 key에 다른 요청 사용 |
+| 413 | `IMAGE_TOO_LARGE` | 전송 중 byte limit 초과 |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | JPEG/WebP 이외의 part Content-Type |
+| 422 | `INVALID_IMAGE`, `IMAGE_DIMENSIONS_UNSUPPORTED` | signature 불일치, decode 실패, 해상도 제한 초과 |
+| 429 | `RATE_LIMITED` | 업로드 요청 한도 초과 |
+
+### 6.2 미사용 업로드 폐기
+
+`DELETE /uploads/{uploadId}`는 본인이 소유한 `READY` 업로드를 폐기한다. 이미 AI 작업에 소비된 업로드는 `409 UPLOAD_ALREADY_USED`를 반환한다. 삭제 작업은 동일 요청을 반복해도 안전해야 한다.
 
 ## 7. 장면 분석
 
@@ -786,16 +793,12 @@ POST  /admin/templates/{templateId}/archive
 ```text
 POST /auth/guest
 → GET /app-config
-→ POST /uploads
-→ Storage PUT
-→ POST /uploads/{id}/complete
+→ POST /uploads (multipart: purpose + image)
 → POST /scene-analyses
 → GET /scene-analyses/{id}/events
 → GET /templates?scene=beach
 → 촬영
-→ POST /uploads
-→ Storage PUT
-→ POST /uploads/{id}/complete
+→ POST /uploads (multipart: purpose + image)
 → POST /photo-feedbacks
 → GET /photo-feedbacks/{id}
 ```
@@ -815,12 +818,13 @@ Google Credential Manager 또는 Kakao SDK
 - Access Token은 짧게, Refresh Token은 회전 방식으로 운영한다.
 - Refresh Token은 Android Keystore로 보호한 저장소에 저장한다.
 - 공급자 토큰과 DearShot 토큰을 로그에 남기지 않는다.
-- 서명 업로드 URL은 10분 이내 만료하며 한 객체에만 사용할 수 있다.
+- Node는 업로드를 stream으로 처리하며 request·file·pixel limit을 각각 적용한다.
+- 임시 파일명은 서버가 무작위로 생성하고 `/srv/dearshot/uploads` 밖의 경로를 허용하지 않는다.
 - 업로드 소유자와 AI 작업 요청자가 같은지 검증한다.
 - EXIF 위치 정보는 업로드 전에 제거한다.
 - 정밀 좌표와 이미지 URL은 애플리케이션 로그·분석 도구에 기록하지 않는다.
 - 사진은 모델 학습에 사용하지 않는다.
-- 장면 분석·피드백 원본은 작업 완료 후 즉시 삭제를 시도하고, 장애 상황에서도 최대 24시간 안에 삭제한다.
+- 장면 분석·피드백 원본은 작업 완료 후 즉시 삭제를 시도하고, 장애 상황에서도 최대 1시간 안에 삭제한다.
 - 좋아요·북마크 API는 사용자별 유일 제약으로 중복 행을 방지한다.
 - 외부 AI 응답은 스키마 검증 후 앱에 전달한다.
 - SSE 이벤트 텍스트도 locale에 맞추되 앱 분기는 문자열이 아닌 `stage`, `action`, `code`로 처리한다.
