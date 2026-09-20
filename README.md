@@ -82,6 +82,15 @@ npm run test:unit
 npm run test:integration
 ```
 
+인증 DB 통합 테스트는 `_test` 데이터베이스를 초기화한 뒤 실행합니다. 이 명령은 테스트 테이블을 비우므로 개발 DB URL로 실행하면 안 되며, 초기화 명령이 `_test` 접미사를 강제합니다.
+
+```bash
+docker compose exec api npm run db:test:reset
+docker compose exec api npm run test:database
+```
+
+로컬 `.env`의 `JWT_ACCESS_SECRET`은 저장소에 포함하지 않습니다. 새 환경에서는 `openssl rand -base64 48`처럼 충분한 난수로 생성하고, 예제 값을 운영에서 사용하면 서버가 시작을 거부합니다.
+
 API 로그는 Pino JSON으로 stdout에 기록합니다. HTTP 로그에는 request ID, 메서드, query string을 제외한 경로, 상태 코드와 응답 시간만 포함하며 Authorization, Cookie와 요청 본문은 기록하지 않습니다. Docker `json-file` 로그는 컨테이너마다 파일당 10MB, 최대 5개로 회전합니다.
 
 구성과 health check, 비공개 DB port, volume 지속성을 한 번에 검증할 수 있습니다.
@@ -94,7 +103,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 현재 `GET /health`와 `POST /api/v1/scene-analysis`를 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
+서버가 실행되면 `GET /health`, 게스트·refresh·logout·`GET /me` 인증 기반과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 
@@ -111,6 +120,6 @@ Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_UR
 ## 기술 방향
 
 - Android: Kotlin, Jetpack Compose, CameraX, Room, Hilt, Retrofit, WorkManager, Media3
-- Backend: Node.js, TypeScript, Express, Zod, PostgreSQL, Drizzle ORM
+- Backend: Node.js, TypeScript, Express, Zod, PostgreSQL, Drizzle ORM, JOSE
 - AI: 서버 장면 분석을 우선 적용하고, 인물·수평선·밝기처럼 즉시성이 필요한 신호는 온디바이스 분석으로 확장
 - Storage: 촬영 원본은 앱 전용 저장소에 임시 보관하고 사용자가 선택한 사진만 MediaStore에 저장

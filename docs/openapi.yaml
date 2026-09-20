@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DearShot API
-  version: 0.3.1-draft
+  version: 0.4.0-draft
   license:
     name: All rights reserved
     identifier: LicenseRef-Proprietary
@@ -9,8 +9,8 @@ info:
     Android 앱용 DearShot HTTP API 계약입니다.
     장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
     분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
-    이 파일은 구현 목표 명세입니다. 현재 서버에는 GET /health와 계약에 포함되지 않는
-    임시 POST /api/v1/scene-analysis mock만 구현되어 있습니다.
+    이 파일은 구현 목표 명세입니다. 현재 서버에는 health, guest/refresh/logout/me 인증 기반과
+    계약에 포함되지 않는 임시 POST /api/v1/scene-analysis mock이 구현되어 있습니다.
 servers:
   - url: /api/v1
     description: Same-origin development or deployment
@@ -96,6 +96,13 @@ paths:
       responses:
         '201':
           description: 게스트 세션 생성 완료
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/NoCache'
           content:
             application/json:
               schema:
@@ -169,6 +176,13 @@ paths:
       responses:
         '200':
           description: 토큰 재발급 완료
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/NoCache'
           content:
             application/json:
               schema:
@@ -192,6 +206,13 @@ paths:
       responses:
         '204':
           description: 로그아웃 완료
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/NoCache'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -205,6 +226,9 @@ paths:
       responses:
         '200':
           description: 회원 정보
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
           content:
             application/json:
               schema:
@@ -896,6 +920,16 @@ components:
       schema:
         type: string
         format: uuid
+    NoStore:
+      description: 인증 응답을 공유 또는 로컬 캐시에 저장하지 않도록 지시한다.
+      schema:
+        type: string
+        const: no-store
+    NoCache:
+      description: 레거시 HTTP 캐시가 인증 응답을 재사용하지 않도록 지시한다.
+      schema:
+        type: string
+        const: no-cache
 
   securitySchemes:
     bearerAuth:
@@ -1112,6 +1146,7 @@ components:
 
     GuestAuthRequest:
       type: object
+      additionalProperties: false
       required: [installationId, locale, appVersion]
       properties:
         installationId:
@@ -1178,6 +1213,7 @@ components:
 
     RefreshTokenRequest:
       type: object
+      additionalProperties: false
       required: [refreshToken]
       properties:
         refreshToken:

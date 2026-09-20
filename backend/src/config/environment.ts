@@ -8,25 +8,55 @@ const integerFromEnvironment = (name: string, fallback: number, minimum: number,
     .max(maximum, `${name} must be at most ${maximum}`)
     .default(fallback);
 
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
-  PORT: integerFromEnvironment("PORT", 3000, 1, 65_535),
-  DATABASE_URL: z
-    .string()
-    .min(1, "DATABASE_URL is required")
-    .refine((value) => value.startsWith("postgresql://") || value.startsWith("postgres://"), {
-      message: "DATABASE_URL must use the postgresql:// or postgres:// protocol",
-    }),
-  DB_POOL_MAX: integerFromEnvironment("DB_POOL_MAX", 10, 1, 50),
-  DB_CONNECTION_TIMEOUT_MS: integerFromEnvironment(
-    "DB_CONNECTION_TIMEOUT_MS",
-    5_000,
-    100,
-    60_000,
-  ),
-  DB_IDLE_TIMEOUT_MS: integerFromEnvironment("DB_IDLE_TIMEOUT_MS", 30_000, 1_000, 300_000),
-});
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+      .default("info"),
+    PORT: integerFromEnvironment("PORT", 3000, 1, 65_535),
+    JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
+    JWT_ISSUER: z.string().min(1).default("dearshot-api"),
+    JWT_AUDIENCE: z.string().min(1).default("dearshot-android"),
+    ACCESS_TOKEN_TTL_SECONDS: integerFromEnvironment(
+      "ACCESS_TOKEN_TTL_SECONDS",
+      900,
+      60,
+      3_600,
+    ),
+    REFRESH_TOKEN_TTL_SECONDS: integerFromEnvironment(
+      "REFRESH_TOKEN_TTL_SECONDS",
+      2_592_000,
+      3_600,
+      7_776_000,
+    ),
+    DATABASE_URL: z
+      .string()
+      .min(1, "DATABASE_URL is required")
+      .refine((value) => value.startsWith("postgresql://") || value.startsWith("postgres://"), {
+        message: "DATABASE_URL must use the postgresql:// or postgres:// protocol",
+      }),
+    DB_POOL_MAX: integerFromEnvironment("DB_POOL_MAX", 10, 1, 50),
+    DB_CONNECTION_TIMEOUT_MS: integerFromEnvironment(
+      "DB_CONNECTION_TIMEOUT_MS",
+      5_000,
+      100,
+      60_000,
+    ),
+    DB_IDLE_TIMEOUT_MS: integerFromEnvironment("DB_IDLE_TIMEOUT_MS", 30_000, 1_000, 300_000),
+  })
+  .superRefine((environment, context) => {
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.JWT_ACCESS_SECRET.startsWith("replace-with-")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["JWT_ACCESS_SECRET"],
+        message: "JWT_ACCESS_SECRET must be replaced in production",
+      });
+    }
+  });
 
 export type DatabaseConfig = {
   connectionString: string;
@@ -35,11 +65,20 @@ export type DatabaseConfig = {
   idleTimeoutMillis: number;
 };
 
+export type AuthConfig = {
+  accessTokenSecret: string;
+  issuer: string;
+  audience: string;
+  accessTokenTtlSeconds: number;
+  refreshTokenTtlSeconds: number;
+};
+
 export type Environment = {
   nodeEnvironment: "development" | "test" | "production";
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   port: number;
   database: DatabaseConfig;
+  auth: AuthConfig;
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -56,6 +95,13 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
     nodeEnvironment: parsed.data.NODE_ENV,
     logLevel: parsed.data.LOG_LEVEL,
     port: parsed.data.PORT,
+    auth: {
+      accessTokenSecret: parsed.data.JWT_ACCESS_SECRET,
+      issuer: parsed.data.JWT_ISSUER,
+      audience: parsed.data.JWT_AUDIENCE,
+      accessTokenTtlSeconds: parsed.data.ACCESS_TOKEN_TTL_SECONDS,
+      refreshTokenTtlSeconds: parsed.data.REFRESH_TOKEN_TTL_SECONDS,
+    },
     database: {
       connectionString: parsed.data.DATABASE_URL,
       maxConnections: parsed.data.DB_POOL_MAX,

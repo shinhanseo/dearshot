@@ -1,6 +1,6 @@
 # DearShot API 명세
 
-> 문서 버전: `0.3.0-draft`
+> 문서 버전: `0.4.0-draft`
 >
 > 기준일: 2026-09-20
 >
@@ -14,7 +14,11 @@
 
 | 구분 | 엔드포인트 | 상태 | 비고 |
 |---|---|---|---|
-| 현재 | `GET /health` | 구현됨 | 프로세스 상태만 반환하며 DB readiness는 아직 확인하지 않음 |
+| 현재 | `GET /health` | 구현됨 | 프로세스와 PostgreSQL readiness 확인 |
+| 현재 | `POST /auth/guest` | 구현됨 | 설치 UUID별 게스트 principal과 토큰 발급 |
+| 현재 | `POST /auth/refresh` | 구현됨 | Refresh Token 회전과 재사용 탐지 |
+| 현재 | `POST /auth/logout` | 구현됨 | 현재 Refresh Session 폐기 |
+| 현재 | `GET /me` | 구현됨 | 회원 전용이며 게스트는 `403 AUTH_REQUIRED` |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -271,6 +275,10 @@ Google과 Kakao 로그인 성공 응답 `200 OK`:
 ```
 
 Refresh Token은 매번 회전한다. 성공 응답에 새 Access Token과 새 Refresh Token을 모두 포함하며 기존 토큰은 즉시 폐기한다. 이미 사용된 Refresh Token이 재사용되면 탈취 가능성이 있으므로 해당 토큰 계열 전체를 폐기한다.
+
+Access Token은 15분, Refresh Token은 30일을 기본값으로 사용한다. 서버는 Refresh Token 원문을 저장하지 않고 SHA-256 해시만 저장한다. 동시에 같은 Refresh Token을 재발급하면 하나만 성공하며, 나머지 요청은 재사용으로 판단해 해당 token family를 폐기한다.
+
+토큰을 반환하는 인증 응답은 `Cache-Control: no-store`와 `Pragma: no-cache`를 포함한다. 앱은 Access Token과 Refresh Token을 일반 로그, 분석 이벤트, URL 또는 평문 설정 파일에 기록하지 않는다.
 
 ### 4.5 로그아웃
 

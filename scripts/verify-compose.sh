@@ -73,6 +73,7 @@ fi
 
 docker compose exec --no-TTY api npm run db:test:reset
 docker compose exec --no-TTY api npm run db:test:reset
+docker compose exec --no-TTY api npm run test:database
 
 test_database_name="$(docker compose exec --no-TTY api node -e \
   'process.stdout.write(new URL(process.env.TEST_DATABASE_URL).pathname.slice(1))')"
