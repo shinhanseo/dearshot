@@ -55,6 +55,25 @@ PostgreSQL은 호스트에 `5432`를 공개하지 않습니다. DB에 직접 접
 docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
+DB schema는 Drizzle migration으로 관리합니다. 개발 DB migration과 seed는 실행 중인 API 컨테이너에서 적용합니다.
+
+```bash
+docker compose exec api npm run db:migrate
+docker compose exec api npm run db:seed
+```
+
+독립된 `dearshot_test` DB를 삭제·재생성하고 migration을 다시 적용하려면 다음 명령을 사용합니다. 안전을 위해 `db:test:reset`은 `TEST_DATABASE_URL`의 DB 이름이 `_test`로 끝날 때만 동작하며 운영 환경에서는 실행되지 않습니다.
+
+```bash
+docker compose exec api npm run db:test:reset
+```
+
+새 기능의 schema를 수정한 뒤 migration을 생성할 때는 다음 명령을 사용하고, 생성된 SQL을 반드시 검토합니다.
+
+```bash
+docker compose exec api npm run db:generate -- --name=feature_name
+```
+
 구성과 health check, 비공개 DB port, volume 지속성을 한 번에 검증할 수 있습니다.
 
 ```bash
@@ -63,7 +82,7 @@ sh scripts/verify-compose.sh
 
 서비스를 중지해도 DB volume은 유지됩니다. `docker compose down --volumes`는 로컬 DB를 모두 삭제하므로 초기화가 필요할 때만 사용합니다.
 
-Docker 없이 현재 mock API만 실행하려면 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 이 방식은 B-04에서 추가할 PostgreSQL 연결 환경을 제공하지 않습니다.
+Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
 서버가 실행되면 현재 `GET /health`와 `POST /api/v1/scene-analysis`를 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
@@ -82,6 +101,6 @@ Docker 없이 현재 mock API만 실행하려면 `backend`에서 `npm ci && npm 
 ## 기술 방향
 
 - Android: Kotlin, Jetpack Compose, CameraX, Room, Hilt, Retrofit, WorkManager, Media3
-- Backend: Node.js, TypeScript, Express, Zod
+- Backend: Node.js, TypeScript, Express, Zod, PostgreSQL, Drizzle ORM
 - AI: 서버 장면 분석을 우선 적용하고, 인물·수평선·밝기처럼 즉시성이 필요한 신호는 온디바이스 분석으로 확장
 - Storage: 촬영 원본은 앱 전용 저장소에 임시 보관하고 사용자가 선택한 사진만 MediaStore에 저장
