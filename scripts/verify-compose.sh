@@ -63,6 +63,12 @@ docker compose exec --no-TTY api npm run db:migrate
 migration_count_after_repeat="$(docker compose exec --no-TTY postgres sh -c \
   'psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) FROM drizzle.__drizzle_migrations;"')"
 docker compose exec --no-TTY api npm run db:seed
+docker compose exec --no-TTY api npm run db:seed
+
+curl --fail --silent 'http://127.0.0.1:3000/api/v1/scenes?locale=ko-KR' >/dev/null
+curl --fail --silent 'http://127.0.0.1:3000/api/v1/templates?scene=dev-beach&limit=2' >/dev/null
+curl --fail --silent 'http://127.0.0.1:3000/api/v1/templates/dev-beach-breeze?locale=en-US' >/dev/null
+curl --fail --silent 'http://127.0.0.1:3000/assets/catalog/scenes/dev-beach.svg' >/dev/null
 
 if [ "$migration_count_before_repeat" -lt 1 ] || \
   [ "$migration_count_before_repeat" != "$migration_count_after_repeat" ]; then

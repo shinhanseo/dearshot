@@ -1,0 +1,297 @@
+{
+  "catalogVersion": "dev-sample-2026-09-21",
+  "scenes": [
+    {
+      "key": "dev-beach",
+      "active": true,
+      "thumbnailPath": "scenes/dev-beach.svg",
+      "sortOrder": 1,
+      "localizations": {
+        "ko-KR": {
+          "displayName": "바다 · 개발용 샘플"
+        },
+        "en-US": {
+          "displayName": "Beach · development sample"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "dev-beach-breeze",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "4:3",
+        "9:16"
+      ],
+      "sortOrder": 1,
+      "scenes": [
+        {
+          "key": "dev-beach",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/dev-beach-breeze/v1/preview.svg",
+          "thumbnailPath": "templates/dev-beach-breeze/v1/thumbnail.svg",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/dev-beach-breeze/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 660,
+              "referenceHeight": 880,
+              "safeArea": {
+                "left": 0.05,
+                "top": 0.08,
+                "right": 0.95,
+                "bottom": 0.9
+              }
+            }
+          },
+          "publishedAt": "2026-09-11T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "바람을 느끼는 순간",
+              "summary": "바다와 인물을 함께 담는 개발용 예시입니다.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "화면의 가이드에 인물을 맞춰 보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "수평선이 기울지 않았는지 확인하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A quiet breeze",
+              "summary": "A development-only sample framing a person with the sea.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Align the subject with the guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Check that the horizon is level."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "dev-shoreline-walk",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "4:3",
+        "9:16"
+      ],
+      "sortOrder": 2,
+      "scenes": [
+        {
+          "key": "dev-beach",
+          "sortOrder": 2
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/dev-shoreline-walk/v1/preview.svg",
+          "thumbnailPath": "templates/dev-shoreline-walk/v1/thumbnail.svg",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/dev-shoreline-walk/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 660,
+              "referenceHeight": 880,
+              "safeArea": {
+                "left": 0.05,
+                "top": 0.08,
+                "right": 0.95,
+                "bottom": 0.9
+              }
+            }
+          },
+          "publishedAt": "2026-09-12T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "해변을 걷는 장면",
+              "summary": "움직임을 활용한 개발용 예시입니다.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "화면의 가이드에 인물을 맞춰 보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "수평선이 기울지 않았는지 확인하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Shoreline walk",
+              "summary": "A development-only sample using natural movement.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Align the subject with the guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Check that the horizon is level."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "dev-horizon-silhouette",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "4:3",
+        "9:16"
+      ],
+      "sortOrder": 3,
+      "scenes": [
+        {
+          "key": "dev-beach",
+          "sortOrder": 3
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/dev-horizon-silhouette/v1/preview.svg",
+          "thumbnailPath": "templates/dev-horizon-silhouette/v1/thumbnail.svg",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/dev-horizon-silhouette/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 660,
+              "referenceHeight": 880,
+              "safeArea": {
+                "left": 0.05,
+                "top": 0.08,
+                "right": 0.95,
+                "bottom": 0.9
+              }
+            }
+          },
+          "publishedAt": "2026-09-13T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "수평선 실루엣",
+              "summary": "수평선과 여백을 활용한 개발용 예시입니다.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "화면의 가이드에 인물을 맞춰 보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "수평선이 기울지 않았는지 확인하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Horizon silhouette",
+              "summary": "A development-only sample using horizon and negative space.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Align the subject with the guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Check that the horizon is level."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "dev-seated-by-sea",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "4:3",
+        "9:16"
+      ],
+      "sortOrder": 4,
+      "scenes": [
+        {
+          "key": "dev-beach",
+          "sortOrder": 4
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/dev-seated-by-sea/v1/preview.svg",
+          "thumbnailPath": "templates/dev-seated-by-sea/v1/thumbnail.svg",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/dev-seated-by-sea/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 660,
+              "referenceHeight": 880,
+              "safeArea": {
+                "left": 0.05,
+                "top": 0.08,
+                "right": 0.95,
+                "bottom": 0.9
+              }
+            }
+          },
+          "publishedAt": "2026-09-14T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "바다 옆에 앉아",
+              "summary": "낮은 시선의 개발용 예시입니다.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "화면의 가이드에 인물을 맞춰 보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "수평선이 기울지 않았는지 확인하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Seated by the sea",
+              "summary": "A development-only sample with a lower viewpoint.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Align the subject with the guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Check that the horizon is level."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    }
+  ]
+}

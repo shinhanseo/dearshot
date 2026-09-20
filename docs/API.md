@@ -1,8 +1,8 @@
 # DearShot API 명세
 
-> 문서 버전: `0.6.0-draft`
+> 문서 버전: `0.7.0-draft`
 >
-> 기준일: 2026-09-20
+> 기준일: 2026-09-21
 >
 > Base URL: `/api/v1`
 >
@@ -21,6 +21,9 @@
 | 현재 | `POST /auth/refresh` | 구현됨 | Refresh Token 회전과 재사용 탐지 |
 | 현재 | `POST /auth/logout` | 구현됨 | 현재 Refresh Session 폐기 |
 | 현재 | `GET /me` | 구현됨 | 회원 전용이며 게스트는 `403 AUTH_REQUIRED` |
+| 현재 | `GET /scenes` | 구현됨 | locale fallback과 공개 템플릿 수를 포함한 장소 카탈로그 |
+| 현재 | `GET /templates` | 구현됨 | 장소·비율·인원 필터, 정렬, 필터 결합 cursor 지원 |
+| 현재 | `GET /templates/{templateId}` | 구현됨 | 현재 또는 명시한 공개 버전과 overlay guide 조회 |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -700,6 +703,8 @@ data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
 ```
 
 앱은 촬영 당시 `templateId`와 `version`을 함께 저장한다. 서버가 새 버전을 배포해도 진행 중인 촬영에는 기존 버전을 사용한다.
+
+현재 B-09 구현에서 인증 없는 조회는 `liked`, `bookmarked`를 `false`로 반환한다. 회원별 상태 결합과 좋아요·북마크 쓰기는 B-10 범위다. locale은 요청값이 있으면 정확히 일치하는 문구를 사용하고, 없으면 `en-US`로 fallback한다. 공개된 버전과 그 지역화 문구는 DB trigger로 수정·삭제를 거부하며, 변경은 반드시 새 version으로 배포한다.
 
 ## 10. 좋아요와 북마크
 

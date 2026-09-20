@@ -53,6 +53,8 @@ const environmentSchema = z
       60_000,
     ),
     DB_IDLE_TIMEOUT_MS: integerFromEnvironment("DB_IDLE_TIMEOUT_MS", 30_000, 1_000, 300_000),
+    PUBLIC_ASSET_BASE_URL: z.string().url().default("http://localhost:3000/assets/catalog"),
+    CATALOG_ASSET_ROOT: z.string().min(1).default("catalog/assets"),
   })
   .superRefine((environment, context) => {
     if (
@@ -85,6 +87,16 @@ const environmentSchema = z
         message: "KAKAO_APP_ID must be replaced in production",
       });
     }
+    if (
+      environment.NODE_ENV === "production" &&
+      new URL(environment.PUBLIC_ASSET_BASE_URL).protocol !== "https:"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["PUBLIC_ASSET_BASE_URL"],
+        message: "PUBLIC_ASSET_BASE_URL must use HTTPS in production",
+      });
+    }
   });
 
 export type DatabaseConfig = {
@@ -110,6 +122,7 @@ export type Environment = {
   auth: AuthConfig;
   google: { webClientId: string };
   kakao: { appId: string; apiTimeoutMillis: number };
+  catalog: { assetBaseUrl: string; assetRoot: string };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -137,6 +150,10 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
     kakao: {
       appId: parsed.data.KAKAO_APP_ID,
       apiTimeoutMillis: parsed.data.KAKAO_API_TIMEOUT_MS,
+    },
+    catalog: {
+      assetBaseUrl: parsed.data.PUBLIC_ASSET_BASE_URL,
+      assetRoot: parsed.data.CATALOG_ASSET_ROOT,
     },
     database: {
       connectionString: parsed.data.DATABASE_URL,

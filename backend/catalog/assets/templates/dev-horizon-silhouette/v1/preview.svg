@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="880" viewBox="0 0 660 880">
+  <rect width="660" height="880" fill="#E8D8C7"/>
+  <rect y="510" width="660" height="370" fill="#65493A" opacity=".62"/>
+  <circle cx="530" cy="120" r="54" fill="#FFF7E8" opacity=".9"/>
+  <path d="M0 560 Q160 510 330 560 T660 550 V650 H0Z" fill="#FFF" opacity=".35"/>
+  <circle cx="330" cy="230" r="72" fill="#F7F2E9" opacity=".84"/>
+  <path d="M250 470 Q330 290 410 470" fill="#F7F2E9" opacity=".84"/>
+  <text x="32" y="824" font-family="sans-serif" font-size="26" fill="#292824">Horizon Silhouette</text>
+</svg>
