@@ -23,3 +23,27 @@ export function requireAccessToken(tokenService: TokenService): RequestHandler {
     }
   };
 }
+
+export function optionalAccessToken(tokenService: TokenService): RequestHandler {
+  return async (request, _response, next) => {
+    try {
+      const authorization = request.get("Authorization");
+      if (!authorization) {
+        next();
+        return;
+      }
+      const match = authorization.match(/^Bearer ([^\s]+)$/);
+      if (!match) {
+        throw new ApiError({
+          statusCode: 401,
+          code: "INVALID_TOKEN",
+          message: "Authorization header is invalid",
+        });
+      }
+      request.auth = await tokenService.verifyAccessToken(match[1]);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}

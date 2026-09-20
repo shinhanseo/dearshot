@@ -109,7 +109,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 `GET /api/v1/scenes`, `GET /api/v1/templates`, `GET /api/v1/templates/{templateId}`와 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 조회, 회원 전용 템플릿 좋아요·북마크·컬렉션과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 

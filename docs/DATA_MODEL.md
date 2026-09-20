@@ -136,7 +136,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 ### `template_likes`, `template_bookmarks`
 
-두 테이블 모두 `(user_id, template_id)` 복합 PK를 사용합니다. 좋아요 설정·해제는 트랜잭션 안에서 `templates.like_count`와 함께 갱신하며 count가 음수가 되지 않도록 check constraint를 둡니다.
+두 테이블 모두 `(user_id, template_id)` 복합 PK를 사용합니다. 좋아요 설정·해제는 트랜잭션 안에서 `templates.like_count`와 함께 갱신하며 count가 음수가 되지 않도록 check constraint를 둡니다. 회원 컬렉션은 `user_id, created_at DESC, template_id DESC` 인덱스와 같은 순서의 cursor를 사용합니다. 좋아요 집계·운영 분석용으로 `template_likes(template_id, created_at)` 인덱스도 둡니다.
 
 ## 이미지와 AI 작업
 

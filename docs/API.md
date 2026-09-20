@@ -1,6 +1,6 @@
 # DearShot API 명세
 
-> 문서 버전: `0.7.0-draft`
+> 문서 버전: `0.8.0-draft`
 >
 > 기준일: 2026-09-21
 >
@@ -24,6 +24,10 @@
 | 현재 | `GET /scenes` | 구현됨 | locale fallback과 공개 템플릿 수를 포함한 장소 카탈로그 |
 | 현재 | `GET /templates` | 구현됨 | 장소·비율·인원 필터, 정렬, 필터 결합 cursor 지원 |
 | 현재 | `GET /templates/{templateId}` | 구현됨 | 현재 또는 명시한 공개 버전과 overlay guide 조회 |
+| 현재 | `PUT/DELETE /templates/{templateId}/like` | 구현됨 | 회원 전용 멱등 좋아요와 트랜잭션 집계 |
+| 현재 | `PUT/DELETE /templates/{templateId}/bookmark` | 구현됨 | 회원 전용 멱등 북마크 |
+| 현재 | `GET /me/liked-templates` | 구현됨 | 회원의 좋아요 컬렉션 cursor 조회 |
+| 현재 | `GET /me/bookmarked-templates` | 구현됨 | 회원의 북마크 컬렉션 cursor 조회 |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -704,7 +708,7 @@ data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
 
 앱은 촬영 당시 `templateId`와 `version`을 함께 저장한다. 서버가 새 버전을 배포해도 진행 중인 촬영에는 기존 버전을 사용한다.
 
-현재 B-09 구현에서 인증 없는 조회는 `liked`, `bookmarked`를 `false`로 반환한다. 회원별 상태 결합과 좋아요·북마크 쓰기는 B-10 범위다. locale은 요청값이 있으면 정확히 일치하는 문구를 사용하고, 없으면 `en-US`로 fallback한다. 공개된 버전과 그 지역화 문구는 DB trigger로 수정·삭제를 거부하며, 변경은 반드시 새 version으로 배포한다.
+인증 없는 조회와 게스트 조회는 `liked`, `bookmarked`를 `false`로 반환한다. 유효한 회원 Access Token을 선택적으로 보내면 목록과 상세에 회원의 실제 상태를 묶어서 반환한다. locale은 요청값이 있으면 정확히 일치하는 문구를 사용하고, 없으면 `en-US`로 fallback한다. 공개된 버전과 그 지역화 문구는 DB trigger로 수정·삭제를 거부하며, 변경은 반드시 새 version으로 배포한다.
 
 ## 10. 좋아요와 북마크
 
@@ -735,6 +739,12 @@ DELETE /templates/{templateId}/bookmark
 GET /me/liked-templates?cursor=...&limit=20
 GET /me/bookmarked-templates?cursor=...&limit=20
 ```
+
+두 목록은 `locale`, `cursor`, `limit`을 받는다. 최신 설정 순서로 정렬하며 cursor는 `(createdAt, templateId)`를 사용하고 회원 ID와 컬렉션 종류에 묶인다. 다른 회원이나 좋아요·북마크 사이에서 cursor를 재사용하면 `400 INVALID_CURSOR`를 반환한다.
+
+좋아요의 관계 행과 `templates.like_count` 증감은 같은 transaction에서 처리한다. 복합 PK와 `INSERT ... ON CONFLICT DO NOTHING`, 안전한 `DELETE ... RETURNING`을 사용하므로 동시에 같은 요청이 도착해도 행과 집계가 한 번만 바뀐다. 토큰이 없거나 유효하지 않으면 `401 INVALID_TOKEN`, 게스트 토큰이면 `403 AUTH_REQUIRED`를 반환한다.
+
+회원 상태가 포함된 카탈로그와 회원 컬렉션 응답은 `Cache-Control: private, no-store`와 `Vary: Authorization`을 사용한다. 비인증 카탈로그 응답만 60초 동안 공개 캐시할 수 있다.
 
 ## 11. 앱 설정
 

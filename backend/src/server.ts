@@ -8,6 +8,7 @@ import { KakaoApiIdentityVerifier } from "./auth/kakao/kakao-identity-verifier.j
 import { SocialIdentityAuthService } from "./auth/social-identity-auth-service.js";
 import { TokenService } from "./auth/token-service.js";
 import { CatalogService } from "./catalog/catalog-service.js";
+import { TemplateInteractionService } from "./catalog/template-interaction-service.js";
 import { loadEnvironment } from "./config/environment.js";
 import {
   closeDatabaseConnection,
@@ -35,6 +36,7 @@ async function main() {
   );
   const kakaoAuthService = new KakaoAuthService(kakaoVerifier, socialIdentityAuthService);
   const catalogService = new CatalogService(database.db, environment.catalog.assetBaseUrl);
+  const templateInteractionService = new TemplateInteractionService(database.db);
 
   try {
     await verifyDatabaseConnection(database.pool);
@@ -47,7 +49,11 @@ async function main() {
     checkDatabase: () => verifyDatabaseConnection(database.pool),
     logger,
     auth: { authService, googleAuthService, kakaoAuthService, tokenService },
-    catalog: { service: catalogService, assetRoot: environment.catalog.assetRoot },
+    catalog: {
+      service: catalogService,
+      assetRoot: environment.catalog.assetRoot,
+      interactionService: templateInteractionService,
+    },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });
