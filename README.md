@@ -33,12 +33,37 @@ cd android
 
 ### Backend
 
+Docker Compose v2가 권장 개발 환경입니다.
+
 ```bash
-cd backend
-npm install
-cp .env.example .env
-npm run dev
+cp backend/.env.example backend/.env
+cp backend/.env.postgres.example backend/.env.postgres
+docker compose up --build
 ```
+
+두 환경 파일의 PostgreSQL 사용자·비밀번호와 `DATABASE_URL`은 서로 일치해야 합니다. 예제 값은 host port가 열리지 않는 로컬 개발 전용이며 운영 환경에서 사용하지 않습니다.
+
+Compose는 다음 환경을 구성합니다.
+
+- API: `http://127.0.0.1:3000`
+- PostgreSQL: Docker private network의 `postgres:5432`
+- PostgreSQL 데이터: `dearshot_postgres_data` named volume
+
+PostgreSQL은 호스트에 `5432`를 공개하지 않습니다. DB에 직접 접속할 때는 컨테이너 안의 `psql`을 사용합니다.
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+구성과 health check, 비공개 DB port, volume 지속성을 한 번에 검증할 수 있습니다.
+
+```bash
+sh scripts/verify-compose.sh
+```
+
+서비스를 중지해도 DB volume은 유지됩니다. `docker compose down --volumes`는 로컬 DB를 모두 삭제하므로 초기화가 필요할 때만 사용합니다.
+
+Docker 없이 현재 mock API만 실행하려면 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 이 방식은 B-04에서 추가할 PostgreSQL 연결 환경을 제공하지 않습니다.
 
 서버가 실행되면 현재 `GET /health`와 `POST /api/v1/scene-analysis`를 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
