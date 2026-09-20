@@ -25,6 +25,7 @@
     "google-auth-library": "^11.1.0",
     "helmet": "^8.1.0",
     "jose": "^6.2.12",
+    "lossless-json": "^4.3.1",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",

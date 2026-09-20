@@ -3,6 +3,9 @@ import { createApp } from "./app.js";
 import { AuthService } from "./auth/auth-service.js";
 import { GoogleAuthLibraryVerifier } from "./auth/google/google-identity-verifier.js";
 import { GoogleAuthService } from "./auth/google/google-auth-service.js";
+import { KakaoAuthService } from "./auth/kakao/kakao-auth-service.js";
+import { KakaoApiIdentityVerifier } from "./auth/kakao/kakao-identity-verifier.js";
+import { SocialIdentityAuthService } from "./auth/social-identity-auth-service.js";
 import { TokenService } from "./auth/token-service.js";
 import { loadEnvironment } from "./config/environment.js";
 import {
@@ -19,12 +22,17 @@ async function main() {
   const tokenService = new TokenService(environment.auth);
   const googleVerifier = new GoogleAuthLibraryVerifier(environment.google.webClientId);
   const authService = new AuthService(database.db, tokenService, environment.auth);
-  const googleAuthService = new GoogleAuthService(
+  const socialIdentityAuthService = new SocialIdentityAuthService(
     database.db,
     tokenService,
-    googleVerifier,
     environment.auth,
   );
+  const googleAuthService = new GoogleAuthService(googleVerifier, socialIdentityAuthService);
+  const kakaoVerifier = new KakaoApiIdentityVerifier(
+    environment.kakao.appId,
+    environment.kakao.apiTimeoutMillis,
+  );
+  const kakaoAuthService = new KakaoAuthService(kakaoVerifier, socialIdentityAuthService);
 
   try {
     await verifyDatabaseConnection(database.pool);
@@ -36,7 +44,7 @@ async function main() {
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
     logger,
-    auth: { authService, googleAuthService, tokenService },
+    auth: { authService, googleAuthService, kakaoAuthService, tokenService },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });

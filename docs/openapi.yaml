@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DearShot API
-  version: 0.5.0-draft
+  version: 0.6.0-draft
   license:
     name: All rights reserved
     identifier: LicenseRef-Proprietary
@@ -9,7 +9,7 @@ info:
     Android 앱용 DearShot HTTP API 계약입니다.
     장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
     분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
-    이 파일은 구현 목표 명세입니다. 현재 서버에는 health, guest/google/refresh/logout/me 인증 기반과
+    이 파일은 구현 목표 명세입니다. 현재 서버에는 health, guest/google/kakao/refresh/logout/me 인증 기반과
     계약에 포함되지 않는 임시 POST /api/v1/scene-analysis mock이 구현되어 있습니다.
 servers:
   - url: /api/v1
@@ -158,6 +158,13 @@ paths:
       responses:
         '200':
           description: 로그인 완료
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/NoCache'
           content:
             application/json:
               schema:
@@ -168,6 +175,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/ProviderFailure'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /auth/refresh:
     post:
@@ -1030,6 +1041,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    ProviderFailure:
+      description: 외부 공급자가 잘못된 응답을 반환함
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: 외부 공급자 timeout, rate limit 또는 일시적 장애
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
     Forbidden:
       description: 권한 부족
       headers:
@@ -1218,12 +1247,17 @@ components:
 
     KakaoAuthRequest:
       type: object
+      additionalProperties: false
       required: [accessToken, device]
       properties:
         accessToken:
           type: string
+          minLength: 1
+          maxLength: 4096
+          description: Kakao Android SDK가 반환한 Access Token. 서버는 원문을 저장하지 않습니다.
         guestAccessToken:
           type: [string, 'null']
+          maxLength: 4096
         device:
           $ref: '#/components/schemas/Device'
 

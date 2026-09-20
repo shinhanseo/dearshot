@@ -89,7 +89,7 @@ erDiagram
 
 `UNIQUE(provider, provider_subject)`를 적용합니다. OAuth access token과 ID token 원문은 보관하지 않습니다.
 
-한 사용자가 같은 공급자의 identity를 여러 개 연결하지 않도록 `UNIQUE(user_id, provider)`도 적용합니다. 동일 Google identity의 첫 로그인 요청은 PostgreSQL advisory transaction lock으로 직렬화해 동시 가입에서도 사용자 행이 하나만 생기게 합니다.
+한 사용자가 같은 공급자의 identity를 여러 개 연결하지 않도록 `UNIQUE(user_id, provider)`도 적용합니다. 동일 Google 또는 Kakao identity의 첫 로그인 요청은 PostgreSQL advisory transaction lock으로 직렬화해 동시 가입에서도 사용자 행이 하나만 생기게 합니다. 공급자별 검증이 끝난 뒤의 게스트 승격, 기존 identity 충돌, 세션 발급은 하나의 공통 서비스가 처리합니다.
 
 ### `oauth_nonce_uses`
 
