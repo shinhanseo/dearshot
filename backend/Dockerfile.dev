@@ -7,9 +7,10 @@ ENV NODE_ENV=development
 COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci
 
-COPY --chown=node:node tsconfig.json drizzle.config.ts ./
+COPY --chown=node:node tsconfig.json tsconfig.test.json drizzle.config.ts ./
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node src ./src
+COPY --chown=node:node test ./test
 
 USER node
 

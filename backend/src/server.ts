@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
+import { AuthService } from "./auth/auth-service.js";
+import { TokenService } from "./auth/token-service.js";
 import { loadEnvironment } from "./config/environment.js";
 import {
   closeDatabaseConnection,
@@ -12,6 +14,8 @@ async function main() {
   const environment = loadEnvironment();
   const logger = createLogger({ level: environment.logLevel });
   const database = createDatabaseConnection(environment.database, logger);
+  const tokenService = new TokenService(environment.auth);
+  const authService = new AuthService(database.db, tokenService, environment.auth);
 
   try {
     await verifyDatabaseConnection(database.pool);
@@ -23,6 +27,7 @@ async function main() {
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
     logger,
+    auth: { authService, tokenService },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });
