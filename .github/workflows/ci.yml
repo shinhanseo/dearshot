@@ -31,6 +31,14 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp backend/.env.example backend/.env
+      - run: cp backend/.env.postgres.example backend/.env.postgres
+      - run: sh scripts/verify-compose.sh
+
   android:
     runs-on: ubuntu-latest
     defaults:

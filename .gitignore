@@ -9,6 +9,8 @@ android/**/build/
 backend/node_modules/
 backend/dist/
 backend/.env
+backend/.env.postgres
+.env
 
 # OS / secrets
 .DS_Store
