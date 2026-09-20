@@ -47,6 +47,7 @@ npm run dev
 - [제품 요구사항](docs/PRODUCT.md)
 - [시스템 아키텍처](docs/ARCHITECTURE.md)
 - [API 명세](docs/API.md)
+- [OpenAPI 계약](docs/openapi.yaml)
 - [데이터 모델](docs/DATA_MODEL.md)
 - [개인정보와 권한](docs/PRIVACY.md)
 - [8주 로드맵](docs/ROADMAP.md)
@@ -58,4 +59,3 @@ npm run dev
 - Backend: Node.js, TypeScript, Express, Zod
 - AI: 서버 장면 분석을 우선 적용하고, 인물·수평선·밝기처럼 즉시성이 필요한 신호는 온디바이스 분석으로 확장
 - Storage: 촬영 원본은 앱 전용 저장소에 임시 보관하고 사용자가 선택한 사진만 MediaStore에 저장
-
