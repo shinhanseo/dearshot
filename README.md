@@ -48,7 +48,7 @@ npm run dev
 - [시스템 아키텍처](docs/ARCHITECTURE.md)
 - [API 명세](docs/API.md)
 - [OpenAPI 계약](docs/openapi.yaml)
-- [백엔드 Issue와 AI 구현 프롬프트](docs/backend/BACKEND_ISSUES_AND_PROMPTS.txt)
+- [백엔드 구현 계획](docs/backend/BACKEND_IMPLEMENTATION_PLAN.md)
 - [데이터 모델](docs/DATA_MODEL.md)
 - [개인정보와 권한](docs/PRIVACY.md)
 - [8주 로드맵](docs/ROADMAP.md)
