@@ -4,6 +4,7 @@ import helmet from "helmet";
 import type { Logger } from "pino";
 import type { AuthService } from "./auth/auth-service.js";
 import type { GoogleAuthService } from "./auth/google/google-auth-service.js";
+import type { KakaoAuthService } from "./auth/kakao/kakao-auth-service.js";
 import type { TokenService } from "./auth/token-service.js";
 import { ApiError } from "./http/api-error.js";
 import { errorHandler } from "./http/error-handler.js";
@@ -18,6 +19,7 @@ type AppDependencies = {
   auth?: {
     authService: AuthService;
     googleAuthService: GoogleAuthService;
+    kakaoAuthService: KakaoAuthService;
     tokenService: TokenService;
   };
 };

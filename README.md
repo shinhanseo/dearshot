@@ -89,7 +89,7 @@ docker compose exec api npm run db:test:reset
 docker compose exec api npm run test:database
 ```
 
-로컬 `.env`의 `JWT_ACCESS_SECRET`은 저장소에 포함하지 않습니다. 새 환경에서는 `openssl rand -base64 48`처럼 충분한 난수로 생성합니다. Google 로그인용 `GOOGLE_WEB_CLIENT_ID`에는 Android Credential Manager의 `serverClientId`와 같은 Web application client ID를 넣습니다. 두 설정 모두 예제 값을 운영에서 사용하면 서버가 시작을 거부합니다.
+로컬 `.env`의 `JWT_ACCESS_SECRET`은 저장소에 포함하지 않습니다. 새 환경에서는 `openssl rand -base64 48`처럼 충분한 난수로 생성합니다. Google 로그인용 `GOOGLE_WEB_CLIENT_ID`에는 Android Credential Manager의 `serverClientId`와 같은 Web application client ID를 넣고, `KAKAO_APP_ID`에는 Kakao Developers 앱의 숫자 앱 ID를 넣습니다. 운영 환경에서 예제 값을 사용하면 서버가 시작을 거부합니다.
 
 API 로그는 Pino JSON으로 stdout에 기록합니다. HTTP 로그에는 request ID, 메서드, query string을 제외한 경로, 상태 코드와 응답 시간만 포함하며 Authorization, Cookie와 요청 본문은 기록하지 않습니다. Docker `json-file` 로그는 컨테이너마다 파일당 10MB, 최대 5개로 회전합니다.
 
@@ -103,7 +103,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·refresh·logout·`GET /me` 인증 기반과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 

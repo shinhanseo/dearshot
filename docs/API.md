@@ -1,6 +1,6 @@
 # DearShot API 명세
 
-> 문서 버전: `0.5.0-draft`
+> 문서 버전: `0.6.0-draft`
 >
 > 기준일: 2026-09-20
 >
@@ -17,6 +17,7 @@
 | 현재 | `GET /health` | 구현됨 | 프로세스와 PostgreSQL readiness 확인 |
 | 현재 | `POST /auth/guest` | 구현됨 | 설치 UUID별 게스트 principal과 토큰 발급 |
 | 현재 | `POST /auth/google` | 구현됨 | Google ID Token 검증, nonce 재사용 방지, 게스트 승격 |
+| 현재 | `POST /auth/kakao` | 구현됨 | Kakao Access Token·앱 ID 검증, 게스트 승격 |
 | 현재 | `POST /auth/refresh` | 구현됨 | Refresh Token 회전과 재사용 탐지 |
 | 현재 | `POST /auth/logout` | 구현됨 | 현재 Refresh Session 폐기 |
 | 현재 | `GET /me` | 구현됨 | 회원 전용이며 게스트는 `403 AUTH_REQUIRED` |
@@ -106,8 +107,8 @@
 | 422 | `SCENE_UNCERTAIN`, `INVALID_IMAGE`, `IMAGE_DIMENSIONS_UNSUPPORTED` | 형식은 맞지만 분석 불가 |
 | 429 | `RATE_LIMITED` | 요청 한도 초과. `Retry-After` 확인 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
-| 502 | `AI_PROVIDER_FAILED` | 외부 AI 제공자 오류 |
-| 503 | `SERVICE_UNAVAILABLE` | 일시적 점검 또는 과부하 |
+| 502 | `AI_PROVIDER_FAILED`, `PROVIDER_INVALID_RESPONSE` | 외부 제공자의 응답 형식 또는 내용 오류 |
+| 503 | `SERVICE_UNAVAILABLE`, `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMIT`, `PROVIDER_UNAVAILABLE` | 외부 제공자 timeout·호출 제한 또는 일시적 장애 |
 
 앱은 `message` 문자열로 분기하지 않고 `code`로 분기한다.
 
@@ -226,7 +227,7 @@ Android는 로그인 시마다 최소 128비트 난수 nonce를 새로 만들고
 
 `POST /auth/kakao`
 
-Kakao SDK가 발급한 Access Token을 보낸다. 백엔드는 Kakao 사용자 정보 API로 토큰과 사용자 ID를 검증한다.
+Kakao SDK가 발급한 Access Token을 보낸다. 백엔드는 Kakao `access_token_info`에서 유효 기간, 앱 ID, 회원번호를 확인하고 `user/me`의 회원번호와 다시 대조한다. 두 API의 timeout은 기본 3초이며 로그인 요청 안에서 자동 재시도하지 않는다. Kakao Access Token 원문과 공급자의 원본 오류 응답은 저장하지 않는다.
 
 ```json
 {

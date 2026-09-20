@@ -9,6 +9,10 @@ import { AuthService } from "../../src/auth/auth-service.js";
 import { FakeGoogleIdentityVerifier } from "../../src/auth/google/fake-google-identity-verifier.js";
 import { GoogleAuthService } from "../../src/auth/google/google-auth-service.js";
 import type { VerifiedGoogleIdentity } from "../../src/auth/google/google-identity-verifier.js";
+import { FakeKakaoIdentityVerifier } from "../../src/auth/kakao/fake-kakao-identity-verifier.js";
+import { KakaoAuthService } from "../../src/auth/kakao/kakao-auth-service.js";
+import type { VerifiedKakaoIdentity } from "../../src/auth/kakao/kakao-identity-verifier.js";
+import { SocialIdentityAuthService } from "../../src/auth/social-identity-auth-service.js";
 import { TokenService } from "../../src/auth/token-service.js";
 import type { AuthConfig, DatabaseConfig } from "../../src/config/environment.js";
 import {
@@ -47,13 +51,15 @@ let connection: DatabaseConnection;
 let authService: AuthService;
 let tokenService: TokenService;
 let googleAuthService: GoogleAuthService;
+let kakaoAuthService: KakaoAuthService;
 const googleIdentities = new Map<string, VerifiedGoogleIdentity>();
+const kakaoIdentities = new Map<string, VerifiedKakaoIdentity>();
 
 function createTestApp() {
   return createApp({
     logger,
     checkDatabase: () => verifyDatabaseConnection(connection.pool),
-    auth: { authService, googleAuthService, tokenService },
+    auth: { authService, googleAuthService, kakaoAuthService, tokenService },
   });
 }
 
@@ -74,17 +80,25 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     connection = createDatabaseConnection(databaseConfig, logger);
     tokenService = new TokenService(authConfig);
     authService = new AuthService(connection.db, tokenService, authConfig);
-    googleAuthService = new GoogleAuthService(
+    const socialIdentityAuthService = new SocialIdentityAuthService(
       connection.db,
       tokenService,
-      new FakeGoogleIdentityVerifier(googleIdentities),
       authConfig,
+    );
+    googleAuthService = new GoogleAuthService(
+      new FakeGoogleIdentityVerifier(googleIdentities),
+      socialIdentityAuthService,
+    );
+    kakaoAuthService = new KakaoAuthService(
+      new FakeKakaoIdentityVerifier(kakaoIdentities),
+      socialIdentityAuthService,
     );
     await verifyDatabaseConnection(connection.pool);
   });
 
   beforeEach(async () => {
     googleIdentities.clear();
+    kakaoIdentities.clear();
     await connection.db.execute(
       sql`truncate table oauth_nonce_uses, auth_identities, refresh_sessions, user_preferences, users restart identity cascade`,
     );
@@ -233,6 +247,8 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     });
 
     assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.equal(response.headers.pragma, "no-cache");
     assert.equal(response.body.isNewUser, true);
     assert.equal(response.body.user.id, guest.principal.id);
     assert.deepEqual(response.body.user.providers, ["GOOGLE"]);
@@ -350,6 +366,79 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     assert.equal((await connection.db.select().from(authIdentities)).length, 0);
     assert.equal((await connection.db.select().from(oauthNonceUses)).length, 0);
   });
+
+  it("promotes the same guest user with a server-verified Kakao identity", async () => {
+    const installationId = randomUUID();
+    const guest = await createGuest(installationId);
+    registerKakao("kakao-access-token-promote", "9223372036854775807");
+
+    const response = await kakaoLogin({
+      accessToken: "kakao-access-token-promote",
+      installationId,
+      guestAccessToken: guest.accessToken,
+    });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.equal(response.headers.pragma, "no-cache");
+    assert.equal(response.body.isNewUser, true);
+    assert.equal(response.body.user.id, guest.principal.id);
+    assert.deepEqual(response.body.user.providers, ["KAKAO"]);
+    const [identity] = await connection.db.select().from(authIdentities);
+    assert.equal(identity.providerSubject, "9223372036854775807");
+    assert.doesNotMatch(JSON.stringify(identity), /kakao-access-token-promote/);
+    assert.equal((await refreshToken(guest.refreshToken)).status, 401);
+  });
+
+  it("does not merge a Kakao identity owner with an unrelated guest", async () => {
+    registerKakao("kakao-owner-token", "kakao-shared-subject");
+    const owner = await kakaoLogin({ accessToken: "kakao-owner-token" });
+    assert.equal(owner.status, 200, JSON.stringify(owner.body));
+
+    const installationId = randomUUID();
+    const guest = await createGuest(installationId);
+    registerKakao("kakao-collision-token", "kakao-shared-subject");
+    const collision = await kakaoLogin({
+      accessToken: "kakao-collision-token",
+      installationId,
+      guestAccessToken: guest.accessToken,
+    });
+
+    assert.equal(collision.status, 200, JSON.stringify(collision.body));
+    assert.equal(collision.body.isNewUser, false);
+    assert.equal(collision.body.user.id, owner.body.user.id);
+    assert.notEqual(collision.body.user.id, guest.principal.id);
+    const [guestAfterCollision] = await connection.db
+      .select()
+      .from(users)
+      .where(eq(users.id, guest.principal.id));
+    assert.equal(guestAfterCollision.status, "DELETION_PENDING");
+  });
+
+  it("serializes concurrent first Kakao logins for one provider subject", async () => {
+    registerKakao("kakao-concurrent-a", "kakao-concurrent-subject");
+    registerKakao("kakao-concurrent-b", "kakao-concurrent-subject");
+
+    const [first, second] = await Promise.all([
+      kakaoLogin({ accessToken: "kakao-concurrent-a" }),
+      kakaoLogin({ accessToken: "kakao-concurrent-b" }),
+    ]);
+
+    assert.equal(first.status, 200, JSON.stringify(first.body));
+    assert.equal(second.status, 200, JSON.stringify(second.body));
+    assert.equal(first.body.user.id, second.body.user.id);
+    assert.deepEqual([first.body.isNewUser, second.body.isNewUser].sort(), [false, true]);
+    assert.equal((await connection.db.select().from(users)).length, 1);
+    assert.equal((await connection.db.select().from(authIdentities)).length, 1);
+  });
+
+  it("rejects an unverified Kakao token without creating a user", async () => {
+    const response = await kakaoLogin({ accessToken: "unknown-kakao-token" });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.code, "INVALID_TOKEN");
+    assert.equal((await connection.db.select().from(users)).length, 0);
+  });
 });
 
 function refreshToken(token: string) {
@@ -383,6 +472,33 @@ function googleLogin({
     .send({
       idToken,
       nonce,
+      ...(guestAccessToken ? { guestAccessToken } : {}),
+      device: { installationId, platform: "ANDROID", appVersion: "1.0.0" },
+    });
+}
+
+function registerKakao(accessToken: string, subject: string) {
+  kakaoIdentities.set(accessToken, {
+    subject,
+    displayName: "Verified Kakao User",
+    profileImageUrl: "https://example.com/kakao-profile.jpg",
+    locale: null,
+  });
+}
+
+function kakaoLogin({
+  accessToken,
+  installationId = randomUUID(),
+  guestAccessToken,
+}: {
+  accessToken: string;
+  installationId?: string;
+  guestAccessToken?: string;
+}) {
+  return request(createTestApp())
+    .post("/api/v1/auth/kakao")
+    .send({
+      accessToken,
       ...(guestAccessToken ? { guestAccessToken } : {}),
       device: { installationId, platform: "ANDROID", appVersion: "1.0.0" },
     });

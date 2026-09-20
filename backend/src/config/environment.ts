@@ -31,6 +31,14 @@ const environmentSchema = z
       7_776_000,
     ),
     GOOGLE_WEB_CLIENT_ID: z.string().min(1).default("replace-with-google-web-client-id"),
+    KAKAO_APP_ID: z
+      .string()
+      .refine(
+        (value) => value === "replace-with-kakao-app-id" || /^\d+$/u.test(value),
+        "KAKAO_APP_ID must be a numeric Kakao app ID",
+      )
+      .default("replace-with-kakao-app-id"),
+    KAKAO_API_TIMEOUT_MS: integerFromEnvironment("KAKAO_API_TIMEOUT_MS", 3_000, 500, 10_000),
     DATABASE_URL: z
       .string()
       .min(1, "DATABASE_URL is required")
@@ -67,6 +75,16 @@ const environmentSchema = z
         message: "GOOGLE_WEB_CLIENT_ID must be replaced in production",
       });
     }
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.KAKAO_APP_ID.startsWith("replace-with-")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["KAKAO_APP_ID"],
+        message: "KAKAO_APP_ID must be replaced in production",
+      });
+    }
   });
 
 export type DatabaseConfig = {
@@ -91,6 +109,7 @@ export type Environment = {
   database: DatabaseConfig;
   auth: AuthConfig;
   google: { webClientId: string };
+  kakao: { appId: string; apiTimeoutMillis: number };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -115,6 +134,10 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       refreshTokenTtlSeconds: parsed.data.REFRESH_TOKEN_TTL_SECONDS,
     },
     google: { webClientId: parsed.data.GOOGLE_WEB_CLIENT_ID },
+    kakao: {
+      appId: parsed.data.KAKAO_APP_ID,
+      apiTimeoutMillis: parsed.data.KAKAO_API_TIMEOUT_MS,
+    },
     database: {
       connectionString: parsed.data.DATABASE_URL,
       maxConnections: parsed.data.DB_POOL_MAX,
