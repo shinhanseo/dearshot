@@ -48,6 +48,7 @@ Compose는 다음 환경을 구성합니다.
 - API: `http://127.0.0.1:3000`
 - PostgreSQL: Docker private network의 `postgres:5432`
 - PostgreSQL 데이터: `dearshot_postgres_data` named volume
+- 임시 분석 이미지: `dearshot_upload_data` named volume의 `/srv/dearshot/uploads`
 
 PostgreSQL은 호스트에 `5432`를 공개하지 않습니다. DB에 직접 접속할 때는 컨테이너 안의 `psql`을 사용합니다.
 
@@ -109,7 +110,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 조회, 회원 전용 템플릿 좋아요·북마크·컬렉션과 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 계약은 multipart `POST /api/v1/uploads`와 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 조회, 회원 전용 템플릿 좋아요·북마크·컬렉션, 스트리밍 multipart `POST /api/v1/uploads`와 `POST /api/v1/scene-analysis` mock을 사용할 수 있습니다. 업로드는 JPEG/WebP의 헤더·signature·전체 decode·용량·해상도를 검증하고 서버 내부 경로를 노출하지 않습니다. 단수형 장면 분석은 앱·서버 연결 확인용 동기 mock이며 공개 API 계약이 아닙니다. 목표 장면 분석 계약은 비동기 `POST /api/v1/scene-analyses`이고, 자세한 구현 상태는 [API 명세](docs/API.md)에 구분되어 있습니다.
 
 ## 문서와 디자인
 

@@ -37,6 +37,7 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./backend/src:/app/src:ro
+      - upload_data:/srv/dearshot/uploads
     healthcheck:
       test:
         - CMD
@@ -60,3 +61,4 @@ networks:
 
 volumes:
   postgres_data:
+  upload_data:

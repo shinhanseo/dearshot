@@ -13,6 +13,8 @@ COPY --chown=node:node src ./src
 COPY --chown=node:node test ./test
 COPY --chown=node:node catalog ./catalog
 
+RUN mkdir -p /srv/dearshot/uploads && chown -R node:node /srv/dearshot/uploads
+
 USER node
 
 EXPOSE 3000

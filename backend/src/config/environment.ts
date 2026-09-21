@@ -1,3 +1,4 @@
+import path from "node:path";
 import { z } from "zod";
 
 const integerFromEnvironment = (name: string, fallback: number, minimum: number, maximum: number) =>
@@ -55,6 +56,21 @@ const environmentSchema = z
     DB_IDLE_TIMEOUT_MS: integerFromEnvironment("DB_IDLE_TIMEOUT_MS", 30_000, 1_000, 300_000),
     PUBLIC_ASSET_BASE_URL: z.string().url().default("http://localhost:3000/assets/catalog"),
     CATALOG_ASSET_ROOT: z.string().min(1).default("catalog/assets"),
+    UPLOAD_ROOT: z.string().min(1).default("/srv/dearshot/uploads"),
+    UPLOAD_MAX_BYTES: integerFromEnvironment("UPLOAD_MAX_BYTES", 10_485_760, 1_024, 10_485_760),
+    UPLOAD_MAX_DIMENSION_PX: integerFromEnvironment(
+      "UPLOAD_MAX_DIMENSION_PX",
+      8_192,
+      64,
+      8_192,
+    ),
+    UPLOAD_MAX_PIXELS: integerFromEnvironment(
+      "UPLOAD_MAX_PIXELS",
+      40_000_000,
+      4_096,
+      67_108_864,
+    ),
+    UPLOAD_TTL_SECONDS: integerFromEnvironment("UPLOAD_TTL_SECONDS", 3_600, 60, 3_600),
   })
   .superRefine((environment, context) => {
     if (
@@ -97,6 +113,13 @@ const environmentSchema = z
         message: "PUBLIC_ASSET_BASE_URL must use HTTPS in production",
       });
     }
+    if (!path.isAbsolute(environment.UPLOAD_ROOT)) {
+      context.addIssue({
+        code: "custom",
+        path: ["UPLOAD_ROOT"],
+        message: "UPLOAD_ROOT must be an absolute path",
+      });
+    }
   });
 
 export type DatabaseConfig = {
@@ -123,6 +146,13 @@ export type Environment = {
   google: { webClientId: string };
   kakao: { appId: string; apiTimeoutMillis: number };
   catalog: { assetBaseUrl: string; assetRoot: string };
+  uploads: {
+    root: string;
+    maxBytes: number;
+    maxDimensionPixels: number;
+    maxPixels: number;
+    ttlSeconds: number;
+  };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -154,6 +184,13 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
     catalog: {
       assetBaseUrl: parsed.data.PUBLIC_ASSET_BASE_URL,
       assetRoot: parsed.data.CATALOG_ASSET_ROOT,
+    },
+    uploads: {
+      root: parsed.data.UPLOAD_ROOT,
+      maxBytes: parsed.data.UPLOAD_MAX_BYTES,
+      maxDimensionPixels: parsed.data.UPLOAD_MAX_DIMENSION_PX,
+      maxPixels: parsed.data.UPLOAD_MAX_PIXELS,
+      ttlSeconds: parsed.data.UPLOAD_TTL_SECONDS,
     },
     database: {
       connectionString: parsed.data.DATABASE_URL,

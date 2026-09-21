@@ -2,7 +2,7 @@
 
 ## 현재와 목표 범위
 
-현재 백엔드는 `GET /health`와 동기 mock `POST /api/v1/scene-analysis`만 구현되어 있습니다. mock은 JSON의 `imageReference`를 받아 고정된 장면 추천을 반환하며 인증, 실제 파일 업로드, PostgreSQL, AI provider, SSE를 사용하지 않습니다.
+현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크와 스트리밍 multipart `POST /api/v1/uploads`까지 구현되어 있습니다. 동기 mock `POST /api/v1/scene-analysis`는 Android 연결 확인용으로 남아 있으며 실제 AI provider와 SSE는 아직 사용하지 않습니다.
 
 아래 구성은 MVP 목표입니다. 목표 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-01 이후 기능 Issue는 이 목표 계약을 기준으로 구현하고, 목표 분석이 준비되면 단수형 mock route를 제거합니다.
 
@@ -42,7 +42,7 @@ Caddy :80/:443
 | Caddy | HTTPS, reverse proxy, template asset 제공 | Caddy data volume |
 | Node API | REST, SSE, OAuth, AI 작업 | stateless image |
 | PostgreSQL | 계정, 템플릿, 작업 상태, 제품 이벤트 | named volume on EBS |
-| Temporary uploads | 압축 분석 이미지 | `/srv/dearshot/uploads` bind mount |
+| Temporary uploads | 압축 분석 이미지 | `/srv/dearshot/uploads` 전용 volume |
 | Template assets | preview, thumbnail, overlay | `/srv/dearshot/templates` bind mount |
 | Backup | encrypted `pg_dump` | 로컬 단기 보관 + 외부 복사 |
 

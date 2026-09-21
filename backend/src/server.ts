@@ -16,6 +16,8 @@ import {
   verifyDatabaseConnection,
 } from "./db/client.js";
 import { createLogger } from "./observability/logger.js";
+import { ImageStorage } from "./uploads/image-storage.js";
+import { UploadService } from "./uploads/upload-service.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -37,9 +39,14 @@ async function main() {
   const kakaoAuthService = new KakaoAuthService(kakaoVerifier, socialIdentityAuthService);
   const catalogService = new CatalogService(database.db, environment.catalog.assetBaseUrl);
   const templateInteractionService = new TemplateInteractionService(database.db);
+  const imageStorage = new ImageStorage(environment.uploads);
+  const uploadService = new UploadService(database.db, imageStorage, environment.uploads);
 
   try {
-    await verifyDatabaseConnection(database.pool);
+    await Promise.all([
+      verifyDatabaseConnection(database.pool),
+      imageStorage.ready(),
+    ]);
   } catch (error) {
     await closeDatabaseConnection(database.pool);
     throw error;
@@ -54,6 +61,7 @@ async function main() {
       assetRoot: environment.catalog.assetRoot,
       interactionService: templateInteractionService,
     },
+    uploads: { service: uploadService, storage: imageStorage, tokenService },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });
