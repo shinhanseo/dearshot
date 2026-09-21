@@ -65,6 +65,39 @@ migration_count_after_repeat="$(docker compose exec --no-TTY postgres sh -c \
 docker compose exec --no-TTY api npm run db:seed
 docker compose exec --no-TTY api npm run db:seed
 
+docker compose exec --no-TTY api node --input-type=module -e '
+  import { randomUUID } from "node:crypto";
+  import sharp from "sharp";
+  const base = "http://127.0.0.1:3000/api/v1";
+  const guestResponse = await fetch(`${base}/auth/guest`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ installationId: randomUUID(), locale: "en-US", appVersion: "compose-check" }),
+  });
+  if (!guestResponse.ok) throw new Error(`Guest auth failed: ${guestResponse.status}`);
+  const guest = await guestResponse.json();
+  const image = await sharp({
+    create: { width: 16, height: 16, channels: 3, background: "#d45b42" },
+  }).jpeg().toBuffer();
+  const form = new FormData();
+  form.set("purpose", "SCENE_ANALYSIS");
+  form.set("image", new Blob([image], { type: "image/jpeg" }), "compose-check.jpg");
+  const uploadResponse = await fetch(`${base}/uploads`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${guest.accessToken}` },
+    body: form,
+  });
+  const upload = await uploadResponse.json();
+  if (uploadResponse.status !== 201 || upload.status !== "READY" || "storagePath" in upload) {
+    throw new Error(`Image upload failed: ${uploadResponse.status} ${JSON.stringify(upload)}`);
+  }
+  const deleteResponse = await fetch(`${base}/uploads/${upload.uploadId}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${guest.accessToken}` },
+  });
+  if (deleteResponse.status !== 204) throw new Error(`Image delete failed: ${deleteResponse.status}`);
+'
+
 curl --fail --silent 'http://127.0.0.1:3000/api/v1/scenes?locale=ko-KR' >/dev/null
 curl --fail --silent 'http://127.0.0.1:3000/api/v1/templates?scene=dev-beach&limit=2' >/dev/null
 curl --fail --silent 'http://127.0.0.1:3000/api/v1/templates/dev-beach-breeze?locale=en-US' >/dev/null
@@ -126,4 +159,4 @@ fi
 docker compose exec --no-TTY postgres sh -c \
   'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP TABLE compose_persistence_probe;"'
 
-echo "Compose verification passed: API and database healthy, migrations repeatable, test DB isolated, PostgreSQL private, volume persistent."
+echo "Compose verification passed: API and database healthy, secure image upload works, migrations repeatable, test DB isolated, PostgreSQL private, volumes persistent."

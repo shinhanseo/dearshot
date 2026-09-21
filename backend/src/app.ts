@@ -15,6 +15,9 @@ import { requestContext } from "./http/request-context.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createCatalogRouter } from "./routes/catalog.js";
 import { sceneAnalysisRouter } from "./routes/scene-analysis.js";
+import { createUploadRouter } from "./routes/uploads.js";
+import type { ImageStorage } from "./uploads/image-storage.js";
+import type { UploadService } from "./uploads/upload-service.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -30,9 +33,14 @@ type AppDependencies = {
     assetRoot: string;
     interactionService?: TemplateInteractionService;
   };
+  uploads?: {
+    service: UploadService;
+    storage: ImageStorage;
+    tokenService: TokenService;
+  };
 };
 
-export function createApp({ checkDatabase, logger, auth, catalog }: AppDependencies) {
+export function createApp({ checkDatabase, logger, auth, catalog, uploads }: AppDependencies) {
   const app = express();
 
   app.use(requestContext);
@@ -65,6 +73,12 @@ export function createApp({ checkDatabase, logger, auth, catalog }: AppDependenc
   });
 
   if (auth) app.use("/api/v1", createAuthRouter(auth));
+  if (uploads) {
+    app.use(
+      "/api/v1",
+      createUploadRouter(uploads.tokenService, uploads.service, uploads.storage),
+    );
+  }
   if (catalog) {
     app.use(
       "/api/v1",

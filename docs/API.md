@@ -1,8 +1,8 @@
 # DearShot API 명세
 
-> 문서 버전: `0.8.0-draft`
+> 문서 버전: `0.9.0-draft`
 >
-> 기준일: 2026-09-21
+> 기준일: 2026-09-22
 >
 > Base URL: `/api/v1`
 >
@@ -28,6 +28,8 @@
 | 현재 | `PUT/DELETE /templates/{templateId}/bookmark` | 구현됨 | 회원 전용 멱등 북마크 |
 | 현재 | `GET /me/liked-templates` | 구현됨 | 회원의 좋아요 컬렉션 cursor 조회 |
 | 현재 | `GET /me/bookmarked-templates` | 구현됨 | 회원의 북마크 컬렉션 cursor 조회 |
+| 현재 | `POST /uploads` | 구현됨 | guest/member 스트리밍 JPEG·WebP 검증과 1시간 임시 저장. 멱등 키 처리는 B-12에서 추가 |
+| 현재 | `DELETE /uploads/{uploadId}` | 구현됨 | 소유한 미사용 업로드만 반복 안전하게 폐기 |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -356,7 +358,7 @@ Access Token과 Refresh Token은 즉시 폐기하고 계정 데이터는 개인�
 
 `POST /uploads`
 
-`Authorization`, `Idempotency-Key` 필수. Content-Type은 `multipart/form-data`이며 JSON이나 Base64 이미지를 받지 않는다.
+`Authorization` 필수. 최종 계약에서는 `Idempotency-Key`도 필수이며 B-12에서 중복 요청 처리를 추가한다. Content-Type은 `multipart/form-data`이며 JSON이나 Base64 이미지를 받지 않는다.
 
 ```text
 purpose = SCENE_ANALYSIS | PHOTO_FEEDBACK

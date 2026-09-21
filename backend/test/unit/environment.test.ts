@@ -19,6 +19,13 @@ describe("environment configuration", () => {
     assert.equal(environment.kakao.apiTimeoutMillis, 3_000);
     assert.equal(environment.catalog.assetBaseUrl, "http://localhost:3000/assets/catalog");
     assert.equal(environment.catalog.assetRoot, "catalog/assets");
+    assert.deepEqual(environment.uploads, {
+      root: "/srv/dearshot/uploads",
+      maxBytes: 10_485_760,
+      maxDimensionPixels: 8_192,
+      maxPixels: 40_000_000,
+      ttlSeconds: 3_600,
+    });
   });
 
   it("requires a real Google web client ID in production", () => {
@@ -72,6 +79,17 @@ describe("environment configuration", () => {
           PUBLIC_ASSET_BASE_URL: "http://assets.dearshot.example/catalog",
         }),
       /PUBLIC_ASSET_BASE_URL must use HTTPS in production/u,
+    );
+  });
+
+  it("requires an absolute upload root and bounded upload limits", () => {
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, UPLOAD_ROOT: "uploads" }),
+      /UPLOAD_ROOT must be an absolute path/u,
+    );
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, UPLOAD_TTL_SECONDS: "3601" }),
+      /UPLOAD_TTL_SECONDS must be at most 3600/u,
     );
   });
 });

@@ -155,6 +155,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 | `expires_at`, `consumed_at`, `deleted_at` | 파일 수명주기 |
 
 하나의 업로드는 하나의 AI 작업에서만 소비합니다. DB 상태 변경과 작업 생성을 한 트랜잭션으로 처리합니다.
+업로드 파일과 메타데이터가 먼저 정리되지 않은 사용자는 DB에서 바로 삭제할 수 없도록 사용자 FK를 `ON DELETE RESTRICT`로 둡니다. 회원 탈퇴 정리 작업이 파일을 제거하고 상태를 마친 뒤 사용자 행을 삭제합니다.
 
 ### `scene_analyses`
 
