@@ -5,6 +5,11 @@ import type { Database } from "../db/client.js";
 import { refreshSessions, users } from "../db/schema/identity.js";
 import { imageUploads } from "../db/schema/jobs.js";
 import { ApiError } from "../http/api-error.js";
+import {
+  hashIdempotentRequest,
+  type IdempotencyResult,
+  IdempotencyService,
+} from "../reliability/idempotency-service.js";
 import type { ImageStorage, StoredImage, UploadPurpose } from "./image-storage.js";
 
 export type UploadServiceConfig = { ttlSeconds: number };
@@ -14,6 +19,7 @@ export class UploadService {
     private readonly database: Database,
     private readonly storage: ImageStorage,
     private readonly config: UploadServiceConfig,
+    private readonly idempotency?: IdempotencyService,
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
@@ -77,6 +83,78 @@ export class UploadService {
           expiresAt: imageUploads.expiresAt,
         });
       return created;
+    } catch (error) {
+      await this.storage.remove(image.storagePath).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async createReadyIdempotent(
+    ownerUserId: string,
+    purpose: UploadPurpose,
+    image: StoredImage,
+    idempotencyKey: string,
+  ): Promise<IdempotencyResult<{
+    uploadId: string;
+    status: "READY";
+    purpose: UploadPurpose;
+    contentType: string;
+    byteSize: number;
+    width: number;
+    height: number;
+    expiresAt: string;
+  }>> {
+    if (!this.idempotency) throw new Error("IdempotencyService is required for idempotent uploads");
+    const requestHash = hashIdempotentRequest([purpose, image.sha256]);
+
+    try {
+      const result = await this.idempotency.execute(
+        {
+          userId: ownerUserId,
+          scope: "POST /api/v1/uploads",
+          key: idempotencyKey,
+          requestHash,
+        },
+        async (transaction) => {
+          const id = randomUUID();
+          const expiresAt = new Date(this.clock().getTime() + this.config.ttlSeconds * 1_000);
+          const [created] = await transaction
+            .insert(imageUploads)
+            .values({
+              id,
+              ownerUserId,
+              purpose,
+              storagePath: image.storagePath,
+              contentType: image.contentType,
+              byteSize: image.byteSize,
+              sha256: image.sha256,
+              width: image.width,
+              height: image.height,
+              expiresAt,
+            })
+            .returning({
+              uploadId: imageUploads.id,
+              status: imageUploads.status,
+              purpose: imageUploads.purpose,
+              contentType: imageUploads.contentType,
+              byteSize: imageUploads.byteSize,
+              width: imageUploads.width,
+              height: imageUploads.height,
+              expiresAt: imageUploads.expiresAt,
+            });
+          return {
+            statusCode: 201,
+            resourceId: created.uploadId,
+            body: {
+              ...created,
+              status: "READY" as const,
+              expiresAt: created.expiresAt.toISOString(),
+            },
+          };
+        },
+      );
+      if (result.replayed) await this.storage.remove(image.storagePath).catch(() => undefined);
+      return result;
     } catch (error) {
       await this.storage.remove(image.storagePath).catch(() => undefined);
       throw error;

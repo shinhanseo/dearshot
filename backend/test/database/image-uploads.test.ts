@@ -27,6 +27,7 @@ import { refreshSessions, userPreferences, users } from "../../src/db/schema/ide
 import { imageUploads } from "../../src/db/schema/jobs.js";
 import { ImageStorage, type ImageStorageConfig } from "../../src/uploads/image-storage.js";
 import { UploadService } from "../../src/uploads/upload-service.js";
+import { IdempotencyService } from "../../src/reliability/idempotency-service.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (!databaseUrl) throw new Error("TEST_DATABASE_URL is required for database tests.");
@@ -80,7 +81,12 @@ async function createUploadApp(overrides: Partial<ImageStorageConfig> = {}) {
     maxPixels: 40_000_000,
     ...overrides,
   });
-  const uploadService = new UploadService(connection.db, storage, { ttlSeconds: 3_600 });
+  const uploadService = new UploadService(
+    connection.db,
+    storage,
+    { ttlSeconds: 3_600 },
+    new IdempotencyService(connection.db),
+  );
   const authService = new AuthService(connection.db, tokenService, authConfig);
   const identityService = new SocialIdentityAuthService(
     connection.db,
@@ -150,6 +156,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
 
     const response = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", jpeg, { filename: "../../private.jpg", contentType: "image/jpeg" });
@@ -188,6 +195,38 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     assert.equal((await stat(absolute)).mode & 0o777, 0o600);
   });
 
+  it("replays an upload with the same idempotency key and rejects changed content", async () => {
+    const principal = await createPrincipal("GUEST");
+    const { app, root } = await createUploadApp();
+    const idempotencyKey = randomUUID();
+    const jpeg = await sharp({
+      create: { width: 32, height: 24, channels: 3, background: "#d45b42" },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const upload = (purpose: "SCENE_ANALYSIS" | "PHOTO_FEEDBACK") =>
+      request(app)
+        .post("/api/v1/uploads")
+        .set("Idempotency-Key", idempotencyKey)
+        .set("Authorization", `Bearer ${principal.token}`)
+        .field("purpose", purpose)
+        .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });
+
+    const first = await upload("SCENE_ANALYSIS");
+    const replay = await upload("SCENE_ANALYSIS");
+    assert.equal(first.status, 201, JSON.stringify(first.body));
+    assert.equal(replay.status, 201, JSON.stringify(replay.body));
+    assert.equal(replay.headers["idempotency-replayed"], "true");
+    assert.equal(replay.body.uploadId, first.body.uploadId);
+    assert.equal((await filesBelow(root)).length, 1);
+
+    const conflict = await upload("PHOTO_FEEDBACK");
+    assert.equal(conflict.status, 409);
+    assert.equal(conflict.body.code, "IDEMPOTENCY_CONFLICT");
+    assert.equal((await filesBelow(root)).length, 1);
+  });
+
   it("accepts WebP for a member and deletes only the owner's unused upload", async () => {
     const owner = await createPrincipal();
     const other = await createPrincipal();
@@ -199,6 +238,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
       .toBuffer();
     const uploaded = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${owner.token}`)
       .field("purpose", "PHOTO_FEEDBACK")
       .attach("image", webp, { filename: "photo.webp", contentType: "image/webp" });
@@ -237,6 +277,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     let context = await createUploadApp();
     let response = await request(context.app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", validJpeg, { filename: "fake.webp", contentType: "image/webp" });
@@ -248,6 +289,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     context = await createUploadApp();
     response = await request(context.app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", Buffer.from("not-a-png"), { filename: "x.png", contentType: "image/png" });
@@ -259,6 +301,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     context = await createUploadApp();
     response = await request(context.app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", Buffer.from([0xff, 0xd8, 0xff, 0x00]), {
@@ -274,6 +317,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     const oversized = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(2_048)]);
     response = await request(context.app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", oversized, { filename: "large.jpg", contentType: "image/jpeg" });
@@ -285,6 +329,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     context = await createUploadApp({ maxDimensionPixels: 64, maxPixels: 4_096 });
     response = await request(context.app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", validJpeg, { filename: "wide.jpg", contentType: "image/jpeg" });
@@ -307,8 +352,18 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
       .jpeg()
       .toBuffer();
 
+    const missingIdempotencyKey = await request(app)
+      .post("/api/v1/uploads")
+      .set("Authorization", `Bearer ${principal.token}`)
+      .field("purpose", "SCENE_ANALYSIS")
+      .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });
+    assert.equal(missingIdempotencyKey.status, 400);
+    assert.equal(missingIdempotencyKey.body.code, "INVALID_REQUEST");
+    assert.equal((await filesBelow(root)).length, 0);
+
     const missingPurpose = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });
     assert.equal(missingPurpose.status, 400);
@@ -317,6 +372,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
 
     const duplicatePart = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .field("unexpected", "value")
@@ -327,6 +383,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
 
     const invalidPurpose = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "PROFILE_PHOTO")
       .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });
@@ -340,6 +397,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
       .where(eq(refreshSessions.id, principal.sessionId));
     const revoked = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${principal.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });
@@ -383,6 +441,7 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
       .toBuffer();
     const uploaded = await request(app)
       .post("/api/v1/uploads")
+      .set("Idempotency-Key", randomUUID())
       .set("Authorization", `Bearer ${owner.token}`)
       .field("purpose", "SCENE_ANALYSIS")
       .attach("image", jpeg, { filename: "photo.jpg", contentType: "image/jpeg" });

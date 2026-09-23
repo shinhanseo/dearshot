@@ -1,5 +1,6 @@
 import path from "node:path";
 import { z } from "zod";
+import type { UsageLimitConfig } from "../reliability/usage-limit-service.js";
 
 const integerFromEnvironment = (name: string, fallback: number, minimum: number, maximum: number) =>
   z.coerce
@@ -8,6 +9,14 @@ const integerFromEnvironment = (name: string, fallback: number, minimum: number,
     .min(minimum, `${name} must be at least ${minimum}`)
     .max(maximum, `${name} must be at most ${maximum}`)
     .default(fallback);
+
+const booleanFromEnvironment = (fallback: boolean) =>
+  z
+    .enum(["true", "false"])
+    .default(String(fallback) as "true" | "false")
+    .transform((value) => value === "true");
+
+const semanticVersion = z.string().regex(/^\d+\.\d+\.\d+$/u, "must use MAJOR.MINOR.PATCH");
 
 const environmentSchema = z
   .object({
@@ -71,6 +80,60 @@ const environmentSchema = z
       67_108_864,
     ),
     UPLOAD_TTL_SECONDS: integerFromEnvironment("UPLOAD_TTL_SECONDS", 3_600, 60, 3_600),
+    IDEMPOTENCY_TTL_SECONDS: integerFromEnvironment(
+      "IDEMPOTENCY_TTL_SECONDS",
+      86_400,
+      3_600,
+      604_800,
+    ),
+    USAGE_TIMEZONE: z.literal("UTC").default("UTC"),
+    GUEST_SCENE_ANALYSES_PER_DAY: integerFromEnvironment(
+      "GUEST_SCENE_ANALYSES_PER_DAY",
+      5,
+      1,
+      1_000,
+    ),
+    GUEST_PHOTO_FEEDBACKS_PER_DAY: integerFromEnvironment(
+      "GUEST_PHOTO_FEEDBACKS_PER_DAY",
+      10,
+      1,
+      1_000,
+    ),
+    MEMBER_SCENE_ANALYSES_PER_DAY: integerFromEnvironment(
+      "MEMBER_SCENE_ANALYSES_PER_DAY",
+      50,
+      1,
+      10_000,
+    ),
+    MEMBER_PHOTO_FEEDBACKS_PER_DAY: integerFromEnvironment(
+      "MEMBER_PHOTO_FEEDBACKS_PER_DAY",
+      100,
+      1,
+      10_000,
+    ),
+    AI_IP_RATE_LIMIT_PER_MINUTE: integerFromEnvironment(
+      "AI_IP_RATE_LIMIT_PER_MINUTE",
+      30,
+      1,
+      10_000,
+    ),
+    APP_MINIMUM_SUPPORTED_VERSION: semanticVersion.default("1.0.0"),
+    APP_LATEST_VERSION: semanticVersion.default("1.0.0"),
+    APP_MAINTENANCE: booleanFromEnvironment(false),
+    APP_CATALOG_VERSION: z.string().min(1).max(64).default("development"),
+    APP_RECOMMENDED_LONG_EDGE_PX: integerFromEnvironment(
+      "APP_RECOMMENDED_LONG_EDGE_PX",
+      2_048,
+      256,
+      8_192,
+    ),
+    PRIVACY_POLICY_VERSION: z.string().min(1).max(32).default("2026-09-01"),
+    PRIVACY_POLICY_URL: z.string().url().default("https://dearshot.app/privacy"),
+    TERMS_VERSION: z.string().min(1).max(32).default("2026-09-01"),
+    TERMS_URL: z.string().url().default("https://dearshot.app/terms"),
+    FEATURE_KAKAO_LOGIN: booleanFromEnvironment(true),
+    FEATURE_LOCATION_CONTEXT: booleanFromEnvironment(true),
+    FEATURE_FEEDBACK_COMPARISON: booleanFromEnvironment(true),
   })
   .superRefine((environment, context) => {
     if (
@@ -120,6 +183,24 @@ const environmentSchema = z
         message: "UPLOAD_ROOT must be an absolute path",
       });
     }
+    const compareVersions = (left: string, right: string) => {
+      const leftParts = left.split(".").map(Number);
+      const rightParts = right.split(".").map(Number);
+      for (let index = 0; index < 3; index += 1) {
+        if (leftParts[index] !== rightParts[index]) return leftParts[index] - rightParts[index];
+      }
+      return 0;
+    };
+    if (
+      compareVersions(environment.APP_MINIMUM_SUPPORTED_VERSION, environment.APP_LATEST_VERSION) >
+      0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["APP_MINIMUM_SUPPORTED_VERSION"],
+        message: "APP_MINIMUM_SUPPORTED_VERSION cannot be newer than APP_LATEST_VERSION",
+      });
+    }
   });
 
 export type DatabaseConfig = {
@@ -152,6 +233,27 @@ export type Environment = {
     maxDimensionPixels: number;
     maxPixels: number;
     ttlSeconds: number;
+  };
+  idempotency: { ttlSeconds: number };
+  usage: UsageLimitConfig;
+  rateLimits: { aiRequestsPerIpPerMinute: number };
+  appConfig: {
+    minimumSupportedVersion: string;
+    latestVersion: string;
+    maintenance: boolean;
+    catalogVersion: string;
+    recommendedLongEdgePixels: number;
+    legal: {
+      privacyPolicyVersion: string;
+      privacyPolicyUrl: string;
+      termsVersion: string;
+      termsUrl: string;
+    };
+    features: {
+      kakaoLogin: boolean;
+      locationContext: boolean;
+      feedbackComparison: boolean;
+    };
   };
 };
 
@@ -191,6 +293,37 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       maxDimensionPixels: parsed.data.UPLOAD_MAX_DIMENSION_PX,
       maxPixels: parsed.data.UPLOAD_MAX_PIXELS,
       ttlSeconds: parsed.data.UPLOAD_TTL_SECONDS,
+    },
+    idempotency: { ttlSeconds: parsed.data.IDEMPOTENCY_TTL_SECONDS },
+    usage: {
+      timezone: parsed.data.USAGE_TIMEZONE,
+      guest: {
+        sceneAnalysesPerDay: parsed.data.GUEST_SCENE_ANALYSES_PER_DAY,
+        photoFeedbacksPerDay: parsed.data.GUEST_PHOTO_FEEDBACKS_PER_DAY,
+      },
+      member: {
+        sceneAnalysesPerDay: parsed.data.MEMBER_SCENE_ANALYSES_PER_DAY,
+        photoFeedbacksPerDay: parsed.data.MEMBER_PHOTO_FEEDBACKS_PER_DAY,
+      },
+    },
+    rateLimits: { aiRequestsPerIpPerMinute: parsed.data.AI_IP_RATE_LIMIT_PER_MINUTE },
+    appConfig: {
+      minimumSupportedVersion: parsed.data.APP_MINIMUM_SUPPORTED_VERSION,
+      latestVersion: parsed.data.APP_LATEST_VERSION,
+      maintenance: parsed.data.APP_MAINTENANCE,
+      catalogVersion: parsed.data.APP_CATALOG_VERSION,
+      recommendedLongEdgePixels: parsed.data.APP_RECOMMENDED_LONG_EDGE_PX,
+      legal: {
+        privacyPolicyVersion: parsed.data.PRIVACY_POLICY_VERSION,
+        privacyPolicyUrl: parsed.data.PRIVACY_POLICY_URL,
+        termsVersion: parsed.data.TERMS_VERSION,
+        termsUrl: parsed.data.TERMS_URL,
+      },
+      features: {
+        kakaoLogin: parsed.data.FEATURE_KAKAO_LOGIN,
+        locationContext: parsed.data.FEATURE_LOCATION_CONTEXT,
+        feedbackComparison: parsed.data.FEATURE_FEEDBACK_COMPARISON,
+      },
     },
     database: {
       connectionString: parsed.data.DATABASE_URL,

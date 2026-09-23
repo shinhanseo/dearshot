@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import type { Logger } from "pino";
+import type { RequestHandler } from "express";
 import type { AuthService } from "./auth/auth-service.js";
 import type { GoogleAuthService } from "./auth/google/google-auth-service.js";
 import type { KakaoAuthService } from "./auth/kakao/kakao-auth-service.js";
@@ -13,6 +14,7 @@ import { errorHandler } from "./http/error-handler.js";
 import { createHttpLogger } from "./http/http-logger.js";
 import { requestContext } from "./http/request-context.js";
 import { createAuthRouter } from "./routes/auth.js";
+import { createAppConfigRouter, type AppConfigRouteSettings } from "./routes/app-config.js";
 import { createCatalogRouter } from "./routes/catalog.js";
 import { sceneAnalysisRouter } from "./routes/scene-analysis.js";
 import { createUploadRouter } from "./routes/uploads.js";
@@ -37,11 +39,16 @@ type AppDependencies = {
     service: UploadService;
     storage: ImageStorage;
     tokenService: TokenService;
+    ipRateLimiter?: RequestHandler;
   };
+  appConfig?: AppConfigRouteSettings;
 };
 
-export function createApp({ checkDatabase, logger, auth, catalog, uploads }: AppDependencies) {
+export function createApp({ checkDatabase, logger, auth, catalog, uploads, appConfig }: AppDependencies) {
   const app = express();
+
+  // The production API is reachable only through one trusted Caddy hop.
+  app.set("trust proxy", 1);
 
   app.use(requestContext);
   app.use(createHttpLogger(logger));
@@ -73,10 +80,16 @@ export function createApp({ checkDatabase, logger, auth, catalog, uploads }: App
   });
 
   if (auth) app.use("/api/v1", createAuthRouter(auth));
+  if (appConfig) app.use("/api/v1", createAppConfigRouter(appConfig));
   if (uploads) {
     app.use(
       "/api/v1",
-      createUploadRouter(uploads.tokenService, uploads.service, uploads.storage),
+      createUploadRouter(
+        uploads.tokenService,
+        uploads.service,
+        uploads.storage,
+        uploads.ipRateLimiter,
+      ),
     );
   }
   if (catalog) {

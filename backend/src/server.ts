@@ -16,6 +16,8 @@ import {
   verifyDatabaseConnection,
 } from "./db/client.js";
 import { createLogger } from "./observability/logger.js";
+import { IdempotencyService } from "./reliability/idempotency-service.js";
+import { createIpRateLimiter } from "./reliability/ip-rate-limiter.js";
 import { ImageStorage } from "./uploads/image-storage.js";
 import { UploadService } from "./uploads/upload-service.js";
 
@@ -40,7 +42,20 @@ async function main() {
   const catalogService = new CatalogService(database.db, environment.catalog.assetBaseUrl);
   const templateInteractionService = new TemplateInteractionService(database.db);
   const imageStorage = new ImageStorage(environment.uploads);
-  const uploadService = new UploadService(database.db, imageStorage, environment.uploads);
+  const idempotencyService = new IdempotencyService(
+    database.db,
+    environment.idempotency.ttlSeconds,
+  );
+  const uploadService = new UploadService(
+    database.db,
+    imageStorage,
+    environment.uploads,
+    idempotencyService,
+  );
+  const uploadIpRateLimiter = createIpRateLimiter({
+    scope: "uploads",
+    limit: environment.rateLimits.aiRequestsPerIpPerMinute,
+  });
 
   try {
     await Promise.all([
@@ -61,7 +76,17 @@ async function main() {
       assetRoot: environment.catalog.assetRoot,
       interactionService: templateInteractionService,
     },
-    uploads: { service: uploadService, storage: imageStorage, tokenService },
+    uploads: {
+      service: uploadService,
+      storage: imageStorage,
+      tokenService,
+      ipRateLimiter: uploadIpRateLimiter,
+    },
+    appConfig: {
+      app: environment.appConfig,
+      guestLimits: environment.usage.guest,
+      upload: { maxBytes: environment.uploads.maxBytes },
+    },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });

@@ -26,3 +26,27 @@ export function validateBody(schema: z.ZodType): RequestHandler {
     next();
   };
 }
+
+export function validateQuery(schema: z.ZodType): RequestHandler {
+  return (request, _response, next) => {
+    const parsed = schema.safeParse(request.query);
+
+    if (!parsed.success) {
+      const flattened = z.flattenError(parsed.error);
+      next(
+        new ApiError({
+          statusCode: 400,
+          code: "INVALID_REQUEST",
+          message: "Query parameters are invalid",
+          details: {
+            formErrors: flattened.formErrors,
+            fieldErrors: flattened.fieldErrors,
+          },
+        }),
+      );
+      return;
+    }
+
+    next();
+  };
+}
