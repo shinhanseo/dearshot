@@ -57,6 +57,14 @@ async function main() {
     scope: "uploads",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
   });
+  const authIpRateLimiter = createIpRateLimiter({
+    scope: "auth",
+    limit: environment.rateLimits.authRequestsPerIpPerMinute,
+  });
+  const appEventIpRateLimiter = createIpRateLimiter({
+    scope: "app-events",
+    limit: environment.rateLimits.appEventBatchesPerIpPerMinute,
+  });
   const appEventService = new AppEventService(database.db, environment.productEvents);
 
   try {
@@ -72,7 +80,14 @@ async function main() {
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
     logger,
-    auth: { authService, googleAuthService, kakaoAuthService, tokenService },
+    http: environment.http,
+    auth: {
+      authService,
+      googleAuthService,
+      kakaoAuthService,
+      tokenService,
+      ipRateLimiter: authIpRateLimiter,
+    },
     catalog: {
       service: catalogService,
       assetRoot: environment.catalog.assetRoot,
@@ -89,7 +104,13 @@ async function main() {
       guestLimits: environment.usage.guest,
       upload: { maxBytes: environment.uploads.maxBytes },
     },
-    productEvents: { service: appEventService, tokenService },
+    productEvents: {
+      service: appEventService,
+      tokenService,
+      ipRateLimiter: appEventIpRateLimiter,
+    },
+    // B-14 replaces this development-only fixture with the authenticated job API.
+    enableMockSceneAnalysis: environment.nodeEnvironment !== "production",
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });

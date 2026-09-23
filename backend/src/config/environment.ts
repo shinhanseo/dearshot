@@ -18,6 +18,28 @@ const booleanFromEnvironment = (fallback: boolean) =>
 
 const semanticVersion = z.string().regex(/^\d+\.\d+\.\d+$/u, "must use MAJOR.MINOR.PATCH");
 
+const commaSeparatedOrigins = z
+  .string()
+  .default("")
+  .transform((value, context) => {
+    const origins = [...new Set(value.split(",").map((origin) => origin.trim()).filter(Boolean))];
+    for (const origin of origins) {
+      try {
+        const parsed = new URL(origin);
+        if (parsed.origin !== origin || !["http:", "https:"].includes(parsed.protocol)) {
+          throw new Error("invalid origin");
+        }
+      } catch {
+        context.addIssue({
+          code: "custom",
+          message: `CORS_ALLOWED_ORIGINS contains an invalid origin: ${origin}`,
+        });
+        return z.NEVER;
+      }
+    }
+    return origins;
+  });
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -25,6 +47,8 @@ const environmentSchema = z
       .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
       .default("info"),
     PORT: integerFromEnvironment("PORT", 3000, 1, 65_535),
+    TRUST_PROXY_HOPS: integerFromEnvironment("TRUST_PROXY_HOPS", 0, 0, 2),
+    CORS_ALLOWED_ORIGINS: commaSeparatedOrigins,
     JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
     JWT_ISSUER: z.string().min(1).default("dearshot-api"),
     JWT_AUDIENCE: z.string().min(1).default("dearshot-android"),
@@ -117,6 +141,18 @@ const environmentSchema = z
       1,
       10_000,
     ),
+    AUTH_IP_RATE_LIMIT_PER_MINUTE: integerFromEnvironment(
+      "AUTH_IP_RATE_LIMIT_PER_MINUTE",
+      20,
+      1,
+      1_000,
+    ),
+    APP_EVENT_BATCHES_PER_IP_PER_MINUTE: integerFromEnvironment(
+      "APP_EVENT_BATCHES_PER_IP_PER_MINUTE",
+      30,
+      1,
+      1_000,
+    ),
     APP_MINIMUM_SUPPORTED_VERSION: semanticVersion.default("1.0.0"),
     APP_LATEST_VERSION: semanticVersion.default("1.0.0"),
     APP_MAINTENANCE: booleanFromEnvironment(false),
@@ -194,6 +230,16 @@ const environmentSchema = z
         message: "PUBLIC_ASSET_BASE_URL must use HTTPS in production",
       });
     }
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.CORS_ALLOWED_ORIGINS.some((origin) => new URL(origin).protocol !== "https:")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["CORS_ALLOWED_ORIGINS"],
+        message: "CORS_ALLOWED_ORIGINS must use HTTPS origins in production",
+      });
+    }
     if (!path.isAbsolute(environment.UPLOAD_ROOT)) {
       context.addIssue({
         code: "custom",
@@ -240,6 +286,10 @@ export type Environment = {
   nodeEnvironment: "development" | "test" | "production";
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   port: number;
+  http: {
+    trustProxyHops: number;
+    corsAllowedOrigins: string[];
+  };
   database: DatabaseConfig;
   auth: AuthConfig;
   google: { webClientId: string };
@@ -254,7 +304,11 @@ export type Environment = {
   };
   idempotency: { ttlSeconds: number };
   usage: UsageLimitConfig;
-  rateLimits: { aiRequestsPerIpPerMinute: number };
+  rateLimits: {
+    aiRequestsPerIpPerMinute: number;
+    authRequestsPerIpPerMinute: number;
+    appEventBatchesPerIpPerMinute: number;
+  };
   appConfig: {
     minimumSupportedVersion: string;
     latestVersion: string;
@@ -294,6 +348,10 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
     nodeEnvironment: parsed.data.NODE_ENV,
     logLevel: parsed.data.LOG_LEVEL,
     port: parsed.data.PORT,
+    http: {
+      trustProxyHops: parsed.data.TRUST_PROXY_HOPS,
+      corsAllowedOrigins: parsed.data.CORS_ALLOWED_ORIGINS,
+    },
     auth: {
       accessTokenSecret: parsed.data.JWT_ACCESS_SECRET,
       issuer: parsed.data.JWT_ISSUER,
@@ -329,7 +387,11 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
         photoFeedbacksPerDay: parsed.data.MEMBER_PHOTO_FEEDBACKS_PER_DAY,
       },
     },
-    rateLimits: { aiRequestsPerIpPerMinute: parsed.data.AI_IP_RATE_LIMIT_PER_MINUTE },
+    rateLimits: {
+      aiRequestsPerIpPerMinute: parsed.data.AI_IP_RATE_LIMIT_PER_MINUTE,
+      authRequestsPerIpPerMinute: parsed.data.AUTH_IP_RATE_LIMIT_PER_MINUTE,
+      appEventBatchesPerIpPerMinute: parsed.data.APP_EVENT_BATCHES_PER_IP_PER_MINUTE,
+    },
     appConfig: {
       minimumSupportedVersion: parsed.data.APP_MINIMUM_SUPPORTED_VERSION,
       latestVersion: parsed.data.APP_LATEST_VERSION,

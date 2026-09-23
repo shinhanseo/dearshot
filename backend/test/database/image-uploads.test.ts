@@ -145,14 +145,16 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
 
   after(async () => closeDatabaseConnection(connection.pool));
 
-  it("streams a valid image to a random private path and returns only public metadata", async () => {
+  it("sanitizes a valid image to a random private path and returns only public metadata", async () => {
     const principal = await createPrincipal("GUEST");
     const { app, root } = await createUploadApp();
     const jpeg = await sharp({
       create: { width: 32, height: 24, channels: 3, background: "#d45b42" },
     })
       .jpeg()
+      .withExif({ IFD0: { Artist: "private-device-owner" } })
       .toBuffer();
+    assert.ok((await sharp(jpeg).metadata()).exif);
 
     const response = await request(app)
       .post("/api/v1/uploads")
@@ -175,7 +177,6 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
     assert.equal(response.body.status, "READY");
     assert.equal(response.body.purpose, "SCENE_ANALYSIS");
     assert.equal(response.body.contentType, "image/jpeg");
-    assert.equal(response.body.byteSize, jpeg.length);
     assert.equal(response.body.width, 32);
     assert.equal(response.body.height, 24);
     assert.ok(Date.parse(response.body.expiresAt) > Date.now());
@@ -188,10 +189,17 @@ describe("temporary image uploads", { concurrency: 1 }, () => {
       .where(eq(imageUploads.id, response.body.uploadId));
     assert.equal(stored.ownerUserId, principal.userId);
     assert.match(stored.storagePath, /^objects\/[0-9a-f]{2}\/[0-9a-f]{48}\.jpg$/u);
-    assert.equal(stored.sha256, createHash("sha256").update(jpeg).digest("hex"));
     const absolute = path.resolve(root, stored.storagePath);
     assert.ok(absolute.startsWith(`${path.resolve(root)}${path.sep}`));
-    assert.deepEqual(await readFile(absolute), jpeg);
+    const sanitized = await readFile(absolute);
+    assert.notDeepEqual(sanitized, jpeg);
+    assert.equal(response.body.byteSize, sanitized.length);
+    assert.equal(stored.byteSize, sanitized.length);
+    assert.equal(stored.sha256, createHash("sha256").update(sanitized).digest("hex"));
+    const metadata = await sharp(sanitized).metadata();
+    assert.equal(metadata.exif, undefined);
+    assert.equal(metadata.xmp, undefined);
+    assert.equal(metadata.iptc, undefined);
     assert.equal((await stat(absolute)).mode & 0o777, 0o600);
   });
 

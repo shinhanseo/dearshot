@@ -14,6 +14,12 @@ describe("environment configuration", () => {
     assert.equal(environment.auth.accessTokenTtlSeconds, 900);
     assert.equal(environment.auth.refreshTokenTtlSeconds, 2_592_000);
     assert.equal(environment.auth.issuer, "dearshot-api");
+    assert.deepEqual(environment.http, { trustProxyHops: 0, corsAllowedOrigins: [] });
+    assert.deepEqual(environment.rateLimits, {
+      aiRequestsPerIpPerMinute: 30,
+      authRequestsPerIpPerMinute: 20,
+      appEventBatchesPerIpPerMinute: 30,
+    });
     assert.equal(environment.google.webClientId, "replace-with-google-web-client-id");
     assert.equal(environment.kakao.appId, "replace-with-kakao-app-id");
     assert.equal(environment.kakao.apiTimeoutMillis, 3_000);
@@ -123,6 +129,35 @@ describe("environment configuration", () => {
     assert.throws(
       () => loadEnvironment({ ...baseEnvironment, APP_EVENT_RETENTION_DAYS: "366" }),
       /APP_EVENT_RETENTION_DAYS must be at most 365/u,
+    );
+  });
+
+  it("accepts exact CORS origins and rejects unsafe production origins", () => {
+    const environment = loadEnvironment({
+      ...baseEnvironment,
+      CORS_ALLOWED_ORIGINS: "https://admin.dearshot.app, https://docs.dearshot.app",
+    });
+    assert.deepEqual(environment.http.corsAllowedOrigins, [
+      "https://admin.dearshot.app",
+      "https://docs.dearshot.app",
+    ]);
+
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, CORS_ALLOWED_ORIGINS: "*" }),
+      /invalid origin/u,
+    );
+    assert.throws(
+      () =>
+        loadEnvironment({
+          ...baseEnvironment,
+          NODE_ENV: "production",
+          JWT_ACCESS_SECRET: "a-production-secret-with-at-least-32-characters",
+          GOOGLE_WEB_CLIENT_ID: "google-client.apps.googleusercontent.com",
+          KAKAO_APP_ID: "123456",
+          PUBLIC_ASSET_BASE_URL: "https://assets.dearshot.app/catalog",
+          CORS_ALLOWED_ORIGINS: "http://admin.dearshot.app",
+        }),
+      /must use HTTPS origins/u,
     );
   });
 });
