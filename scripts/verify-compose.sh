@@ -84,7 +84,10 @@ docker compose exec --no-TTY api node --input-type=module -e '
   form.set("image", new Blob([image], { type: "image/jpeg" }), "compose-check.jpg");
   const uploadResponse = await fetch(`${base}/uploads`, {
     method: "POST",
-    headers: { authorization: `Bearer ${guest.accessToken}` },
+    headers: {
+      authorization: `Bearer ${guest.accessToken}`,
+      "idempotency-key": randomUUID(),
+    },
     body: form,
   });
   const upload = await uploadResponse.json();

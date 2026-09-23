@@ -195,7 +195,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 ### `idempotency_records`
 
-`(user_id, scope, idempotency_key)` unique constraint와 `request_hash`, 응답 상태·본문, 만료 시각을 저장합니다. Android 재시도로 동일한 AI 비용이 두 번 발생하지 않게 합니다.
+`(user_id, scope, idempotency_key)` unique constraint와 `request_hash`, 처리 상태, 응답 HTTP 상태·본문, 선택적인 resource ID, 완료·만료 시각을 저장합니다. `scope`는 정규화한 HTTP method와 path입니다. Android 재시도로 동일한 업로드나 AI 비용이 두 번 발생하지 않게 하며 기본 보존 기간은 24시간입니다.
 
 ### `app_events`
 

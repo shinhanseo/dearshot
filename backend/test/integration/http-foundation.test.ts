@@ -12,6 +12,7 @@ import { errorHandler } from "../../src/http/error-handler.js";
 import { createHttpLogger } from "../../src/http/http-logger.js";
 import { requestContext } from "../../src/http/request-context.js";
 import { createLogger } from "../../src/observability/logger.js";
+import { ApiError } from "../../src/http/api-error.js";
 
 const silentLogger = pino({ level: "silent" });
 
@@ -131,6 +132,27 @@ describe("HTTP foundation", () => {
     assert.equal(missing.status, 404);
     assert.equal(missing.body.code, "RESOURCE_NOT_FOUND");
     assert.equal(missing.body.requestId, missing.headers["x-request-id"]);
+  });
+
+  it("emits Retry-After for bounded rate errors", async () => {
+    const app = express();
+    app.use(requestContext);
+    app.use(createHttpLogger(silentLogger));
+    app.get("/limited", (_request, _response, next) => {
+      next(
+        new ApiError({
+          statusCode: 429,
+          code: "RATE_LIMITED",
+          message: "Daily limit exceeded",
+          retryAfterSeconds: 45,
+        }),
+      );
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get("/limited");
+    assert.equal(response.status, 429);
+    assert.equal(response.headers["retry-after"], "45");
   });
 
   it("does not log authorization, cookies, request bodies, or query strings", async () => {

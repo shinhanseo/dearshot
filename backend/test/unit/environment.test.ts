@@ -26,6 +26,14 @@ describe("environment configuration", () => {
       maxPixels: 40_000_000,
       ttlSeconds: 3_600,
     });
+    assert.deepEqual(environment.usage, {
+      timezone: "UTC",
+      guest: { sceneAnalysesPerDay: 5, photoFeedbacksPerDay: 10 },
+      member: { sceneAnalysesPerDay: 50, photoFeedbacksPerDay: 100 },
+    });
+    assert.equal(environment.idempotency.ttlSeconds, 86_400);
+    assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
+    assert.equal(environment.appConfig.features.kakaoLogin, true);
   });
 
   it("requires a real Google web client ID in production", () => {
@@ -90,6 +98,22 @@ describe("environment configuration", () => {
     assert.throws(
       () => loadEnvironment({ ...baseEnvironment, UPLOAD_TTL_SECONDS: "3601" }),
       /UPLOAD_TTL_SECONDS must be at most 3600/u,
+    );
+  });
+
+  it("validates remote app versions and strict boolean flags", () => {
+    assert.throws(
+      () =>
+        loadEnvironment({
+          ...baseEnvironment,
+          APP_MINIMUM_SUPPORTED_VERSION: "2.0.0",
+          APP_LATEST_VERSION: "1.9.9",
+        }),
+      /APP_MINIMUM_SUPPORTED_VERSION cannot be newer/u,
+    );
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, APP_MAINTENANCE: "yes" }),
+      /APP_MAINTENANCE/u,
     );
   });
 });

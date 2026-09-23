@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DearShot API
-  version: 0.8.0-draft
+  version: 0.9.0-draft
   license:
     name: All rights reserved
     identifier: LicenseRef-Proprietary
@@ -9,8 +9,8 @@ info:
     Android 앱용 DearShot HTTP API 계약입니다.
     장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
     분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
-    이 파일은 구현 목표 명세입니다. 현재 서버에는 health, guest/google/kakao/refresh/logout/me 인증 기반과
-    계약에 포함되지 않는 임시 POST /api/v1/scene-analysis mock이 구현되어 있습니다.
+    이 파일은 구현 목표 명세입니다. 현재 서버에는 인증, 템플릿 카탈로그·상호작용,
+    멱등 이미지 업로드, 앱 설정과 계약에 포함되지 않는 임시 scene-analysis mock이 구현되어 있습니다.
 servers:
   - url: /api/v1
     description: Same-origin development or deployment
@@ -333,6 +333,12 @@ paths:
       responses:
         '201':
           description: 검증과 임시 저장 완료
+          headers:
+            Idempotency-Replayed:
+              description: 저장된 응답을 재생한 경우 true
+              schema:
+                type: string
+                const: 'true'
           content:
             application/json:
               schema:

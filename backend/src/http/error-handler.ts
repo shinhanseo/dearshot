@@ -58,5 +58,9 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, next
     ...(apiError.details ? { details: apiError.details } : {}),
   };
 
+  if (apiError.retryAfterSeconds !== undefined) {
+    response.setHeader("Retry-After", String(apiError.retryAfterSeconds));
+  }
+
   response.status(apiError.statusCode).json(body);
 };

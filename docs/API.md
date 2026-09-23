@@ -2,7 +2,7 @@
 
 > 문서 버전: `0.9.0-draft`
 >
-> 기준일: 2026-09-22
+> 기준일: 2026-09-23
 >
 > Base URL: `/api/v1`
 >
@@ -28,8 +28,9 @@
 | 현재 | `PUT/DELETE /templates/{templateId}/bookmark` | 구현됨 | 회원 전용 멱등 북마크 |
 | 현재 | `GET /me/liked-templates` | 구현됨 | 회원의 좋아요 컬렉션 cursor 조회 |
 | 현재 | `GET /me/bookmarked-templates` | 구현됨 | 회원의 북마크 컬렉션 cursor 조회 |
-| 현재 | `POST /uploads` | 구현됨 | guest/member 스트리밍 JPEG·WebP 검증과 1시간 임시 저장. 멱등 키 처리는 B-12에서 추가 |
+| 현재 | `POST /uploads` | 구현됨 | 스트리밍 JPEG·WebP 검증, 1시간 임시 저장, principal별 멱등 재시도 |
 | 현재 | `DELETE /uploads/{uploadId}` | 구현됨 | 소유한 미사용 업로드만 반복 안전하게 폐기 |
+| 현재 | `GET /app-config` | 구현됨 | Android 버전·업로드 제한·게스트 한도·정책·기능 플래그 조회 |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -59,7 +60,7 @@
 | `Authorization: Bearer {token}` | 조건부 | 게스트 또는 회원 Access Token |
 | `Accept-Language` | 선택 | `ko-KR`, `en-US` 등. 없으면 사용자 설정, 그것도 없으면 `en-US` |
 | `X-Request-Id` | 선택 | 클라이언트가 생성한 추적 ID. 없으면 서버가 생성 |
-| `Idempotency-Key` | 조건부 | 중복 생성이 위험한 `POST` 요청에 사용. UUID 권장 |
+| `Idempotency-Key` | 조건부 | 중복 생성이 위험한 `POST` 요청에 사용하는 UUID. 해당 API에서는 필수 |
 | `Last-Event-ID` | 선택 | 끊어진 SSE 스트림 재연결 시 마지막으로 받은 이벤트 ID |
 
 ### 2.2 인증 주체
@@ -358,7 +359,7 @@ Access Token과 Refresh Token은 즉시 폐기하고 계정 데이터는 개인�
 
 `POST /uploads`
 
-`Authorization` 필수. 최종 계약에서는 `Idempotency-Key`도 필수이며 B-12에서 중복 요청 처리를 추가한다. Content-Type은 `multipart/form-data`이며 JSON이나 Base64 이미지를 받지 않는다.
+`Authorization`과 UUID 형식의 `Idempotency-Key`가 필수다. Content-Type은 `multipart/form-data`이며 JSON이나 Base64 이미지를 받지 않는다.
 
 ```text
 purpose = SCENE_ANALYSIS | PHOTO_FEEDBACK
@@ -393,6 +394,7 @@ image   = JPEG 또는 WebP binary file
 파일 쓰기, 검증, 메타데이터 저장이 모두 끝난 뒤에만 `READY`를 반환한다. 응답에는 서버 파일 경로나 외부 URL을 포함하지 않는다. 실패한 요청의 부분 파일은 제거한다.
 
 동일한 사용자와 `Idempotency-Key`, purpose, 파일 내용으로 재시도하면 기존 `UploadResource`를 반환한다. 같은 key에 다른 purpose나 파일을 사용하면 `409 IDEMPOTENCY_CONFLICT`를 반환한다.
+재생된 응답에는 `Idempotency-Replayed: true`가 포함된다. 멱등 레코드는 기본 24시간 보관하며 만료 시 같은 key를 새 요청에 사용할 수 있다.
 
 다른 사용자의 업로드는 참조할 수 없고, 한 AI 작업에 소비된 업로드를 다시 사용하면 `409 UPLOAD_ALREADY_USED`를 반환한다. 업로드 purpose와 생성할 작업 종류가 다르면 `409 UPLOAD_PURPOSE_MISMATCH`를 반환한다.
 
@@ -781,6 +783,8 @@ GET /me/bookmarked-templates?cursor=...&limit=20
   }
 }
 ```
+
+설정값은 서버 환경변수에서 관리하므로 앱 배포 없이 변경할 수 있다. `forceUpdate`는 요청한 `appVersion`과 서버의 `minimumSupportedVersion`을 비교해 계산한다. AI 일일 사용량은 기기 timezone과 무관하게 **UTC 00:00**에 초기화하며, guest/member 한도는 서버가 별도로 강제한다. IP 제한은 비용 공격을 완화하는 보조 장치일 뿐 사용자 한도를 대신하지 않는다.
 
 ## 12. 관리자 템플릿 API
 
