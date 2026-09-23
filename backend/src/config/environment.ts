@@ -134,6 +134,24 @@ const environmentSchema = z
     FEATURE_KAKAO_LOGIN: booleanFromEnvironment(true),
     FEATURE_LOCATION_CONTEXT: booleanFromEnvironment(true),
     FEATURE_FEEDBACK_COMPARISON: booleanFromEnvironment(true),
+    APP_EVENT_RETENTION_DAYS: integerFromEnvironment(
+      "APP_EVENT_RETENTION_DAYS",
+      90,
+      1,
+      365,
+    ),
+    APP_EVENT_MAX_PAST_AGE_DAYS: integerFromEnvironment(
+      "APP_EVENT_MAX_PAST_AGE_DAYS",
+      7,
+      1,
+      30,
+    ),
+    APP_EVENT_MAX_FUTURE_SKEW_SECONDS: integerFromEnvironment(
+      "APP_EVENT_MAX_FUTURE_SKEW_SECONDS",
+      300,
+      0,
+      3_600,
+    ),
   })
   .superRefine((environment, context) => {
     if (
@@ -255,6 +273,11 @@ export type Environment = {
       feedbackComparison: boolean;
     };
   };
+  productEvents: {
+    retentionDays: number;
+    maximumPastAgeDays: number;
+    maximumFutureSkewSeconds: number;
+  };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -324,6 +347,11 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
         locationContext: parsed.data.FEATURE_LOCATION_CONTEXT,
         feedbackComparison: parsed.data.FEATURE_FEEDBACK_COMPARISON,
       },
+    },
+    productEvents: {
+      retentionDays: parsed.data.APP_EVENT_RETENTION_DAYS,
+      maximumPastAgeDays: parsed.data.APP_EVENT_MAX_PAST_AGE_DAYS,
+      maximumFutureSkewSeconds: parsed.data.APP_EVENT_MAX_FUTURE_SKEW_SECONDS,
     },
     database: {
       connectionString: parsed.data.DATABASE_URL,

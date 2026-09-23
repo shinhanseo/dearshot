@@ -20,6 +20,8 @@ import { sceneAnalysisRouter } from "./routes/scene-analysis.js";
 import { createUploadRouter } from "./routes/uploads.js";
 import type { ImageStorage } from "./uploads/image-storage.js";
 import type { UploadService } from "./uploads/upload-service.js";
+import type { AppEventService } from "./product-events/app-event-service.js";
+import { createAppEventRouter } from "./routes/app-events.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -42,9 +44,18 @@ type AppDependencies = {
     ipRateLimiter?: RequestHandler;
   };
   appConfig?: AppConfigRouteSettings;
+  productEvents?: { service: AppEventService; tokenService: TokenService };
 };
 
-export function createApp({ checkDatabase, logger, auth, catalog, uploads, appConfig }: AppDependencies) {
+export function createApp({
+  checkDatabase,
+  logger,
+  auth,
+  catalog,
+  uploads,
+  appConfig,
+  productEvents,
+}: AppDependencies) {
   const app = express();
 
   // The production API is reachable only through one trusted Caddy hop.
@@ -81,6 +92,12 @@ export function createApp({ checkDatabase, logger, auth, catalog, uploads, appCo
 
   if (auth) app.use("/api/v1", createAuthRouter(auth));
   if (appConfig) app.use("/api/v1", createAppConfigRouter(appConfig));
+  if (productEvents) {
+    app.use(
+      "/api/v1",
+      createAppEventRouter(productEvents.tokenService, productEvents.service),
+    );
+  }
   if (uploads) {
     app.use(
       "/api/v1",

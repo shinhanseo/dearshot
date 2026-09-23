@@ -18,6 +18,7 @@ import {
 import { createLogger } from "./observability/logger.js";
 import { IdempotencyService } from "./reliability/idempotency-service.js";
 import { createIpRateLimiter } from "./reliability/ip-rate-limiter.js";
+import { AppEventService } from "./product-events/app-event-service.js";
 import { ImageStorage } from "./uploads/image-storage.js";
 import { UploadService } from "./uploads/upload-service.js";
 
@@ -56,6 +57,7 @@ async function main() {
     scope: "uploads",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
   });
+  const appEventService = new AppEventService(database.db, environment.productEvents);
 
   try {
     await Promise.all([
@@ -87,6 +89,7 @@ async function main() {
       guestLimits: environment.usage.guest,
       upload: { maxBytes: environment.uploads.maxBytes },
     },
+    productEvents: { service: appEventService, tokenService },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });

@@ -31,6 +31,7 @@
 | 현재 | `POST /uploads` | 구현됨 | 스트리밍 JPEG·WebP 검증, 1시간 임시 저장, principal별 멱등 재시도 |
 | 현재 | `DELETE /uploads/{uploadId}` | 구현됨 | 소유한 미사용 업로드만 반복 안전하게 폐기 |
 | 현재 | `GET /app-config` | 구현됨 | Android 버전·업로드 제한·게스트 한도·정책·기능 플래그 조회 |
+| 현재 | `POST /app-events/batch` | 구현됨 | guest/member 핵심 퍼널 이벤트의 검증·중복 제거·90일 보존 |
 | 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
 | MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
@@ -165,6 +166,7 @@
 | `GET` | `/me/liked-templates` | 회원 | 좋아요한 템플릿 조회 |
 | `GET` | `/me/bookmarked-templates` | 회원 | 북마크한 템플릿 조회 |
 | `GET` | `/app-config` | 공개 | 제한값·정책·카탈로그 버전 조회 |
+| `POST` | `/app-events/batch` | 회원/게스트 | 검증된 제품 이벤트 최대 50개 수집 |
 
 ### 템플릿 운영
 
@@ -786,7 +788,38 @@ GET /me/bookmarked-templates?cursor=...&limit=20
 
 설정값은 서버 환경변수에서 관리하므로 앱 배포 없이 변경할 수 있다. `forceUpdate`는 요청한 `appVersion`과 서버의 `minimumSupportedVersion`을 비교해 계산한다. AI 일일 사용량은 기기 timezone과 무관하게 **UTC 00:00**에 초기화하며, guest/member 한도는 서버가 별도로 강제한다. IP 제한은 비용 공격을 완화하는 보조 장치일 뿐 사용자 한도를 대신하지 않는다.
 
-## 12. 관리자 템플릿 API
+## 12. 제품 이벤트
+
+`POST /app-events/batch`
+
+게스트와 회원 Access Token이 필요하다. 서버는 클라이언트가 actor ID나 계정 유형을 보내도록 허용하지 않고 토큰과 활성 Refresh Session에서 주체를 결정한다.
+
+```json
+{
+  "sessionId": "7995ed3a-ea81-4e17-8f11-49de0356b924",
+  "appVersion": "1.0.0",
+  "osVersion": "15",
+  "locale": "ko-KR",
+  "events": [
+    {
+      "eventId": "25a75f1c-6ec9-4e99-b103-b8bebbfedaae",
+      "occurredAt": "2026-09-23T02:00:00Z",
+      "eventName": "template_selected",
+      "properties": {
+        "templateId": "beach-breeze",
+        "templateVersion": 1,
+        "sceneKey": "beach"
+      }
+    }
+  ]
+}
+```
+
+한 번에 1~50개를 받으며 같은 actor와 `eventId`의 재전송은 중복 저장하지 않는다. 응답은 `202`와 `{ "accepted": 1, "duplicates": 0 }` 형식이다. 오프라인 이벤트는 최대 7일 전까지, 기기 시계 오차는 미래 5분까지 허용한다.
+
+이벤트명은 `scene_analysis_requested/completed/failed`, `template_selected`, `capture_completed`, `feedback_requested/completed/failed`, `retake_started`, `photo_saved`, `login_prompt_shown/completed`만 허용한다. 각 이벤트의 `properties`는 정해진 enum·ID·숫자·boolean만 받는다. 사진, 위치, 사용자 문장, provider 원문 오류는 받지 않는다. 원본 이벤트에는 수신 시점부터 90일의 `expiresAt`을 기록한다.
+
+## 13. 관리자 템플릿 API
 
 관리자 API는 모바일 앱에서 호출하지 않는다. 초기에는 별도 관리자 화면 없이 Swagger 또는 내부 스크립트로 사용한다.
 
@@ -821,7 +854,7 @@ POST  /admin/templates/{templateId}/archive
 
 버전 생성에는 미리보기·가이드 에셋 URL, 지역화 문구, 안전 영역을 포함한다. 배포 요청은 `version`, `publishAt`을 받으며 현재 배포 버전을 원자적으로 변경한다. 보관은 새 목록에서만 제거하며 이미 촬영 중인 사용자를 위해 기존 버전 조회는 유지한다.
 
-## 13. 전체 사용자 흐름
+## 14. 전체 사용자 흐름
 
 ### 13.1 로그인 전 첫 촬영
 
@@ -848,7 +881,7 @@ Google Credential Manager 또는 Kakao SDK
 → GET /me/bookmarked-templates
 ```
 
-## 14. 보안·개인정보 요구사항
+## 15. 보안·개인정보 요구사항
 
 - Access Token은 짧게, Refresh Token은 회전 방식으로 운영한다.
 - Refresh Token은 Android Keystore로 보호한 저장소에 저장한다.
@@ -864,7 +897,7 @@ Google Credential Manager 또는 Kakao SDK
 - 외부 AI 응답은 스키마 검증 후 앱에 전달한다.
 - SSE 이벤트 텍스트도 locale에 맞추되 앱 분기는 문자열이 아닌 `stage`, `action`, `code`로 처리한다.
 
-## 15. 구현 순서
+## 16. 구현 순서
 
 1. 공통 오류, 요청 ID, 토큰 미들웨어
 2. 게스트·Google·Kakao 인증과 Refresh Token 회전
@@ -876,7 +909,7 @@ Google Credential Manager 또는 Kakao SDK
 8. 사용자 설정·탈퇴
 9. 관리자 템플릿 생성·배포
 
-## 16. 명세 변경 규칙
+## 17. 명세 변경 규칙
 
 - 호환 가능한 필드 추가는 같은 `/api/v1`에서 허용한다.
 - 기존 필드 삭제, 의미 변경, 타입 변경은 `/api/v2`에서 진행한다.

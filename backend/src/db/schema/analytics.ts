@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   char,
   check,
   date,
@@ -14,11 +15,26 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { users } from "./identity.js";
+import { accountTypeEnum, users } from "./identity.js";
 
 export const idempotencyStatusEnum = pgEnum("idempotency_status", [
   "IN_PROGRESS",
   "COMPLETED",
+]);
+
+export const appEventNameEnum = pgEnum("app_event_name", [
+  "scene_analysis_requested",
+  "scene_analysis_completed",
+  "scene_analysis_failed",
+  "template_selected",
+  "capture_completed",
+  "feedback_requested",
+  "feedback_completed",
+  "feedback_failed",
+  "retake_started",
+  "photo_saved",
+  "login_prompt_shown",
+  "login_prompt_completed",
 ]);
 
 export const dailyUsage = pgTable(
@@ -74,4 +90,34 @@ export const idempotencyRecords = pgTable(
   ],
 );
 
-/** Product events are added by B-13. Retention cleanup is added by B-17. */
+export const appEvents = pgTable(
+  "app_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    eventId: uuid("event_id").notNull(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorType: accountTypeEnum("actor_type").notNull(),
+    sessionId: uuid("session_id").notNull(),
+    eventName: appEventNameEnum("event_name").notNull(),
+    appVersion: varchar("app_version", { length: 32 }).notNull(),
+    osVersion: varchar("os_version", { length: 32 }).notNull(),
+    locale: varchar("locale", { length: 35 }).notNull(),
+    properties: jsonb("properties").$type<Record<string, unknown>>().notNull(),
+    requestId: uuid("request_id").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("app_events_actor_event_uidx").on(table.actorId, table.eventId),
+    index("app_events_name_occurred_idx").on(table.eventName, table.occurredAt),
+    index("app_events_actor_occurred_idx").on(table.actorId, table.occurredAt.desc()),
+    index("app_events_expires_idx").on(table.expiresAt),
+    check("app_events_properties_object_check", sql`jsonb_typeof(${table.properties}) = 'object'`),
+    check("app_events_expiry_check", sql`${table.expiresAt} > ${table.receivedAt}`),
+  ],
+);
+
+/** Automated retention cleanup is added by B-17. */
