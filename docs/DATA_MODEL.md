@@ -204,12 +204,14 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 | 필드 | 설명 |
 | --- | --- |
 | `id` | bigint PK |
+| `event_id` | Android가 생성한 재전송 중복 제거 UUID. actor별 unique |
 | `actor_id`, `actor_type` | 게스트 또는 회원 principal |
 | `session_id` | 앱 사용 세션 |
 | `event_name` | 허용 목록에 있는 이벤트 |
 | `app_version`, `os_version`, `locale` | 오류·전환 분석용 차원 |
 | `properties` | 이벤트별 schema가 제한된 JSONB |
 | `request_id`, `occurred_at` | 서버 작업과 연결 |
+| `received_at`, `expires_at` | 수신 시각과 90일 보존 만료 시각 |
 
 초기 이벤트는 `scene_analysis_requested/completed/failed`, `template_selected`, `capture_completed`, `feedback_requested/completed/failed`, `retake_started`, `photo_saved`, `login_prompt_shown/completed`로 제한합니다. 카메라 프레임과 모든 터치는 기록하지 않습니다.
 

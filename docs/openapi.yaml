@@ -33,6 +33,8 @@ tags:
     description: 템플릿 좋아요와 북마크
   - name: App config
     description: 앱 실행 제한값과 운영 설정
+  - name: Product events
+    description: 개인정보를 제한한 guest/member 촬영 퍼널 이벤트
   - name: Admin templates
     description: 템플릿 콘텐츠 생성, 버전 관리, 배포
 
@@ -803,6 +805,40 @@ paths:
                 $ref: '#/components/schemas/AppConfig'
         '400':
           $ref: '#/components/responses/BadRequest'
+
+  /app-events/batch:
+    post:
+      tags: [Product events]
+      operationId: collectAppEventBatch
+      summary: 검증된 제품 이벤트 batch 수집
+      description: |
+        actor는 Bearer Token에서 결정합니다. 이벤트명과 properties는 허용 목록으로 제한되며,
+        같은 actor와 eventId의 재전송은 중복 저장하지 않습니다.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppEventBatchRequest'
+      responses:
+        '202':
+          description: batch 검증 및 저장 완료
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppEventBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: 이벤트 시각이 허용한 오프라인·시계 오차 범위를 벗어남
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /admin/templates:
     post:
@@ -1929,6 +1965,181 @@ components:
           type: object
           additionalProperties:
             type: boolean
+
+    AppEventBatchRequest:
+      type: object
+      additionalProperties: false
+      required: [sessionId, appVersion, osVersion, locale, events]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        appVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        osVersion:
+          type: string
+          pattern: '^\d+(?:\.\d+){0,2}$'
+        locale:
+          type: string
+          pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+        events:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AppEvent'
+
+    AppEvent:
+      type: object
+      additionalProperties: false
+      required: [eventId, occurredAt, eventName, properties]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        eventName:
+          type: string
+          enum:
+            - scene_analysis_requested
+            - scene_analysis_completed
+            - scene_analysis_failed
+            - template_selected
+            - capture_completed
+            - feedback_requested
+            - feedback_completed
+            - feedback_failed
+            - retake_started
+            - photo_saved
+            - login_prompt_shown
+            - login_prompt_completed
+        properties:
+          $ref: '#/components/schemas/AppEventProperties'
+
+    AppEventProperties:
+      description: eventName에 대응하는 한 가지 속성 schema만 허용합니다.
+      anyOf:
+        - type: object
+          additionalProperties: false
+          required: [source]
+          properties:
+            source:
+              type: string
+              enum: [camera, gallery]
+        - type: object
+          additionalProperties: false
+          required: [analysisId, durationMs]
+          properties:
+            analysisId:
+              type: string
+              format: uuid
+            durationMs:
+              type: integer
+              minimum: 0
+              maximum: 600000
+        - type: object
+          additionalProperties: false
+          required: [failureCode, retryable]
+          properties:
+            analysisId:
+              type: string
+              format: uuid
+            feedbackId:
+              type: string
+              format: uuid
+            failureCode:
+              type: string
+              enum: [invalid_image, upload_expired, network, provider_timeout, provider_unavailable, unknown]
+            retryable:
+              type: boolean
+        - type: object
+          additionalProperties: false
+          required: [templateId, templateVersion, sceneKey]
+          properties:
+            templateId:
+              type: string
+            templateVersion:
+              type: integer
+              minimum: 1
+            sceneKey:
+              type: string
+        - type: object
+          additionalProperties: false
+          required: [templateId, templateVersion, retakeIndex]
+          properties:
+            templateId:
+              type: string
+            templateVersion:
+              type: integer
+              minimum: 1
+            retakeIndex:
+              type: integer
+              minimum: 0
+              maximum: 20
+        - type: object
+          additionalProperties: false
+          required: [feedbackId, durationMs]
+          properties:
+            feedbackId:
+              type: string
+              format: uuid
+            durationMs:
+              type: integer
+              minimum: 0
+              maximum: 600000
+        - type: object
+          additionalProperties: false
+          required: [reason]
+          properties:
+            feedbackId:
+              type: string
+              format: uuid
+            reason:
+              type: string
+              enum: [composition, pose, lighting, expression, other]
+        - type: object
+          additionalProperties: false
+          required: [templateId, templateVersion, hadFeedback]
+          properties:
+            templateId:
+              type: string
+            templateVersion:
+              type: integer
+              minimum: 1
+            hadFeedback:
+              type: boolean
+        - type: object
+          additionalProperties: false
+          required: [trigger]
+          properties:
+            trigger:
+              type: string
+              enum: [save_photo, bookmark, settings]
+        - type: object
+          additionalProperties: false
+          required: [trigger, provider]
+          properties:
+            trigger:
+              type: string
+              enum: [save_photo, bookmark, settings]
+            provider:
+              type: string
+              enum: [google, kakao]
+
+    AppEventBatchResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted, duplicates]
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+        duplicates:
+          type: integer
+          minimum: 0
 
     TemplateLocalization:
       type: object

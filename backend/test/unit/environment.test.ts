@@ -34,6 +34,11 @@ describe("environment configuration", () => {
     assert.equal(environment.idempotency.ttlSeconds, 86_400);
     assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
     assert.equal(environment.appConfig.features.kakaoLogin, true);
+    assert.deepEqual(environment.productEvents, {
+      retentionDays: 90,
+      maximumPastAgeDays: 7,
+      maximumFutureSkewSeconds: 300,
+    });
   });
 
   it("requires a real Google web client ID in production", () => {
@@ -114,6 +119,10 @@ describe("environment configuration", () => {
     assert.throws(
       () => loadEnvironment({ ...baseEnvironment, APP_MAINTENANCE: "yes" }),
       /APP_MAINTENANCE/u,
+    );
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, APP_EVENT_RETENTION_DAYS: "366" }),
+      /APP_EVENT_RETENTION_DAYS must be at most 365/u,
     );
   });
 });
