@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { z } from "zod";
 import { requireAccessToken } from "../auth/authentication.js";
 import type { AuthService } from "../auth/auth-service.js";
@@ -43,6 +43,7 @@ type AuthRouterDependencies = {
   googleAuthService: GoogleAuthService;
   kakaoAuthService: KakaoAuthService;
   tokenService: TokenService;
+  ipRateLimiter?: RequestHandler;
 };
 
 export function createAuthRouter({
@@ -50,6 +51,7 @@ export function createAuthRouter({
   googleAuthService,
   kakaoAuthService,
   tokenService,
+  ipRateLimiter,
 }: AuthRouterDependencies) {
   const router = Router();
   const authenticate = requireAccessToken(tokenService);
@@ -59,6 +61,7 @@ export function createAuthRouter({
     response.setHeader("Pragma", "no-cache");
     next();
   });
+  if (ipRateLimiter) router.use("/auth", ipRateLimiter);
 
   router.post("/auth/guest", validateBody(guestAuthSchema), async (request, response) => {
     const result = await authService.createGuest(request.body);

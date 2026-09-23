@@ -26,11 +26,16 @@ import { createAppEventRouter } from "./routes/app-events.js";
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
   logger: Logger;
+  http?: {
+    trustProxyHops: number;
+    corsAllowedOrigins: string[];
+  };
   auth?: {
     authService: AuthService;
     googleAuthService: GoogleAuthService;
     kakaoAuthService: KakaoAuthService;
     tokenService: TokenService;
+    ipRateLimiter?: RequestHandler;
   };
   catalog?: {
     service: CatalogService;
@@ -44,27 +49,64 @@ type AppDependencies = {
     ipRateLimiter?: RequestHandler;
   };
   appConfig?: AppConfigRouteSettings;
-  productEvents?: { service: AppEventService; tokenService: TokenService };
+  productEvents?: {
+    service: AppEventService;
+    tokenService: TokenService;
+    ipRateLimiter?: RequestHandler;
+  };
+  enableMockSceneAnalysis?: boolean;
 };
 
 export function createApp({
   checkDatabase,
   logger,
+  http,
   auth,
   catalog,
   uploads,
   appConfig,
   productEvents,
+  enableMockSceneAnalysis = false,
 }: AppDependencies) {
   const app = express();
 
-  // The production API is reachable only through one trusted Caddy hop.
-  app.set("trust proxy", 1);
+  // A wrong proxy count lets clients spoof request.ip and bypass IP-based controls.
+  // Production sets this to one only when the API port is private behind Caddy.
+  app.set("trust proxy", http?.trustProxyHops ?? 0);
+  app.disable("x-powered-by");
+
+  const allowedOrigins = new Set(http?.corsAllowedOrigins ?? []);
 
   app.use(requestContext);
   app.use(createHttpLogger(logger));
   app.use(helmet());
-  app.use(cors());
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(
+          new ApiError({
+            statusCode: 403,
+            code: "ORIGIN_NOT_ALLOWED",
+            message: "Request origin is not allowed",
+          }),
+        );
+      },
+      methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Authorization",
+        "Content-Type",
+        "Idempotency-Key",
+        "Last-Event-ID",
+        "X-Request-ID",
+      ],
+      exposedHeaders: ["Idempotency-Replayed", "Retry-After", "X-Request-ID"],
+      maxAge: 600,
+    }),
+  );
   app.use(express.json({ limit: "1mb" }));
 
   if (catalog) {
@@ -95,7 +137,11 @@ export function createApp({
   if (productEvents) {
     app.use(
       "/api/v1",
-      createAppEventRouter(productEvents.tokenService, productEvents.service),
+      createAppEventRouter(
+        productEvents.tokenService,
+        productEvents.service,
+        productEvents.ipRateLimiter,
+      ),
     );
   }
   if (uploads) {
@@ -120,7 +166,9 @@ export function createApp({
       ),
     );
   }
-  app.use("/api/v1/scene-analysis", sceneAnalysisRouter);
+  if (enableMockSceneAnalysis) {
+    app.use("/api/v1/scene-analysis", sceneAnalysisRouter);
+  }
 
   app.use((_request, _response, next) => {
     next(

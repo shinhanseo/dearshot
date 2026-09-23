@@ -67,7 +67,11 @@ describe("HTTP foundation", () => {
   });
 
   it("returns the OpenAPI error shape for validation failures", async () => {
-    const app = createApp({ logger: silentLogger, checkDatabase: async () => undefined });
+    const app = createApp({
+      logger: silentLogger,
+      checkDatabase: async () => undefined,
+      enableMockSceneAnalysis: true,
+    });
 
     const response = await request(app).post("/api/v1/scene-analysis").send({ locale: "ko" });
 
@@ -119,7 +123,11 @@ describe("HTTP foundation", () => {
   });
 
   it("normalizes malformed JSON and missing routes", async () => {
-    const app = createApp({ logger: silentLogger, checkDatabase: async () => undefined });
+    const app = createApp({
+      logger: silentLogger,
+      checkDatabase: async () => undefined,
+      enableMockSceneAnalysis: true,
+    });
 
     const malformed = await request(app)
       .post("/api/v1/scene-analysis")
@@ -180,5 +188,44 @@ describe("HTTP foundation", () => {
     );
     assert.match(output, /does-not-exist/);
     assert.match(output, new RegExp(requestId));
+  });
+
+  it("allows only configured browser origins while keeping native clients available", async () => {
+    const app = createApp({
+      logger: silentLogger,
+      checkDatabase: async () => undefined,
+      http: {
+        trustProxyHops: 0,
+        corsAllowedOrigins: ["https://admin.dearshot.app"],
+      },
+    });
+
+    const nativeResponse = await request(app).get("/health");
+    const allowed = await request(app)
+      .get("/health")
+      .set("Origin", "https://admin.dearshot.app");
+    const denied = await request(app)
+      .get("/health")
+      .set("Origin", "https://attacker.example");
+
+    assert.equal(nativeResponse.status, 200);
+    assert.equal(allowed.status, 200);
+    assert.equal(allowed.headers["access-control-allow-origin"], "https://admin.dearshot.app");
+    assert.equal(denied.status, 403);
+    assert.equal(denied.body.code, "ORIGIN_NOT_ALLOWED");
+    assert.equal(denied.headers["access-control-allow-origin"], undefined);
+    assert.equal(nativeResponse.headers["x-powered-by"], undefined);
+  });
+
+  it("does not expose the unauthenticated scene-analysis fixture by default", async () => {
+    const app = createApp({ logger: silentLogger, checkDatabase: async () => undefined });
+
+    const response = await request(app).post("/api/v1/scene-analysis").send({
+      imageReference: "fixture",
+      capturedAt: new Date().toISOString(),
+    });
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.code, "RESOURCE_NOT_FOUND");
   });
 });

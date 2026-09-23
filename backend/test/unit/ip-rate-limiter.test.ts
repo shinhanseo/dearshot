@@ -32,4 +32,31 @@ describe("IP rate limiter", () => {
     middleware(request, response, next);
     assert.equal(errors[3], undefined);
   });
+
+  it("keeps attacker-controlled address cardinality bounded", () => {
+    let now = 5_000;
+    const middleware = createIpRateLimiter({
+      scope: "auth",
+      limit: 10,
+      maxEntries: 2,
+      windowMillis: 60_000,
+      clock: () => now,
+    });
+    const response = {} as Response;
+    const errors: unknown[] = [];
+    const next = ((error?: unknown) => errors.push(error)) as NextFunction;
+
+    middleware({ ip: "203.0.113.1", socket: {} } as Request, response, next);
+    middleware({ ip: "203.0.113.2", socket: {} } as Request, response, next);
+    middleware({ ip: "203.0.113.3", socket: {} } as Request, response, next);
+
+    assert.equal(errors[0], undefined);
+    assert.equal(errors[1], undefined);
+    assert.ok(errors[2] instanceof ApiError);
+    assert.equal((errors[2] as ApiError).statusCode, 429);
+
+    now += 60_000;
+    middleware({ ip: "203.0.113.3", socket: {} } as Request, response, next);
+    assert.equal(errors[3], undefined);
+  });
 });

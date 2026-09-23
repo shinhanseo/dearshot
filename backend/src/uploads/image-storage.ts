@@ -1,9 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { mkdir, open, rename, rm } from "node:fs/promises";
+import { chmod, mkdir, open, rename, rm } from "node:fs/promises";
 import path from "node:path";
-import { Transform, Writable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Transform } from "node:stream";
 import type { Request } from "express";
 import busboy from "busboy";
 import sharp from "sharp";
@@ -246,12 +245,12 @@ export class ImageStorage {
     await this.initialized;
     const randomName = randomBytes(24).toString("hex");
     const stagingPath = path.join(this.stagingRoot, `${randomName}.part`);
+    const sanitizedPath = path.join(this.stagingRoot, `${randomName}.sanitized`);
     let finalStoragePath: string | undefined;
     let fileHandle: Awaited<ReturnType<typeof open>> | undefined;
 
     try {
       fileHandle = await open(stagingPath, "wx", 0o600);
-      const hash = createHash("sha256");
       const signature = Buffer.alloc(12);
       let signatureBytes = 0;
       let byteSize = 0;
@@ -264,7 +263,6 @@ export class ImageStorage {
             : Buffer.from(value as Uint8Array);
         byteSize += chunk.length;
         if (byteSize > this.config.maxBytes) throw this.imageTooLarge();
-        hash.update(chunk);
         if (signatureBytes < signature.length) {
           const copied = chunk.copy(
             signature,
@@ -323,28 +321,68 @@ export class ImageStorage {
       ) {
         throw this.unsupportedDimensions();
       }
-      await this.decodeEntireImage(stagingPath);
+      // Re-encoding forces a complete decode, strips EXIF/GPS and other metadata,
+      // applies the orientation tag, and removes bytes appended to an otherwise
+      // valid image. The stored object is therefore never the untrusted upload.
+      const sanitizer = sharp(stagingPath, {
+        failOn: "error",
+        limitInputPixels: this.config.maxPixels,
+        sequentialRead: true,
+      }).rotate();
+      if (actualContentType === "image/jpeg") {
+        sanitizer.jpeg({ quality: 95, chromaSubsampling: "4:4:4" });
+      } else {
+        sanitizer.webp({ quality: 95 });
+      }
+      try {
+        await sanitizer.toFile(sanitizedPath);
+        await chmod(sanitizedPath, 0o600);
+      } catch (cause) {
+        throw this.invalidImage(cause);
+      }
+
+      const sanitizedMetadata = await sharp(sanitizedPath, {
+        failOn: "error",
+        limitInputPixels: this.config.maxPixels,
+        sequentialRead: true,
+      }).metadata();
+      if (
+        sanitizedMetadata.format !== metadata.format ||
+        !sanitizedMetadata.width ||
+        !sanitizedMetadata.height ||
+        sanitizedMetadata.exif ||
+        sanitizedMetadata.xmp ||
+        sanitizedMetadata.iptc ||
+        sanitizedMetadata.tifftagPhotoshop ||
+        sanitizedMetadata.comments?.length
+      ) {
+        throw this.invalidImage();
+      }
+      const sanitized = await this.hashFile(sanitizedPath);
+      if (sanitized.byteSize > this.config.maxBytes) throw this.imageTooLarge();
 
       const extension = actualContentType === "image/jpeg" ? "jpg" : "webp";
       const shard = randomName.slice(0, 2);
       const relativePath = path.posix.join("objects", shard, `${randomName}.${extension}`);
       const finalPath = this.resolveStoredPath(relativePath);
       await mkdir(path.dirname(finalPath), { recursive: true, mode: 0o700 });
-      await rename(stagingPath, finalPath);
+      await rm(stagingPath, { force: true });
+      await rename(sanitizedPath, finalPath);
       finalStoragePath = relativePath;
       await this.syncDirectory(path.dirname(finalPath));
 
       return {
         storagePath: relativePath,
         contentType: actualContentType,
-        byteSize,
-        sha256: hash.digest("hex"),
-        width: metadata.width,
-        height: metadata.height,
+        byteSize: sanitized.byteSize,
+        sha256: sanitized.sha256,
+        width: sanitizedMetadata.width,
+        height: sanitizedMetadata.height,
       };
     } catch (error) {
       if (fileHandle) await fileHandle.close().catch(() => undefined);
       await rm(stagingPath, { force: true }).catch(() => undefined);
+      await rm(sanitizedPath, { force: true }).catch(() => undefined);
       if (finalStoragePath) await this.remove(finalStoragePath).catch(() => undefined);
       throw error;
     }
@@ -382,20 +420,14 @@ export class ImageStorage {
     }
   }
 
-  private async decodeEntireImage(filePath: string): Promise<void> {
-    try {
-      await pipeline(
-        createReadStream(filePath),
-        sharp({
-          failOn: "error",
-          limitInputPixels: this.config.maxPixels,
-          sequentialRead: true,
-        }).raw(),
-        new Writable({ write: (_chunk, _encoding, callback) => callback() }),
-      );
-    } catch (cause) {
-      throw this.invalidImage(cause);
+  private async hashFile(filePath: string): Promise<{ byteSize: number; sha256: string }> {
+    const hash = createHash("sha256");
+    let byteSize = 0;
+    for await (const chunk of createReadStream(filePath)) {
+      byteSize += chunk.length;
+      hash.update(chunk);
     }
+    return { byteSize, sha256: hash.digest("hex") };
   }
 
   private isMissingFile(error: unknown): boolean {
