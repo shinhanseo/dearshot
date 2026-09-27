@@ -2,7 +2,9 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   char,
+  check,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -22,6 +24,11 @@ export const userStatusEnum = pgEnum("user_status", [
 ]);
 export const aspectRatioEnum = pgEnum("aspect_ratio", ["4:3", "9:16", "1:1"]);
 export const authProviderEnum = pgEnum("auth_provider", ["GOOGLE", "KAKAO"]);
+export const accountDeletionStatusEnum = pgEnum("account_deletion_status", [
+  "PENDING",
+  "PROCESSING",
+  "COMPLETED",
+]);
 
 export const users = pgTable(
   "users",
@@ -108,4 +115,37 @@ export const oauthNonceUses = pgTable(
     usedAt: timestamp("used_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("oauth_nonce_uses_expires_idx").on(table.tokenExpiresAt)],
+);
+
+export const accountDeletionRequests = pgTable(
+  "account_deletion_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Deliberately not an FK: the request remains briefly available after the
+    // user row has been erased so the client can display terminal status.
+    userId: uuid("user_id").notNull(),
+    status: accountDeletionStatusEnum("status").notNull().default("PENDING"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseOwner: varchar("lease_owner", { length: 128 }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    lastErrorCode: varchar("last_error_code", { length: 64 }),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("account_deletion_requests_user_uidx").on(table.userId),
+    index("account_deletion_requests_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt),
+    index("account_deletion_requests_expires_idx").on(table.expiresAt),
+    check("account_deletion_requests_attempt_check", sql`${table.attemptCount} >= 0`),
+    check(
+      "account_deletion_requests_lease_check",
+      sql`(${table.status} = 'PROCESSING' and ${table.leaseOwner} is not null and ${table.leaseExpiresAt} is not null) or (${table.status} <> 'PROCESSING' and ${table.leaseOwner} is null and ${table.leaseExpiresAt} is null)`,
+    ),
+    check(
+      "account_deletion_requests_completion_check",
+      sql`(${table.status} = 'COMPLETED' and ${table.completedAt} is not null) or (${table.status} <> 'COMPLETED' and ${table.completedAt} is null)`,
+    ),
+  ],
 );

@@ -2,6 +2,7 @@ import type { DeviceAnalysisSnapshot } from "../db/schema/jobs.js";
 
 export type ClaimedSceneAnalysis = {
   analysisId: string;
+  ownerUserId: string;
   sceneRevision: number;
   uploadId: string;
   storagePath: string;

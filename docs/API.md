@@ -137,6 +137,7 @@
 | `GET` | `/me` | 회원 | 내 계정 조회 |
 | `PATCH` | `/me/preferences` | 회원 | 언어·동의·촬영 기본값 변경 |
 | `DELETE` | `/me` | 회원 | 회원 탈퇴 요청 |
+| `GET` | `/account-deletions/{deletionId}` | 탈퇴 요청 Access Token | 회원 탈퇴 처리 상태 |
 
 ### 이미지와 AI
 
@@ -334,23 +335,22 @@ Access Token은 15분, Refresh Token은 30일을 기본값으로 사용한다. �
 
 `DELETE /me`
 
-```json
-{
-  "confirmation": "DELETE",
-  "reason": "NOT_USEFUL"
-}
-```
+요청 본문은 없다. 요청을 받으면 계정을 `DELETION_PENDING`으로 바꾸고 모든 Refresh Token을 폐기하며 진행 중인 분석·피드백을 취소한다. 같은 Access Token으로 재요청하면 기존 삭제 작업을 반환한다.
 
 응답 `202 Accepted`:
 
 ```json
 {
   "deletionId": "305da619-e1af-478a-945c-629866881647",
-  "scheduledAt": "2026-09-20T12:00:00Z"
+  "status": "PENDING",
+  "requestedAt": "2026-09-20T12:00:00Z",
+  "completedAt": null
 }
 ```
 
-Access Token과 Refresh Token은 즉시 폐기하고 계정 데이터는 개인정보처리방침에 명시한 기간 안에 삭제한다.
+Refresh Token은 즉시 폐기하고 일반 API 사용을 차단한다. 기존 Access Token은 만료될 때까지 `GET /account-deletions/{deletionId}`에만 사용해 `PENDING`, `PROCESSING`, `COMPLETED` 상태를 확인할 수 있다. 삭제 worker는 파일을 먼저 격리하고 DB를 삭제하며, 어느 단계든 실패하면 파일을 복구한 뒤 지수 backoff로 재시도한다.
+
+이미지는 정상 작업 종료 직후 삭제하고 장애가 생겨도 업로드 후 최대 1시간 안에 정리한다. 분석·피드백 결과는 7일, 이미지·prompt·응답을 포함하지 않는 AI 시도 메타데이터는 30일, 제품 이벤트는 90일 보관한다.
 
 ## 6. 임시 이미지 업로드
 

@@ -275,10 +275,13 @@ export const aiJobAttempts = pgTable(
   "ai_job_attempts",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     sceneAnalysisId: uuid("scene_analysis_id")
-      .references(() => sceneAnalyses.id, { onDelete: "cascade" }),
+      .references(() => sceneAnalyses.id, { onDelete: "set null" }),
     photoFeedbackId: uuid("photo_feedback_id")
-      .references(() => photoFeedbacks.id, { onDelete: "cascade" }),
+      .references(() => photoFeedbacks.id, { onDelete: "set null" }),
     attemptNumber: integer("attempt_number").notNull(),
     requestId: uuid("request_id").notNull(),
     provider: varchar("provider", { length: 32 }).notNull(),
@@ -308,9 +311,13 @@ export const aiJobAttempts = pgTable(
     uniqueIndex("ai_job_attempts_request_uidx").on(table.requestId),
     index("ai_job_attempts_scene_started_idx").on(table.sceneAnalysisId, table.startedAt),
     index("ai_job_attempts_feedback_started_idx").on(table.photoFeedbackId, table.startedAt),
+    index("ai_job_attempts_owner_started_idx").on(table.ownerUserId, table.startedAt),
+    index("ai_job_attempts_started_idx").on(table.startedAt),
     check(
       "ai_job_attempts_parent_check",
-      sql`num_nonnulls(${table.sceneAnalysisId}, ${table.photoFeedbackId}) = 1`,
+      // A completed audit becomes parentless after the 7-day job retention,
+      // then remains metadata-only until its own 30-day retention expires.
+      sql`num_nonnulls(${table.sceneAnalysisId}, ${table.photoFeedbackId}) = 1 or (num_nonnulls(${table.sceneAnalysisId}, ${table.photoFeedbackId}) = 0 and ${table.status} <> 'STARTED' and ${table.completedAt} is not null)`,
     ),
     check("ai_job_attempts_number_check", sql`${table.attemptNumber} > 0`),
     check("ai_job_attempts_latency_check", sql`${table.latencyMs} is null or ${table.latencyMs} >= 0`),

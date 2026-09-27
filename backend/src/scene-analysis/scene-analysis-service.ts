@@ -91,6 +91,11 @@ export class SceneAnalysisService {
         updatedAt: this.clock(),
         leaseOwner: null,
         leaseExpiresAt: null,
+        deviceAnalysis: null,
+        timezone: null,
+        latitude: null,
+        longitude: null,
+        locationAccuracyMeters: null,
       }).where(and(
         eq(sceneAnalyses.id, analysisId), eq(sceneAnalyses.ownerUserId, ownerUserId),
         inArray(sceneAnalyses.status, ["QUEUED", "PROCESSING"]),

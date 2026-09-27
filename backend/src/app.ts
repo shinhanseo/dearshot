@@ -25,6 +25,8 @@ import { createAppEventRouter } from "./routes/app-events.js";
 import type { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
 import type { PhotoFeedbackService } from "./photo-feedback/photo-feedback-service.js";
 import { createPhotoFeedbackRouter } from "./routes/photo-feedback.js";
+import type { AccountService } from "./account/account-service.js";
+import { createAccountRouter } from "./routes/account.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -40,6 +42,7 @@ type AppDependencies = {
     tokenService: TokenService;
     ipRateLimiter?: RequestHandler;
   };
+  account?: { service: AccountService; tokenService: TokenService };
   catalog?: {
     service: CatalogService;
     assetRoot: string;
@@ -74,6 +77,7 @@ export function createApp({
   logger,
   http,
   auth,
+  account,
   catalog,
   uploads,
   appConfig,
@@ -108,7 +112,7 @@ export function createApp({
           }),
         );
       },
-      methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [
         "Authorization",
         "Content-Type",
@@ -145,6 +149,7 @@ export function createApp({
   });
 
   if (auth) app.use("/api/v1", createAuthRouter(auth));
+  if (account) app.use("/api/v1", createAccountRouter(account.tokenService, account.service));
   if (appConfig) app.use("/api/v1", createAppConfigRouter(appConfig));
   if (productEvents) {
     app.use(

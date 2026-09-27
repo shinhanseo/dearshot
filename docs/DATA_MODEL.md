@@ -92,7 +92,7 @@ erDiagram
 
 ### `oauth_nonce_uses`
 
-Google ID Token의 nonce 원문 대신 SHA-256 해시를 PK로 저장하고 provider, token 만료 시각, 사용 시각을 기록합니다. 이미 존재하는 해시는 재사용 공격으로 거부하며 만료된 행은 B-17 retention 작업에서 삭제합니다.
+Google ID Token의 nonce 원문 대신 SHA-256 해시를 PK로 저장하고 provider, token 만료 시각, 사용 시각을 기록합니다. 이미 존재하는 해시는 재사용 공격으로 거부하며 만료된 행은 retention 작업에서 삭제합니다.
 
 ### `refresh_sessions`
 
@@ -104,7 +104,7 @@ Google ID Token의 nonce 원문 대신 SHA-256 해시를 PK로 저장하고 prov
 
 ### `account_deletion_requests`
 
-API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `scheduled_at`, `completed_at`을 저장합니다. 완료 후에는 사용자와 연결된 데이터가 삭제되었는지 검증합니다.
+API가 반환할 `deletion_id`, FK가 아닌 `user_id`, 상태, 시도 횟수, 다음 재시도 시각, lease, 표준 오류 코드, 요청·완료·상태 만료 시각을 저장합니다. 사용자 행을 지운 뒤에도 짧은 기간 완료 상태를 조회할 수 있어야 하므로 `user_id`에는 FK를 걸지 않습니다.
 
 ## 장면과 템플릿
 
@@ -170,7 +170,8 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 | 필드 | 설명 |
 | --- | --- |
-| `scene_analysis_id`, `photo_feedback_id` | 둘 중 정확히 하나만 설정되는 AI 작업 FK |
+| `owner_user_id` | 계정 삭제 시 audit까지 제거하기 위한 사용자 FK |
+| `scene_analysis_id`, `photo_feedback_id` | 생성 시 하나만 설정되고 부모의 7일 보존 만료 뒤에는 null이 되는 AI 작업 FK |
 | `attempt_number` | 작업별 1부터 증가 |
 | `provider`, `model` | 호출 대상 |
 | `prompt_version`, `schema_version` | 재현 가능한 계약 버전 |
@@ -180,7 +181,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 | `input_tokens`, `output_tokens` | 사용량 추적 |
 | `request_id`, `started_at`, `completed_at` | 요청 추적 |
 
-각 부모 작업에서 `attempt_number`가 유일하며 DB check로 두 FK 중 하나만 설정되게 합니다. 원본 프롬프트, 이미지, provider 원본 응답은 저장하지 않습니다.
+각 부모 작업에서 `attempt_number`가 유일합니다. 부모 작업이 7일 뒤 삭제되면 FK는 `SET NULL`이 되고, 이미지·prompt·응답이 없는 audit 행만 최대 30일까지 남습니다. 원본 프롬프트, 이미지, provider 원본 응답은 저장하지 않습니다.
 
 ## 비용과 제품 분석
 
@@ -260,6 +261,7 @@ idempotency_records(user_id, scope, idempotency_key) UNIQUE
 
 - 서버의 주기 작업이 만료된 이미지와 AI 결과를 정리합니다.
 - 회원 탈퇴 시작 시 refresh session을 즉시 폐기하고 진행 중 작업을 취소합니다.
+- 탈퇴 worker는 모든 파일을 먼저 격리하고 DB transaction을 완료한 뒤 파일을 확정 삭제합니다. 실패 시 격리 파일을 복구하고 재시도합니다.
 - 좋아요·북마크·preferences·identity는 사용자 삭제에 맞춰 cascade합니다.
 - 사용자와 연결된 원본 제품 이벤트는 삭제하거나 actor를 제거한 집계치로만 남깁니다.
 - `app_events`는 90일 뒤 원본을 삭제하며 장기 지표가 필요하면 일별 집계만 남깁니다.
@@ -289,6 +291,6 @@ template ID/version/locale을 키로 서버 응답과 자산 경로, cache expir
 6. usage·idempotency
 7. scene analysis polling result
 8. AI attempt·photo feedback
-9. app event·retention job
+9. app event·계정 삭제·retention worker
 
 각 기능 PR이 자기 테이블과 migration을 추가합니다. 초기 PR에서 모든 테이블을 한꺼번에 생성하지 않습니다.

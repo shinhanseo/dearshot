@@ -33,6 +33,9 @@ import { PhotoFeedbackWorker } from "./photo-feedback/photo-feedback-worker.js";
 import { ProviderPhotoFeedbackProcessor } from "./photo-feedback/photo-feedback-processor.js";
 import { GeminiPhotoFeedbackProvider } from "./photo-feedback/gemini-photo-feedback-provider.js";
 import { MockPhotoFeedbackProvider } from "./photo-feedback/photo-feedback-provider.js";
+import { AccountService } from "./account/account-service.js";
+import { AccountDeletionWorker } from "./account/account-deletion-worker.js";
+import { RetentionWorker } from "./privacy/retention-worker.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -41,10 +44,15 @@ async function main() {
   const tokenService = new TokenService(environment.auth);
   const googleVerifier = new GoogleAuthLibraryVerifier(environment.google.webClientId);
   const authService = new AuthService(database.db, tokenService, environment.auth);
+  const accountService = new AccountService(
+    database.db,
+    environment.privacy.deletionStatusRetentionDays,
+  );
   const socialIdentityAuthService = new SocialIdentityAuthService(
     database.db,
     tokenService,
     environment.auth,
+    environment.privacy.deletionStatusRetentionDays,
   );
   const googleAuthService = new GoogleAuthService(googleVerifier, socialIdentityAuthService);
   const kakaoVerifier = new KakaoApiIdentityVerifier(
@@ -143,6 +151,27 @@ async function main() {
     },
     logger,
   );
+  const accountDeletionWorker = new AccountDeletionWorker(
+    database.db,
+    imageStorage,
+    {
+      pollIntervalMillis: environment.sceneAnalysis.workerPollIntervalMillis,
+      leaseSeconds: environment.sceneAnalysis.workerLeaseSeconds,
+      retryBaseSeconds: environment.privacy.deletionRetryBaseSeconds,
+    },
+    logger,
+  );
+  const retentionWorker = new RetentionWorker(
+    database.db,
+    imageStorage,
+    {
+      intervalMillis: environment.privacy.cleanupIntervalMillis,
+      uploadMaximumAgeSeconds: environment.uploads.ttlSeconds,
+      aiAttemptRetentionDays: environment.privacy.aiAttemptRetentionDays,
+      temporaryFileGraceSeconds: environment.uploads.ttlSeconds,
+    },
+    logger,
+  );
   const uploadIpRateLimiter = createIpRateLimiter({
     scope: "uploads",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
@@ -179,6 +208,10 @@ async function main() {
     sceneAnalysisWorker.start();
     photoFeedbackWorker.start();
   }
+  if (environment.privacy.workerEnabled) {
+    accountDeletionWorker.start();
+    retentionWorker.start();
+  }
 
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
@@ -191,6 +224,7 @@ async function main() {
       tokenService,
       ipRateLimiter: authIpRateLimiter,
     },
+    account: { service: accountService, tokenService },
     catalog: {
       service: catalogService,
       assetRoot: environment.catalog.assetRoot,
@@ -233,7 +267,12 @@ async function main() {
     shuttingDown = true;
     logger.info({ signal }, "Shutting down DearShot API");
 
-    void Promise.all([sceneAnalysisWorker.stop(), photoFeedbackWorker.stop()]).then(() => {
+    void Promise.all([
+      sceneAnalysisWorker.stop(),
+      photoFeedbackWorker.stop(),
+      accountDeletionWorker.stop(),
+      retentionWorker.stop(),
+    ]).then(() => {
       server.close(async (error) => {
         try {
           await closeDatabaseConnection(database.pool);

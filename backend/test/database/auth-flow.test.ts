@@ -22,6 +22,7 @@ import {
   verifyDatabaseConnection,
 } from "../../src/db/client.js";
 import {
+  accountDeletionRequests,
   authIdentities,
   oauthNonceUses,
   refreshSessions,
@@ -100,7 +101,7 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     googleIdentities.clear();
     kakaoIdentities.clear();
     await connection.db.execute(
-      sql`truncate table oauth_nonce_uses, auth_identities, refresh_sessions, user_preferences, users restart identity cascade`,
+      sql`truncate table account_deletion_requests, oauth_nonce_uses, auth_identities, refresh_sessions, user_preferences, users restart identity cascade`,
     );
   });
 
@@ -323,6 +324,9 @@ describe("authentication database flows", { concurrency: 1 }, () => {
       .from(users)
       .where(eq(users.id, guest.principal.id));
     assert.equal(guestAfterCollision.status, "DELETION_PENDING");
+    const [guestCleanup] = await connection.db.select().from(accountDeletionRequests)
+      .where(eq(accountDeletionRequests.userId, guest.principal.id));
+    assert.equal(guestCleanup.status, "PENDING");
     const identities = await connection.db.select().from(authIdentities);
     assert.equal(identities.length, 1);
     assert.equal(identities[0].userId, owner.body.user.id);

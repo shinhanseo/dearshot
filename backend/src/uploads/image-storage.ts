@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { chmod, mkdir, open, readFile, rename, rm } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, readdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
 import type { Request } from "express";
@@ -233,6 +233,27 @@ export class ImageStorage {
         moved = false;
       },
     };
+  }
+
+  async cleanupTemporaryFiles(olderThan: Date): Promise<number> {
+    await this.initialized;
+    let removed = 0;
+    for (const directory of [this.stagingRoot, this.trashRoot]) {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        const absolutePath = path.join(directory, entry.name);
+        try {
+          const metadata = await stat(absolutePath);
+          if (metadata.mtime <= olderThan) {
+            await rm(absolutePath, { force: true });
+            removed += 1;
+          }
+        } catch (error) {
+          if (!this.isMissingFile(error)) throw error;
+        }
+      }
+    }
+    return removed;
   }
 
   private async initialize() {
