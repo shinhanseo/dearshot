@@ -12,6 +12,8 @@ export type ClaimedSceneAnalysis = {
   uploadId: string;
   storagePath: string;
   contentType: string;
+  imageWidth: number;
+  imageHeight: number;
   locale: string;
   capturedAt: Date;
   deviceAnalysis: DeviceAnalysisSnapshot | null;
@@ -25,14 +27,22 @@ export type ClaimedSceneAnalysis = {
   leaseToken: string;
 };
 
-export type SceneProcessingResult = {
-  scene: { sceneKey: string; confidence: number | null };
-  recommendation: {
-    template: { id: string; version: number };
-    reasonCode: string;
-  };
-  source: string;
-};
+export type SceneProcessingResult =
+  | {
+      outcome: "RECOMMENDED";
+      scene: { sceneKey: string; confidence: number | null };
+      recommendation: {
+        template: { id: string; version: number };
+        reasonCode: string;
+      };
+      source: string;
+    }
+  | {
+      outcome: "NEEDS_USER_SELECTION";
+      reasonCode: "NO_TEMPLATE_CANDIDATES" | "LOW_RECOMMENDATION_CONFIDENCE";
+      sceneCandidates: string[];
+      source: string;
+    };
 
 export type SceneProcessingContext = {
   signal: AbortSignal;
@@ -69,6 +79,7 @@ export class FakeSceneAnalysisProcessor implements SceneAnalysisProcessor {
 
     const firstCandidate = analysis.deviceAnalysis?.sceneClassifier?.candidates[0];
     return {
+      outcome: "RECOMMENDED",
       scene: {
         sceneKey: firstCandidate?.label ?? "unknown",
         confidence: firstCandidate?.confidence ?? null,

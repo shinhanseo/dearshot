@@ -9,8 +9,8 @@ info:
     Android 앱용 DearShot HTTP API 계약입니다.
     장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
     분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
-    이 파일은 구현 목표 명세입니다. 현재 서버에는 인증, 템플릿 카탈로그·상호작용,
-    멱등 이미지 업로드, 앱 설정과 계약에 포함되지 않는 임시 scene-analysis mock이 구현되어 있습니다.
+    현재 서버에는 인증, 템플릿 카탈로그·상호작용, 멱등 이미지 업로드, 앱 설정,
+    비동기 장면 작업·SSE와 공개 DB 후보로 제한된 Gemini 템플릿 추천이 구현되어 있습니다.
 servers:
   - url: /api/v1
     description: Same-origin development or deployment
@@ -1621,7 +1621,7 @@ components:
 
     SceneRecommendation:
       type: object
-      required: [template, reason]
+      required: [template, reasonCode]
       properties:
         template:
           type: object
@@ -1629,8 +1629,9 @@ components:
           properties:
             id: { type: string }
             version: { type: integer, minimum: 1 }
-        reason:
+        reasonCode:
           type: string
+          enum: [SCENE_MATCH, SUBJECT_PLACEMENT, BACKGROUND_BALANCE, LIGHTING_CONTEXT, FALLBACK_BEST_FIT]
 
     SceneAnalysis:
       type: object

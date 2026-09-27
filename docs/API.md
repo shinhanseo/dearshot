@@ -34,6 +34,7 @@
 | 현재 | `POST /app-events/batch` | 구현됨 | guest/member 핵심 퍼널 이벤트의 검증·중복 제거·90일 보존 |
 | B-14 구현 | `POST/GET/DELETE /api/v1/scene-analyses` | 구현 | 온디바이스 분석 입력, 작업 생성·조회·취소, 업로드·사용량 원자 처리 |
 | B-15 구현 | `GET /api/v1/scene-analyses/{id}/events` | 구현 | PostgreSQL worker, lease 복구, 실제 단계 SSE와 `Last-Event-ID` replay |
+| B-16 구현 | 장면 분석 worker 결과 | 구현 | Gemini 구조화 응답, 공개 DB 후보 allowlist, AI attempt, 원본 이미지 즉시 삭제 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
 
 단수형 개발 mock `/scene-analysis`는 B-14에서 제거했습니다. Android는 복수형 비동기 작업 계약만 사용합니다.
@@ -498,11 +499,11 @@ data: {"stage":"PREPARING_INPUT"}
 
 id: 2
 event: recommendation
-data: {"template":{"id":"beach-breeze","version":3},"reason":"열린 수평선과 부드러운 측면광이 잘 어울려요.","sceneRevision":3}
+data: {"outcome":"RECOMMENDED","scene":{"sceneKey":"beach","confidence":0.94},"recommendation":{"template":{"id":"beach-breeze","version":3},"reasonCode":"BACKGROUND_BALANCE"},"source":"gemini","sceneRevision":3}
 
 id: 3
 event: completed
-data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","sceneRevision":3}
+data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","status":"COMPLETED","sceneRevision":3}
 ```
 
 | event | 용도 | 여러 번 발생 |
@@ -535,8 +536,10 @@ data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","sceneRevision":3}
     "scene": {"sceneKey": "beach", "confidence": 0.94},
     "recommendation": {
       "template": {"id": "beach-breeze", "version": 3},
-      "reason": "열린 수평선과 부드러운 측면광이 잘 어울려요."
-    }
+      "reasonCode": "BACKGROUND_BALANCE"
+    },
+    "source": "gemini",
+    "outcome": "RECOMMENDED"
   },
   "capturedAt": "2026-09-20T08:41:00Z",
   "createdAt": "2026-09-20T08:41:01Z",

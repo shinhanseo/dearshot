@@ -207,4 +207,30 @@ export class UploadService {
     }
     if (deleted) await quarantine?.discard();
   }
+
+  async purgeConsumed(uploadId: string, storagePath: string): Promise<void> {
+    let quarantine: Awaited<ReturnType<ImageStorage["quarantine"]>> | undefined;
+    try {
+      quarantine = await this.storage.quarantine(storagePath);
+      const [deleted] = await this.database
+        .update(imageUploads)
+        .set({ status: "DELETED", deletedAt: this.clock() })
+        .where(and(
+          eq(imageUploads.id, uploadId),
+          eq(imageUploads.storagePath, storagePath),
+          eq(imageUploads.status, "CONSUMED"),
+        ))
+        .returning({ id: imageUploads.id });
+      if (!deleted) {
+        await quarantine.restore();
+        return;
+      }
+    } catch (error) {
+      await quarantine?.restore().catch(() => undefined);
+      throw error;
+    }
+    // Once the DB marks the upload deleted, never restore the bytes to the live
+    // object path. A failed trash unlink can be retried by the retention sweep.
+    await quarantine.discard();
+  }
 }

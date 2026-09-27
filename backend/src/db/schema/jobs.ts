@@ -45,6 +45,12 @@ export const sceneAnalysisEventTypeEnum = pgEnum("scene_analysis_event_type", [
   "failed",
 ]);
 
+export const aiJobAttemptStatusEnum = pgEnum("ai_job_attempt_status", [
+  "STARTED",
+  "SUCCEEDED",
+  "FAILED",
+]);
+
 export type DeviceAnalysisSnapshot = {
   sceneClassifier?: {
     model: string;
@@ -204,6 +210,48 @@ export const sceneAnalysisEvents = pgTable(
     check(
       "scene_analysis_events_payload_check",
       sql`jsonb_typeof(${table.payload}) = 'object'`,
+    ),
+  ],
+);
+
+export const aiJobAttempts = pgTable(
+  "ai_job_attempts",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    sceneAnalysisId: uuid("scene_analysis_id")
+      .notNull()
+      .references(() => sceneAnalyses.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    requestId: uuid("request_id").notNull(),
+    provider: varchar("provider", { length: 32 }).notNull(),
+    model: varchar("model", { length: 80 }).notNull(),
+    promptVersion: varchar("prompt_version", { length: 32 }).notNull(),
+    schemaVersion: varchar("schema_version", { length: 32 }).notNull(),
+    status: aiJobAttemptStatusEnum("status").notNull().default("STARTED"),
+    failurePhase: varchar("failure_phase", { length: 32 }),
+    errorCode: varchar("error_code", { length: 64 }),
+    providerStatusCode: integer("provider_status_code"),
+    retryable: boolean("retryable"),
+    latencyMs: integer("latency_ms"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("ai_job_attempts_scene_number_uidx").on(
+      table.sceneAnalysisId,
+      table.attemptNumber,
+    ),
+    uniqueIndex("ai_job_attempts_request_uidx").on(table.requestId),
+    index("ai_job_attempts_scene_started_idx").on(table.sceneAnalysisId, table.startedAt),
+    check("ai_job_attempts_number_check", sql`${table.attemptNumber} > 0`),
+    check("ai_job_attempts_latency_check", sql`${table.latencyMs} is null or ${table.latencyMs} >= 0`),
+    check("ai_job_attempts_input_tokens_check", sql`${table.inputTokens} is null or ${table.inputTokens} >= 0`),
+    check("ai_job_attempts_output_tokens_check", sql`${table.outputTokens} is null or ${table.outputTokens} >= 0`),
+    check(
+      "ai_job_attempts_completion_check",
+      sql`(${table.status} = 'STARTED' and ${table.completedAt} is null) or (${table.status} <> 'STARTED' and ${table.completedAt} is not null)`,
     ),
   ],
 );

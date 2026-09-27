@@ -20,6 +20,15 @@ describe("environment configuration", () => {
       authRequestsPerIpPerMinute: 20,
       appEventBatchesPerIpPerMinute: 30,
     });
+    assert.deepEqual(environment.ai, {
+      provider: "mock",
+      apiKey: "",
+      gemini: {
+        model: "gemini-3.5-flash",
+        timeoutMillis: 10_000,
+        maximumResponseBytes: 262_144,
+      },
+    });
     assert.equal(environment.google.webClientId, "replace-with-google-web-client-id");
     assert.equal(environment.kakao.appId, "replace-with-kakao-app-id");
     assert.equal(environment.kakao.apiTimeoutMillis, 3_000);
@@ -48,6 +57,8 @@ describe("environment configuration", () => {
       ssePollIntervalMillis: 500,
       sseHeartbeatSeconds: 15,
       eventRetentionHours: 24,
+      maximumCandidates: 12,
+      minimumConfidence: 0.55,
     });
     assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
     assert.equal(environment.appConfig.features.kakaoLogin, true);
@@ -145,6 +156,18 @@ describe("environment configuration", () => {
       () => loadEnvironment({ ...baseEnvironment, SCENE_WORKER_LEASE_SECONDS: "4" }),
       /SCENE_WORKER_LEASE_SECONDS must be at least 5/u,
     );
+  });
+
+  it("requires a Gemini key when the real provider is selected", () => {
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, AI_PROVIDER: "gemini" }),
+      /AI_API_KEY is required/u,
+    );
+    assert.equal(loadEnvironment({
+      ...baseEnvironment,
+      AI_PROVIDER: "gemini",
+      AI_API_KEY: "test-key",
+    }).ai.provider, "gemini");
   });
 
   it("accepts exact CORS origins and rejects unsafe production origins", () => {

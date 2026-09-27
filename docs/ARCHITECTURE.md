@@ -2,7 +2,7 @@
 
 ## 현재와 목표 범위
 
-현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, multipart 업로드, 비동기 장면 작업과 lease worker, 재연결 가능한 SSE까지 구현되어 있습니다. 실제 Gemini provider와 공개 템플릿 후보 검증은 B-16에서 연결합니다.
+현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, multipart 업로드, 비동기 장면 작업과 lease worker, 재연결 가능한 SSE, Gemini 기반 단일 템플릿 추천까지 구현되어 있습니다.
 
 아래 구성은 MVP 목표입니다. 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-14에서 단수형 mock route를 제거하고 인증·소유권·멱등성·사용량 제한이 적용된 작업 API로 교체했습니다.
 
@@ -106,7 +106,8 @@ CameraX stable-frame gate
   → PostgreSQL worker lease and real-stage SSE
   → Gemini receives image, hints, and published DB template candidates
   → exactly one template ID/version validated and saved
-  → temporary image and exact location removed by retention policy
+  → terminal state and SSE event committed atomically
+  → temporary image immediately deleted after completion or final failure
 ```
 
 Android는 화면 안정성 판단과 Places365·YOLOX 추론을 담당해 즉시 키워드를 보여 줍니다. 서버는 이 값을 신뢰 판정으로 사용하지 않고 Gemini 추천의 보조 입력으로만 사용합니다. Gemini는 서버가 조회한 공개 템플릿 후보 밖의 ID를 반환할 수 없으며 최종 추천은 템플릿 한 개입니다. 화면이 크게 바뀌면 Android가 `sceneRevision`을 올려 새 작업을 만들고 이전 revision 결과를 무시합니다.
@@ -114,7 +115,7 @@ Android는 화면 안정성 판단과 Places365·YOLOX 추론을 담당해 즉�
 ## 관찰과 로그
 
 - 도메인 작업의 최종 상태는 `scene_analyses`, `photo_feedbacks`에 저장합니다.
-- provider별 시도, latency, token 수, 표준 오류는 `ai_job_attempts`에 저장합니다.
+- provider별 시도, model, prompt/schema version, latency, token 수와 표준 오류는 `ai_job_attempts`에 저장합니다. 원문 prompt와 응답은 저장하지 않습니다.
 - 게스트와 회원의 핵심 퍼널은 제한된 `app_events`에 저장합니다.
 - request log와 stack trace는 Pino JSON stdout과 Docker log rotation으로 관리합니다.
 - 모든 계층은 동일한 request ID를 사용해 API 로그와 DB 작업을 연결합니다.

@@ -33,6 +33,7 @@ export type SceneAnalysisWorkerConfig = {
   leaseSeconds: number;
   retryBaseSeconds: number;
   eventRetentionHours: number;
+  onTerminal?: (upload: { uploadId: string; storagePath: string }) => Promise<void>;
 };
 
 export class SceneAnalysisWorker {
@@ -157,7 +158,12 @@ export class SceneAnalysisWorker {
           expiresAt: sceneAnalyses.expiresAt,
         });
       const [upload] = await transaction
-        .select({ storagePath: imageUploads.storagePath, contentType: imageUploads.contentType })
+        .select({
+          storagePath: imageUploads.storagePath,
+          contentType: imageUploads.contentType,
+          imageWidth: imageUploads.width,
+          imageHeight: imageUploads.height,
+        })
         .from(imageUploads)
         .where(eq(imageUploads.id, claimed.uploadId))
         .limit(1);
@@ -191,9 +197,13 @@ export class SceneAnalysisWorker {
         emitStage: (stage) => this.emitStage(analysis, stage),
       });
       await this.emitStage(analysis, "FINALIZING");
-      await this.complete(analysis, result);
+      const completed = await this.complete(analysis, result);
+      if (completed) await this.cleanupTerminalUpload(analysis);
     } catch (error) {
-      if (await this.ownsLease(analysis)) await this.handleFailure(analysis, error);
+      if (await this.ownsLease(analysis)) {
+        const terminal = await this.handleFailure(analysis, error);
+        if (terminal) await this.cleanupTerminalUpload(analysis);
+      }
     } finally {
       clearInterval(leaseHeartbeat);
     }
@@ -262,7 +272,7 @@ export class SceneAnalysisWorker {
       const [completed] = await transaction
         .update(sceneAnalyses)
         .set({
-          status: "COMPLETED",
+          status: result.outcome === "RECOMMENDED" ? "COMPLETED" : "NEEDS_USER_SELECTION",
           result,
           completedAt: now,
           updatedAt: now,
@@ -278,25 +288,28 @@ export class SceneAnalysisWorker {
         ))
         .returning({ id: sceneAnalyses.id });
       if (!completed) return false;
-      await this.appendEvent(transaction, analysis.analysisId, "recommendation", {
-        ...result,
-        sceneRevision: analysis.sceneRevision,
-      }, analysis.expiresAt);
+      if (result.outcome === "RECOMMENDED") {
+        await this.appendEvent(transaction, analysis.analysisId, "recommendation", {
+          ...result,
+          sceneRevision: analysis.sceneRevision,
+        }, analysis.expiresAt);
+      }
       await this.appendEvent(transaction, analysis.analysisId, "completed", {
         analysisId: analysis.analysisId,
+        status: result.outcome === "RECOMMENDED" ? "COMPLETED" : "NEEDS_USER_SELECTION",
         sceneRevision: analysis.sceneRevision,
       }, analysis.expiresAt);
       return true;
     });
   }
 
-  private async handleFailure(analysis: ClaimedSceneAnalysis, error: unknown): Promise<void> {
+  private async handleFailure(analysis: ClaimedSceneAnalysis, error: unknown): Promise<boolean> {
     const failure = error instanceof SceneProcessingError
       ? error
       : new SceneProcessingError("SCENE_PROCESSING_FAILED", true, { cause: error });
     const now = this.clock();
     const shouldRetry = failure.retryable && analysis.attemptCount < analysis.maxAttempts;
-    await this.database.transaction(async (transaction) => {
+    return this.database.transaction(async (transaction) => {
       const [updated] = await transaction
         .update(sceneAnalyses)
         .set(shouldRetry ? {
@@ -324,7 +337,7 @@ export class SceneAnalysisWorker {
           eq(sceneAnalyses.leaseOwner, analysis.leaseToken),
         ))
         .returning({ id: sceneAnalyses.id, nextAttemptAt: sceneAnalyses.nextAttemptAt });
-      if (!updated) return;
+      if (!updated) return false;
       if (shouldRetry) {
         await this.appendEvent(transaction, analysis.analysisId, "status", {
           stage: "PREPARING_INPUT",
@@ -340,6 +353,7 @@ export class SceneAnalysisWorker {
           sceneRevision: analysis.sceneRevision,
         }, analysis.expiresAt);
       }
+      return !shouldRetry;
     });
   }
 
@@ -373,19 +387,22 @@ export class SceneAnalysisWorker {
 
   private async failOneTerminal(condition: ReturnType<typeof and>, code: string): Promise<boolean> {
     const now = this.clock();
-    return this.database.transaction(async (transaction) => {
+    const terminal = await this.database.transaction(async (transaction) => {
       const [candidate] = await transaction
         .select({
           id: sceneAnalyses.id,
+          uploadId: sceneAnalyses.uploadId,
           sceneRevision: sceneAnalyses.sceneRevision,
           expiresAt: sceneAnalyses.expiresAt,
+          storagePath: imageUploads.storagePath,
         })
         .from(sceneAnalyses)
+        .innerJoin(imageUploads, eq(imageUploads.id, sceneAnalyses.uploadId))
         .where(condition)
         .orderBy(asc(sceneAnalyses.createdAt))
         .limit(1)
         .for("update", { skipLocked: true });
-      if (!candidate) return false;
+      if (!candidate) return undefined;
       await transaction.update(sceneAnalyses).set({
         status: "FAILED",
         failureCode: code,
@@ -400,8 +417,20 @@ export class SceneAnalysisWorker {
         retryable: false,
         sceneRevision: candidate.sceneRevision,
       }, candidate.expiresAt);
-      return true;
+      return candidate;
     });
+    if (!terminal) return false;
+    await this.cleanupTerminalUpload(terminal);
+    return true;
+  }
+
+  private async cleanupTerminalUpload(upload: { uploadId: string; storagePath: string }): Promise<void> {
+    if (!this.config.onTerminal) return;
+    try {
+      await this.config.onTerminal(upload);
+    } catch (error) {
+      this.logger.warn({ err: error, uploadId: upload.uploadId }, "Terminal scene image cleanup failed");
+    }
   }
 
   private async appendEvent(

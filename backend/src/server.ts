@@ -24,8 +24,11 @@ import { UploadService } from "./uploads/upload-service.js";
 import { UsageLimitService } from "./reliability/usage-limit-service.js";
 import { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
 import { SceneAnalysisEventService } from "./scene-analysis/scene-analysis-event-service.js";
-import { FakeSceneAnalysisProcessor } from "./scene-analysis/scene-analysis-processor.js";
 import { SceneAnalysisWorker } from "./scene-analysis/scene-analysis-worker.js";
+import { GeminiSceneRecommendationProvider } from "./scene-analysis/gemini-scene-recommendation-provider.js";
+import { SceneRecommendationProcessor } from "./scene-analysis/scene-recommendation-processor.js";
+import { MockSceneRecommendationProvider } from "./scene-analysis/scene-recommendation-provider.js";
+import { SceneTemplateCandidateService } from "./scene-analysis/scene-template-candidate-service.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -77,14 +80,35 @@ async function main() {
       heartbeatSeconds: environment.sceneAnalysis.sseHeartbeatSeconds,
     },
   );
+  const recommendationProvider = environment.ai.provider === "gemini"
+    ? new GeminiSceneRecommendationProvider({
+      apiKey: environment.ai.apiKey,
+      model: environment.ai.gemini.model,
+      timeoutMillis: environment.ai.gemini.timeoutMillis,
+      maximumResponseBytes: environment.ai.gemini.maximumResponseBytes,
+    })
+    : new MockSceneRecommendationProvider();
+  const sceneTemplateCandidates = new SceneTemplateCandidateService(
+    database.db,
+    environment.sceneAnalysis.maximumCandidates,
+  );
+  const sceneRecommendationProcessor = new SceneRecommendationProcessor(
+    database.db,
+    imageStorage,
+    sceneTemplateCandidates,
+    recommendationProvider,
+    { minimumConfidence: environment.sceneAnalysis.minimumConfidence },
+  );
   const sceneAnalysisWorker = new SceneAnalysisWorker(
     database.db,
-    new FakeSceneAnalysisProcessor(),
+    sceneRecommendationProcessor,
     {
       pollIntervalMillis: environment.sceneAnalysis.workerPollIntervalMillis,
       leaseSeconds: environment.sceneAnalysis.workerLeaseSeconds,
       retryBaseSeconds: environment.sceneAnalysis.workerRetryBaseSeconds,
       eventRetentionHours: environment.sceneAnalysis.eventRetentionHours,
+      onTerminal: ({ uploadId, storagePath }) =>
+        uploadService.purgeConsumed(uploadId, storagePath),
     },
     logger,
   );

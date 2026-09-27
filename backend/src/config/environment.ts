@@ -16,6 +16,13 @@ const booleanFromEnvironment = (fallback: boolean) =>
     .default(String(fallback) as "true" | "false")
     .transform((value) => value === "true");
 
+const numberFromEnvironment = (name: string, fallback: number, minimum: number, maximum: number) =>
+  z.coerce
+    .number({ error: `${name} must be a number` })
+    .min(minimum, `${name} must be at least ${minimum}`)
+    .max(maximum, `${name} must be at most ${maximum}`)
+    .default(fallback);
+
 const semanticVersion = z.string().regex(/^\d+\.\d+\.\d+$/u, "must use MAJOR.MINOR.PATCH");
 
 const commaSeparatedOrigins = z
@@ -49,6 +56,19 @@ const environmentSchema = z
     PORT: integerFromEnvironment("PORT", 3000, 1, 65_535),
     TRUST_PROXY_HOPS: integerFromEnvironment("TRUST_PROXY_HOPS", 0, 0, 2),
     CORS_ALLOWED_ORIGINS: commaSeparatedOrigins,
+    AI_PROVIDER: z.enum(["mock", "gemini"]).default("mock"),
+    AI_API_KEY: z.string().default(""),
+    GEMINI_MODEL: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,79}$/u).default("gemini-3.5-flash"),
+    GEMINI_TIMEOUT_MS: integerFromEnvironment("GEMINI_TIMEOUT_MS", 10_000, 1_000, 30_000),
+    GEMINI_MAX_RESPONSE_BYTES: integerFromEnvironment(
+      "GEMINI_MAX_RESPONSE_BYTES", 262_144, 4_096, 1_048_576,
+    ),
+    SCENE_RECOMMENDATION_MAX_CANDIDATES: integerFromEnvironment(
+      "SCENE_RECOMMENDATION_MAX_CANDIDATES", 12, 1, 20,
+    ),
+    SCENE_RECOMMENDATION_MIN_CONFIDENCE: numberFromEnvironment(
+      "SCENE_RECOMMENDATION_MIN_CONFIDENCE", 0.55, 0, 1,
+    ),
     JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
     JWT_ISSUER: z.string().min(1).default("dearshot-api"),
     JWT_AUDIENCE: z.string().min(1).default("dearshot-android"),
@@ -218,6 +238,20 @@ const environmentSchema = z
     ),
   })
   .superRefine((environment, context) => {
+    if (environment.NODE_ENV === "production" && environment.AI_PROVIDER !== "gemini") {
+      context.addIssue({
+        code: "custom",
+        path: ["AI_PROVIDER"],
+        message: "AI_PROVIDER must be gemini in production",
+      });
+    }
+    if (environment.AI_PROVIDER === "gemini" && environment.AI_API_KEY.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["AI_API_KEY"],
+        message: "AI_API_KEY is required when AI_PROVIDER is gemini",
+      });
+    }
     if (
       environment.NODE_ENV === "production" &&
       environment.JWT_ACCESS_SECRET.startsWith("replace-with-")
@@ -319,6 +353,11 @@ export type Environment = {
     corsAllowedOrigins: string[];
   };
   database: DatabaseConfig;
+  ai: {
+    provider: "mock" | "gemini";
+    apiKey: string;
+    gemini: { model: string; timeoutMillis: number; maximumResponseBytes: number };
+  };
   auth: AuthConfig;
   google: { webClientId: string };
   kakao: { appId: string; apiTimeoutMillis: number };
@@ -341,6 +380,8 @@ export type Environment = {
     ssePollIntervalMillis: number;
     sseHeartbeatSeconds: number;
     eventRetentionHours: number;
+    maximumCandidates: number;
+    minimumConfidence: number;
   };
   usage: UsageLimitConfig;
   rateLimits: {
@@ -391,6 +432,15 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       trustProxyHops: parsed.data.TRUST_PROXY_HOPS,
       corsAllowedOrigins: parsed.data.CORS_ALLOWED_ORIGINS,
     },
+    ai: {
+      provider: parsed.data.AI_PROVIDER,
+      apiKey: parsed.data.AI_API_KEY,
+      gemini: {
+        model: parsed.data.GEMINI_MODEL,
+        timeoutMillis: parsed.data.GEMINI_TIMEOUT_MS,
+        maximumResponseBytes: parsed.data.GEMINI_MAX_RESPONSE_BYTES,
+      },
+    },
     auth: {
       accessTokenSecret: parsed.data.JWT_ACCESS_SECRET,
       issuer: parsed.data.JWT_ISSUER,
@@ -425,6 +475,8 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       ssePollIntervalMillis: parsed.data.SCENE_SSE_POLL_INTERVAL_MS,
       sseHeartbeatSeconds: parsed.data.SCENE_SSE_HEARTBEAT_SECONDS,
       eventRetentionHours: parsed.data.SCENE_EVENT_RETENTION_HOURS,
+      maximumCandidates: parsed.data.SCENE_RECOMMENDATION_MAX_CANDIDATES,
+      minimumConfidence: parsed.data.SCENE_RECOMMENDATION_MIN_CONFIDENCE,
     },
     usage: {
       timezone: parsed.data.USAGE_TIMEZONE,
