@@ -452,7 +452,8 @@ paths:
       operationId: streamSceneAnalysisEvents
       summary: 장면 분석 이벤트 SSE 구독
       description: |
-        `status`, `clue`, `scene`, `recommendation`, `completed`, `failed` 이벤트를 전송합니다.
+        `status`, `scene`, `recommendation`, `completed`, `failed` 이벤트를 전송합니다.
+        Android에서 이미 표시한 Places365·YOLOX 키워드는 SSE로 복제하지 않습니다.
         재연결 시 `Last-Event-ID` 헤더를 사용합니다.
       security:
         - bearerAuth: []
@@ -473,8 +474,8 @@ paths:
                 type: string
               example: |-
                 id: 1
-                event: clue
-                data: {"keyword":"바다","confidence":0.97}
+                event: status
+                data: {"stage":"FILTERING_TEMPLATES"}
 
                 id: 2
                 event: completed
@@ -1465,42 +1466,124 @@ components:
         accuracyMeters:
           type: number
           minimum: 0
+          maximum: 100000
 
     SceneContext:
       type: object
+      additionalProperties: false
       properties:
         timezone:
           type: string
+          maxLength: 64
         location:
           $ref: '#/components/schemas/LocationContext'
 
+    DeviceSceneCandidate:
+      type: object
+      additionalProperties: false
+      required: [label, confidence]
+      properties:
+        label:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9][a-z0-9 _/-]*$'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    NormalizedBoundingBox:
+      type: object
+      additionalProperties: false
+      required: [left, top, right, bottom]
+      description: 모든 좌표는 0..1이며 left < right, top < bottom이어야 합니다.
+      properties:
+        left: { type: number, minimum: 0, maximum: 1 }
+        top: { type: number, minimum: 0, maximum: 1 }
+        right: { type: number, minimum: 0, maximum: 1 }
+        bottom: { type: number, minimum: 0, maximum: 1 }
+
+    DeviceDetectedObject:
+      type: object
+      additionalProperties: false
+      required: [label, confidence, box]
+      properties:
+        label:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9][a-z0-9 _/-]*$'
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        box:
+          $ref: '#/components/schemas/NormalizedBoundingBox'
+
+    DeviceAnalysis:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        sceneClassifier:
+          type: object
+          additionalProperties: false
+          required: [model, modelVersion, runtime, candidates]
+          properties:
+            model: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            modelVersion: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            runtime: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            candidates:
+              type: array
+              maxItems: 5
+              items:
+                $ref: '#/components/schemas/DeviceSceneCandidate'
+        objectDetector:
+          type: object
+          additionalProperties: false
+          required: [model, modelVersion, runtime, objects]
+          properties:
+            model: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            modelVersion: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            runtime: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9._/-]*$' }
+            objects:
+              type: array
+              maxItems: 20
+              items:
+                $ref: '#/components/schemas/DeviceDetectedObject'
+
     CreateSceneAnalysisRequest:
       type: object
-      required: [uploadId, capturedAt, locale]
+      additionalProperties: false
+      required: [uploadId, sceneRevision, capturedAt, locale]
       properties:
         uploadId:
           type: string
           format: uuid
+        sceneRevision:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
         capturedAt:
           type: string
           format: date-time
         locale:
           type: string
+          maxLength: 35
+        deviceAnalysis:
+          $ref: '#/components/schemas/DeviceAnalysis'
         context:
           $ref: '#/components/schemas/SceneContext'
 
     CreateSceneAnalysisResponse:
       type: object
-      required: [analysisId, status, eventsUrl, expiresAt]
+      required: [analysisId, sceneRevision, status, expiresAt]
       properties:
         analysisId:
           type: string
           format: uuid
+        sceneRevision:
+          type: integer
+          minimum: 0
         status:
           type: string
           const: QUEUED
-        eventsUrl:
-          type: string
         expiresAt:
           type: string
           format: date-time
@@ -1531,46 +1614,41 @@ components:
 
     SceneRecommendation:
       type: object
-      required: [templateIds, reason]
+      required: [template, reason]
       properties:
-        templateIds:
-          type: array
-          minItems: 1
-          maxItems: 5
-          items:
-            type: string
+        template:
+          type: object
+          required: [id, version]
+          properties:
+            id: { type: string }
+            version: { type: integer, minimum: 1 }
         reason:
           type: string
 
     SceneAnalysis:
       type: object
-      required: [analysisId, status, clues, createdAt, expiresAt]
+      required: [analysisId, sceneRevision, status, capturedAt, createdAt, startedAt, completedAt, cancelledAt, expiresAt, result, failureCode, retryable]
       properties:
         analysisId:
           type: string
           format: uuid
+        sceneRevision:
+          type: integer
+          minimum: 0
         status:
           type: string
           enum: [QUEUED, PROCESSING, COMPLETED, NEEDS_USER_SELECTION, FAILED, CANCELLED]
         stage:
           type: string
-          enum: [PREPROCESSING, DETECTING_SCENE, SELECTING_TEMPLATES]
-        progress:
-          type: integer
-          minimum: 0
-          maximum: 100
-        clues:
-          type: array
-          items:
-            $ref: '#/components/schemas/SceneClue'
+          enum: [PREPARING_INPUT, FILTERING_TEMPLATES, REQUESTING_PROVIDER, FINALIZING]
         scene:
           $ref: '#/components/schemas/SceneCandidate'
         sceneCandidates:
           type: array
           items:
             $ref: '#/components/schemas/SceneCandidate'
-        recommendation:
-          $ref: '#/components/schemas/SceneRecommendation'
+        result:
+          type: [object, 'null']
         fallback:
           type: object
           properties:
@@ -1583,10 +1661,23 @@ components:
                 type: string
         failure:
           $ref: '#/components/schemas/JobFailure'
+        failureCode:
+          type: [string, 'null']
+        retryable:
+          type: [boolean, 'null']
+        capturedAt:
+          type: string
+          format: date-time
         createdAt:
           type: string
           format: date-time
+        startedAt:
+          type: [string, 'null']
+          format: date-time
         completedAt:
+          type: [string, 'null']
+          format: date-time
+        cancelledAt:
           type: [string, 'null']
           format: date-time
         expiresAt:

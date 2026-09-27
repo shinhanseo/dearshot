@@ -1,33 +1,66 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { z } from "zod";
+import { requireAccessToken } from "../auth/authentication.js";
+import type { TokenService } from "../auth/token-service.js";
+import { ApiError } from "../http/api-error.js";
 import { validateBody } from "../http/validation.js";
+import { createSceneAnalysisSchema, type CreateSceneAnalysisRequest } from "../scene-analysis/scene-analysis-schema.js";
+import type { SceneAnalysisService } from "../scene-analysis/scene-analysis-service.js";
 
-const requestSchema = z.object({
-  imageReference: z.string().min(1),
-  capturedAt: z.iso.datetime(),
-  locale: z.string().min(2).default("en"),
-  coarseLocation: z
-    .object({
-      latitude: z.number().min(-90).max(90),
-      longitude: z.number().min(-180).max(180),
-    })
-    .optional(),
-});
+const uuidSchema = z.uuid();
 
-export const sceneAnalysisRouter = Router();
+export function createSceneAnalysisRouter(
+  tokenService: TokenService,
+  service: SceneAnalysisService,
+  ipRateLimiter?: RequestHandler,
+) {
+  const router = Router();
+  const authenticated = requireAccessToken(tokenService);
 
-sceneAnalysisRouter.post("/", validateBody(requestSchema), (_request, response) => {
-  response.status(200).json({
-    analysisId: crypto.randomUUID(),
-    scene: {
-      category: "beach",
-      confidence: 0.92,
-      clues: ["ocean", "open sky", "golden hour"],
+  router.post(
+    "/scene-analyses",
+    authenticated,
+    ...(ipRateLimiter ? [ipRateLimiter] : []),
+    validateBody(createSceneAnalysisSchema),
+    async (request, response, next) => {
+      try {
+        const key = uuidSchema.safeParse(request.get("Idempotency-Key"));
+        if (!key.success) {
+          throw new ApiError({ statusCode: 400, code: "INVALID_REQUEST", message: "A valid Idempotency-Key UUID is required" });
+        }
+        const result = await service.create(request.auth!, request.body as CreateSceneAnalysisRequest, key.data);
+        if (result.replayed) response.setHeader("Idempotency-Replayed", "true");
+        response.status(result.statusCode).json(result.body);
+      } catch (error) {
+        next(error);
+      }
     },
-    recommendation: {
-      templateIds: ["beach-breeze", "beach-horizon", "beach-walk"],
-      reason: "Soft side light and an open horizon suit full-body portraits.",
-    },
-    source: "mock",
+  );
+
+  router.get("/scene-analyses/:analysisId", authenticated, async (request, response, next) => {
+    try {
+      response.json(await service.get(request.auth!, parseId(request.params.analysisId)));
+    } catch (error) {
+      next(error);
+    }
   });
-});
+
+  router.delete("/scene-analyses/:analysisId", authenticated, async (request, response, next) => {
+    try {
+      await service.cancel(request.auth!, parseId(request.params.analysisId));
+      response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  return router;
+}
+
+function parseId(value: unknown): string {
+  const parsed = uuidSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ApiError({ statusCode: 400, code: "INVALID_REQUEST", message: "Scene analysis ID is invalid" });
+  }
+  return parsed.data;
+}

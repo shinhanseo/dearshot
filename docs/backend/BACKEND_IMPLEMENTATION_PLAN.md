@@ -48,13 +48,14 @@ Caddy :80/:443
 | B-11 | 분석 이미지 업로드 | multipart 검증, 임시 파일 메타데이터와 수명 관리 | B-04, B-05 |
 | B-12 | 사용량·멱등성·앱 설정 | 일일 AI 제한, 중복 비용 방지, 원격 설정 | B-06 |
 | B-13 | 제품 이벤트 수집 | guest/member 퍼널 이벤트, schema 제한, 90일 보존 | B-06, B-05 |
-| B-14 | 장면 분석과 SSE | 비동기 작업, 키워드 이벤트, 재연결 가능한 스트림 | B-09, B-11, B-12 |
-| B-15 | Gemini와 AI 시도 이력 | 구조화 응답, timeout/retry, `ai_job_attempts` | B-14 |
-| B-16 | 촬영 피드백 | 템플릿 버전 기반 피드백, 비교·재촬영 결과 | B-11, B-12, B-15 |
-| B-17 | 개인정보와 retention | 임시 파일, 결과, 이벤트, 게스트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-16 |
-| B-18 | 운영 컨테이너 | multi-stage API, non-root, Caddy, PostgreSQL volume | B-01~B-17 |
-| B-19 | GHCR·EC2 배포 | SHA 이미지, migration, health check, rollback | B-18 |
-| B-20 | 출시 검증 | E2E, 보안 점검, 로그·지표 확인, 백업·복구 | B-19 |
+| B-14 | 온디바이스 분석 입력과 비동기 작업 | 안정 프레임 업로드, Places365·YOLOX 결과 계약, 작업 상태·취소 | B-09, B-11, B-12 |
+| B-15 | 작업 실행기와 SSE | PostgreSQL 작업 lease, 단계 이벤트, `Last-Event-ID` 재연결 | B-14 |
+| B-16 | Gemini 템플릿 추천 | DB 후보 제한, 구조화 응답, `ai_job_attempts`, 최종 템플릿 1개 | B-09, B-15 |
+| B-17 | 촬영 피드백 | 템플릿 버전 기반 피드백, 비교·재촬영 결과 | B-11, B-12, B-16 |
+| B-18 | 개인정보와 retention | 임시 파일, 입력 힌트, 결과, 이벤트, 게스트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-17 |
+| B-19 | 운영 컨테이너 | multi-stage API, non-root, Caddy, PostgreSQL volume | B-01~B-18 |
+| B-20 | GHCR·EC2 배포 | SHA 이미지, migration, health check, rollback | B-19 |
+| B-21 | 출시 검증 | E2E, 보안 점검, 로그·지표 확인, 백업·복구 | B-20 |
 
 ## 단계별 완료 조건
 
@@ -88,17 +89,21 @@ Caddy :80/:443
 - 배포된 템플릿 버전은 불변이며 진행 중 촬영이 참조한 버전을 유지합니다.
 - 좋아요와 북마크는 멱등적으로 동작하고 동시 요청에도 중복 행이나 잘못된 like count가 생기지 않습니다.
 
-### B-11~B-17. AI 작업, 관찰, 개인정보
+### B-11~B-18. AI 작업, 관찰, 개인정보
 
 - 허용한 이미지 형식·실제 파일 signature·크기를 검사하고 외부에 storage path를 노출하지 않습니다.
 - 사용량 증가, upload 소비, AI 작업 생성은 중복 비용이 생기지 않게 트랜잭션으로 처리합니다.
+- Android가 전송한 Places365 장면 후보와 YOLOX 객체 위치는 선택 입력이며, 서버는 길이·개수·신뢰도·정규화 좌표만 검증하고 사실로 신뢰하지 않습니다.
+- 온디바이스 모델 이름과 버전은 관찰 가능한 메타데이터로만 사용하고 백엔드는 ONNX 모델 실행에 의존하지 않습니다.
 - SSE는 증가하는 event ID를 사용하고 `Last-Event-ID` 재연결 시 누락된 이벤트를 복구합니다.
+- 온디바이스 키워드는 Android가 즉시 표시하므로 SSE는 서버 작업 단계와 최종 추천만 전달합니다.
+- Gemini에는 공개된 DB 템플릿 후보만 전달하고 응답은 그중 정확히 한 template ID/version만 선택할 수 있습니다.
 - AI 호출마다 provider/model, prompt/schema version, latency, token 수, 표준화된 오류를 `ai_job_attempts`에 남깁니다.
 - AI 원본 프롬프트·응답, 이미지, provider token, 정확한 위치 이력은 저장하지 않습니다.
 - `app_events`는 허용된 이벤트와 속성만 받고 guest/member 퍼널을 동일한 actor 흐름으로 연결합니다.
 - 이미지 최대 1시간, SSE 이벤트 24시간, AI 결과 7일, AI 시도 30일, 제품 이벤트 90일 정책을 자동 검증합니다.
 
-### B-18~B-20. 배포와 출시 검증
+### B-19~B-21. 배포와 출시 검증
 
 - 운영 API 이미지는 multi-stage build와 non-root 사용자로 실행됩니다.
 - EC2 보안 그룹은 80/443과 제한된 22만 허용하고 3000/5432를 공개하지 않습니다.

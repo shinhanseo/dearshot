@@ -21,6 +21,8 @@ import { createIpRateLimiter } from "./reliability/ip-rate-limiter.js";
 import { AppEventService } from "./product-events/app-event-service.js";
 import { ImageStorage } from "./uploads/image-storage.js";
 import { UploadService } from "./uploads/upload-service.js";
+import { UsageLimitService } from "./reliability/usage-limit-service.js";
+import { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -53,8 +55,20 @@ async function main() {
     environment.uploads,
     idempotencyService,
   );
+  const usageLimitService = new UsageLimitService(database.db, environment.usage);
+  const sceneAnalysisService = new SceneAnalysisService(
+    database.db,
+    uploadService,
+    idempotencyService,
+    usageLimitService,
+    environment.sceneAnalysis,
+  );
   const uploadIpRateLimiter = createIpRateLimiter({
     scope: "uploads",
+    limit: environment.rateLimits.aiRequestsPerIpPerMinute,
+  });
+  const sceneAnalysisIpRateLimiter = createIpRateLimiter({
+    scope: "scene-analyses",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
   });
   const authIpRateLimiter = createIpRateLimiter({
@@ -109,8 +123,11 @@ async function main() {
       tokenService,
       ipRateLimiter: appEventIpRateLimiter,
     },
-    // B-14 replaces this development-only fixture with the authenticated job API.
-    enableMockSceneAnalysis: environment.nodeEnvironment !== "production",
+    sceneAnalysis: {
+      service: sceneAnalysisService,
+      tokenService,
+      ipRateLimiter: sceneAnalysisIpRateLimiter,
+    },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });

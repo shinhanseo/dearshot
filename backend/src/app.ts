@@ -16,12 +16,13 @@ import { requestContext } from "./http/request-context.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createAppConfigRouter, type AppConfigRouteSettings } from "./routes/app-config.js";
 import { createCatalogRouter } from "./routes/catalog.js";
-import { sceneAnalysisRouter } from "./routes/scene-analysis.js";
+import { createSceneAnalysisRouter } from "./routes/scene-analysis.js";
 import { createUploadRouter } from "./routes/uploads.js";
 import type { ImageStorage } from "./uploads/image-storage.js";
 import type { UploadService } from "./uploads/upload-service.js";
 import type { AppEventService } from "./product-events/app-event-service.js";
 import { createAppEventRouter } from "./routes/app-events.js";
+import type { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -54,7 +55,11 @@ type AppDependencies = {
     tokenService: TokenService;
     ipRateLimiter?: RequestHandler;
   };
-  enableMockSceneAnalysis?: boolean;
+  sceneAnalysis?: {
+    service: SceneAnalysisService;
+    tokenService: TokenService;
+    ipRateLimiter?: RequestHandler;
+  };
 };
 
 export function createApp({
@@ -66,7 +71,7 @@ export function createApp({
   uploads,
   appConfig,
   productEvents,
-  enableMockSceneAnalysis = false,
+  sceneAnalysis,
 }: AppDependencies) {
   const app = express();
 
@@ -166,8 +171,12 @@ export function createApp({
       ),
     );
   }
-  if (enableMockSceneAnalysis) {
-    app.use("/api/v1/scene-analysis", sceneAnalysisRouter);
+  if (sceneAnalysis) {
+    app.use("/api/v1", createSceneAnalysisRouter(
+      sceneAnalysis.tokenService,
+      sceneAnalysis.service,
+      sceneAnalysis.ipRateLimiter,
+    ));
   }
 
   app.use((_request, _response, next) => {

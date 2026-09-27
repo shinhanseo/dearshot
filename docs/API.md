@@ -32,11 +32,11 @@
 | 현재 | `DELETE /uploads/{uploadId}` | 구현됨 | 소유한 미사용 업로드만 반복 안전하게 폐기 |
 | 현재 | `GET /app-config` | 구현됨 | Android 버전·업로드 제한·게스트 한도·정책·기능 플래그 조회 |
 | 현재 | `POST /app-events/batch` | 구현됨 | guest/member 핵심 퍼널 이벤트의 검증·중복 제거·90일 보존 |
-| 현재 임시 mock | `POST /api/v1/scene-analysis` | 구현됨 | JSON의 `imageReference`를 받아 동기 `200` mock 응답을 반환함 |
-| MVP 목표 | `POST /api/v1/scene-analyses` | 미구현 | 인증된 `uploadId`로 비동기 작업을 만들고 SSE로 진행 상황을 전달함 |
+| B-14 구현 | `POST/GET/DELETE /api/v1/scene-analyses` | 구현 | 온디바이스 분석 입력, 작업 생성·조회·취소, 업로드·사용량 원자 처리 |
+| B-15 목표 | `GET /api/v1/scene-analyses/{id}/events` | 미구현 | 작업 실행기와 실제 단계 SSE 전달 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
 
-단수형 `/scene-analysis`는 앱·서버 연결을 확인하기 위한 임시 라우트이며 공개 계약이 아니다. 목표 API가 구현되면 제거한다. Android 신규 코드는 임시 mock 형식에 의존하지 않는다.
+단수형 개발 mock `/scene-analysis`는 B-14에서 제거했습니다. Android는 복수형 비동기 작업 계약만 사용합니다.
 
 ## 1. MVP에서 확정할 원칙
 
@@ -425,8 +425,32 @@ image   = JPEG 또는 WebP binary file
 ```json
 {
   "uploadId": "29928e5b-ed75-4e47-af53-53b8d47b5bcb",
+  "sceneRevision": 3,
   "capturedAt": "2026-09-20T08:41:00Z",
   "locale": "ko-KR",
+  "deviceAnalysis": {
+    "sceneClassifier": {
+      "model": "places365-resnet18",
+      "modelVersion": "places365-standard",
+      "runtime": "onnxruntime-android",
+      "candidates": [
+        {"label": "beach", "confidence": 0.91},
+        {"label": "coast", "confidence": 0.76}
+      ]
+    },
+    "objectDetector": {
+      "model": "yolox-nano",
+      "modelVersion": "coco-2017",
+      "runtime": "onnxruntime-android",
+      "objects": [
+        {
+          "label": "person",
+          "confidence": 0.96,
+          "box": {"left": 0.30, "top": 0.18, "right": 0.62, "bottom": 0.94}
+        }
+      ]
+    }
+  },
   "context": {
     "timezone": "Asia/Seoul",
     "location": {
@@ -438,18 +462,20 @@ image   = JPEG 또는 WebP binary file
 }
 ```
 
-`context.location`은 선택 사항이다. 사용자가 위치 활용을 거부하면 키 자체를 보내지 않는다. 서버는 좌표를 로그에 남기지 않으며 분석 입력으로만 사용한다.
+`deviceAnalysis`와 `context`는 선택 사항이다. 장면 후보는 최대 5개, 객체는 최대 20개이며 confidence와 box 좌표는 `0..1` 범위다. 서버는 이 값을 신뢰 판정으로 쓰지 않고 B-16 Gemini 추천의 힌트로만 사용한다. 사용자가 위치 활용을 거부하면 `context.location` 키 자체를 보내지 않는다. 좌표와 모델 출력은 요청 로그에 남기지 않는다.
 
 응답 `202 Accepted`:
 
 ```json
 {
   "analysisId": "ec863a30-d1d8-4285-a043-e1769ee2d7b5",
+  "sceneRevision": 3,
   "status": "QUEUED",
-  "eventsUrl": "/api/v1/scene-analyses/ec863a30-d1d8-4285-a043-e1769ee2d7b5/events",
-  "expiresAt": "2026-09-21T08:41:00Z"
+  "expiresAt": "2026-09-27T08:41:00Z"
 }
 ```
+
+같은 사용자·멱등 key·요청 본문은 같은 작업을 반환하며 `Idempotency-Replayed: true`를 보낸다. 업로드 소유권·purpose·만료·미사용 상태 확인, 일일 사용량 증가, 업로드 `CONSUMED` 전환, 작업 생성은 한 트랜잭션이다.
 
 ### 7.2 SSE 이벤트 구독
 
@@ -468,35 +494,26 @@ Android는 OkHttp 기반 SSE 클라이언트를 사용한다. 토큰을 URL 쿼�
 ```text
 id: 1
 event: status
-data: {"stage":"PREPROCESSING","progress":10}
+data: {"stage":"PREPARING_INPUT"}
 
 id: 2
-event: clue
-data: {"keyword":"바다","confidence":0.97}
-
-id: 3
-event: clue
-data: {"keyword":"맑은 하늘","confidence":0.91}
-
-id: 4
 event: scene
 data: {"sceneKey":"beach","displayName":"바다","confidence":0.94}
 
-id: 5
+id: 3
 event: recommendation
-data: {"templateIds":["beach-breeze","beach-horizon","beach-walk"],"reason":"열린 수평선과 부드러운 측면광이 잘 어울려요."}
+data: {"template":{"id":"beach-breeze","version":3},"reason":"열린 수평선과 부드러운 측면광이 잘 어울려요.","sceneRevision":3}
 
-id: 6
+id: 4
 event: completed
-data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
+data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","sceneRevision":3}
 ```
 
 | event | 용도 | 여러 번 발생 |
 |---|---|---:|
-| `status` | 전처리·장면 판별·추천 단계와 진행률 | 가능 |
-| `clue` | 화면에 즉시 노출할 검증된 장면 단서 | 가능 |
+| `status` | 실제 작업 단계 | 가능 |
 | `scene` | 최종 장소 카테고리 | 불가 |
-| `recommendation` | 추천 템플릿과 근거 | 불가 |
+| `recommendation` | 단일 템플릿 ID·version, 근거, `sceneRevision` | 불가 |
 | `completed` | 정상 종료 | 불가 |
 | `failed` | 오류 코드와 재시도 가능 여부 | 불가 |
 
@@ -517,27 +534,28 @@ data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
 ```json
 {
   "analysisId": "ec863a30-d1d8-4285-a043-e1769ee2d7b5",
+  "sceneRevision": 3,
   "status": "COMPLETED",
-  "clues": [
-    {"keyword": "바다", "confidence": 0.97},
-    {"keyword": "맑은 하늘", "confidence": 0.91}
-  ],
-  "scene": {
-    "sceneKey": "beach",
-    "displayName": "바다",
-    "confidence": 0.94
+  "result": {
+    "scene": {"sceneKey": "beach", "confidence": 0.94},
+    "recommendation": {
+      "template": {"id": "beach-breeze", "version": 3},
+      "reason": "열린 수평선과 부드러운 측면광이 잘 어울려요."
+    }
   },
-  "recommendation": {
-    "templateIds": ["beach-breeze", "beach-horizon", "beach-walk"],
-    "reason": "열린 수평선과 부드러운 측면광이 잘 어울려요."
-  },
+  "capturedAt": "2026-09-20T08:41:00Z",
   "createdAt": "2026-09-20T08:41:01Z",
+  "startedAt": "2026-09-20T08:41:02Z",
   "completedAt": "2026-09-20T08:41:04Z",
-  "expiresAt": "2026-09-21T08:41:00Z"
+  "cancelledAt": null,
+  "failureCode": null,
+  "retryable": null,
+  "expiresAt": "2026-09-27T08:41:00Z"
 }
 ```
 
 장면을 확정하기 어려우면 작업을 오류로 끝내지 않고 `NEEDS_USER_SELECTION`과 후보 장면을 반환한다. Android는 장소 직접 선택 화면을 연다.
+Android는 응답의 `sceneRevision`이 현재 카메라 revision과 다르면 오래된 결과로 보고 적용하지 않는다.
 
 ## 8. 촬영 피드백
 

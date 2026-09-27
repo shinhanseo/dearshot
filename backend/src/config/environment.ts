@@ -110,6 +110,12 @@ const environmentSchema = z
       3_600,
       604_800,
     ),
+    SCENE_ANALYSIS_RETENTION_DAYS: integerFromEnvironment(
+      "SCENE_ANALYSIS_RETENTION_DAYS",
+      7,
+      1,
+      30,
+    ),
     USAGE_TIMEZONE: z.literal("UTC").default("UTC"),
     GUEST_SCENE_ANALYSES_PER_DAY: integerFromEnvironment(
       "GUEST_SCENE_ANALYSES_PER_DAY",
@@ -303,6 +309,7 @@ export type Environment = {
     ttlSeconds: number;
   };
   idempotency: { ttlSeconds: number };
+  sceneAnalysis: { retentionDays: number };
   usage: UsageLimitConfig;
   rateLimits: {
     aiRequestsPerIpPerMinute: number;
@@ -376,6 +383,7 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       ttlSeconds: parsed.data.UPLOAD_TTL_SECONDS,
     },
     idempotency: { ttlSeconds: parsed.data.IDEMPOTENCY_TTL_SECONDS },
+    sceneAnalysis: { retentionDays: parsed.data.SCENE_ANALYSIS_RETENTION_DAYS },
     usage: {
       timezone: parsed.data.USAGE_TIMEZONE,
       guest: {
