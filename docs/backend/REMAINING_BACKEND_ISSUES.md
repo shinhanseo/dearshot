@@ -47,7 +47,7 @@ Android는 CameraX 프리뷰에서 화면 안정 여부를 판단하고, 안정�
 - 좌표는 이미지 기준 `0.0..1.0` 정규화 좌표입니다.
 - 장면 후보는 최대 5개, 객체는 최대 20개로 제한합니다.
 - 모델 출력은 신뢰 경계 밖의 힌트입니다. 권한, template ID, scene key 또는 과금 판단에 직접 사용하지 않습니다.
-- `sceneRevision`은 Android가 장면 변경마다 증가시키며 모든 응답과 SSE 최종 이벤트에서 그대로 돌려줍니다.
+- `sceneRevision`은 Android가 장면 변경마다 증가시키며 모든 분석 응답에서 그대로 돌려줍니다.
 - 모델 이름·버전·라벨은 길이와 허용 문자 및 개수를 제한하고 일반 서버 로그에는 기록하지 않습니다.
 
 ---
@@ -84,12 +84,14 @@ Android가 선택한 안정 프레임과 선택적인 Places365·YOLOX 결과를
 ### 제외
 
 - 실제 Gemini 호출
-- SSE 연결과 이벤트 replay
+- 짧은 polling 연결과 stale revision 폐기
 - Android ONNX 추론 구현
 
 ---
 
-## B-15: PostgreSQL 작업 실행기와 SSE
+## B-15R: PostgreSQL 작업 실행기와 polling
+
+**상태: 완료**
 
 **상태: 구현 완료**
 
@@ -101,13 +103,11 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 
 - PostgreSQL 기반 worker polling, lease, 재시도 횟수, stale lease 복구
 - 경쟁 worker가 같은 작업을 처리하지 않도록 원자적 claim
-- `scene_analysis_events` migration과 증가하는 bigint event ID
-- `GET /scene-analyses/{id}/events` SSE 구현
-- `Last-Event-ID` 이후 이벤트 replay와 15초 heartbeat
+- `GET /scene-analyses/{id}`의 `pollAfterMs` 기반 상태 조회
 - 이벤트 종류를 `status`, `recommendation`, `completed`, `failed`로 제한
 - 서버 단계 enum: `PREPARING_INPUT`, `FILTERING_TEMPLATES`, `REQUESTING_PROVIDER`, `FINALIZING`
 - terminal event 이후 연결 종료, 취소·소유권·만료 처리
-- fake recommendation adapter로 worker와 SSE 통합 테스트
+- fake recommendation adapter로 worker와 polling 통합 테스트
 
 ### 완료 조건
 
@@ -153,7 +153,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 - 최종 추천은 template ID/version 한 쌍이며 다중 추천 배열이 아닙니다.
 - 온디바이스 힌트가 누락되거나 틀려도 이미지 기준 분석이 가능합니다.
 - provider timeout과 schema 오류가 안정적인 내부 오류 코드로 변환됩니다.
-- 작업 상태, SSE terminal event와 AI attempt가 모순되지 않습니다.
+- 작업 상태, 최종 결과와 AI attempt가 모순되지 않습니다.
 - 완료 또는 실패 후 분석 이미지를 즉시 제거하고 장애 시 최대 1시간 안에 정리합니다.
 
 ### 제외
@@ -201,7 +201,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 
 ### 작업
 
-- 만료 upload·부분 파일·SSE 이벤트·분석 입력·결과·AI attempt·app event 정리 작업
+- 만료 upload·부분 파일·분석 입력·결과·AI attempt·app event 정리 작업
 - 위치 context는 작업 완료 직후 제거
 - `PATCH /me/preferences`, `DELETE /me`와 삭제 작업 상태
 - 진행 중 작업 취소, refresh session 폐기, 파일 우선 삭제 후 사용자 데이터 제거
@@ -210,7 +210,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 
 ### 완료 조건
 
-- 이미지 최대 1시간, SSE 이벤트 24시간, 분석 입력·결과 7일, AI attempt 30일, app event 90일 정책을 검증합니다.
+- 이미지 최대 1시간, 분석 입력·결과 7일, AI attempt 30일, app event 90일 정책을 검증합니다.
 - 탈퇴 즉시 새 인증과 AI 작업 생성을 차단합니다.
 - 사용자 FK 때문에 파일이 남거나, 파일 삭제 실패 후 DB만 삭제되는 상태가 생기지 않습니다.
 
@@ -226,7 +226,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 
 - production API Dockerfile과 최소 runtime image
 - API non-root, read-only 가능한 filesystem, 업로드 전용 volume
-- Caddy HTTPS·reverse proxy·SSE buffering 비활성화
+- Caddy HTTPS·reverse proxy
 - PostgreSQL·API private network와 영속 volume
 - health/readiness와 graceful shutdown
 - secret을 이미지와 저장소에 포함하지 않는 환경변수 계약
@@ -234,7 +234,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 ### 완료 조건
 
 - host에는 80/443만 공개되고 3000/5432는 공개되지 않습니다.
-- SSE가 프록시에서 버퍼링되지 않고 heartbeat가 전달됩니다.
+- REST API가 프록시를 통해 health check와 graceful shutdown을 유지합니다.
 - API와 worker가 종료 신호를 받아 새 작업 claim을 멈추고 안전하게 종료합니다.
 
 ---
@@ -270,7 +270,7 @@ Android가 사용할 전체 백엔드 흐름과 단일 EC2 장애 복구 범위�
 
 ### 작업
 
-- guest → upload → analysis → SSE → recommendation → feedback E2E
+- guest → upload → analysis polling → recommendation → feedback E2E
 - sceneRevision 변경, 이전 작업 취소와 늦은 결과 무시 시나리오
 - Google/Kakao 로그인, 좋아요·북마크, 탈퇴 E2E
 - 악성 upload, 타인 자원 접근, rate limit, 멱등 재시도 점검

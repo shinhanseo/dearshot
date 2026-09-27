@@ -173,7 +173,7 @@ describe("photo feedback pipeline", { concurrency: 1 }, () => {
 
   beforeEach(async () => {
     await connection.db.execute(sql`
-      truncate table ai_job_attempts, photo_feedbacks, scene_analysis_events, scene_analyses,
+      truncate table ai_job_attempts, photo_feedbacks, scene_analyses,
       image_uploads, idempotency_records, daily_usage, oauth_nonce_uses, auth_identities,
       refresh_sessions, user_preferences, users, catalog_state, template_version_localizations,
       template_scenes, template_versions, templates, scene_localizations, scenes restart identity cascade

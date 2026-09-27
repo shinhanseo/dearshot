@@ -1,11 +1,5 @@
 import type { DeviceAnalysisSnapshot } from "../db/schema/jobs.js";
 
-export type SceneAnalysisStage =
-  | "PREPARING_INPUT"
-  | "FILTERING_TEMPLATES"
-  | "REQUESTING_PROVIDER"
-  | "FINALIZING";
-
 export type ClaimedSceneAnalysis = {
   analysisId: string;
   sceneRevision: number;
@@ -46,7 +40,6 @@ export type SceneProcessingResult =
 
 export type SceneProcessingContext = {
   signal: AbortSignal;
-  emitStage: (stage: SceneAnalysisStage) => Promise<void>;
 };
 
 export interface SceneAnalysisProcessor {
@@ -72,9 +65,6 @@ export class FakeSceneAnalysisProcessor implements SceneAnalysisProcessor {
     analysis: ClaimedSceneAnalysis,
     context: SceneProcessingContext,
   ): Promise<SceneProcessingResult> {
-    await context.emitStage("FILTERING_TEMPLATES");
-    context.signal.throwIfAborted();
-    await context.emitStage("REQUESTING_PROVIDER");
     context.signal.throwIfAborted();
 
     const firstCandidate = analysis.deviceAnalysis?.sceneClassifier?.candidates[0];

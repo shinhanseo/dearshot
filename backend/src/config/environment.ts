@@ -156,14 +156,8 @@ const environmentSchema = z
     SCENE_WORKER_RETRY_BASE_SECONDS: integerFromEnvironment(
       "SCENE_WORKER_RETRY_BASE_SECONDS", 1, 1, 300,
     ),
-    SCENE_SSE_POLL_INTERVAL_MS: integerFromEnvironment(
-      "SCENE_SSE_POLL_INTERVAL_MS", 500, 100, 10_000,
-    ),
-    SCENE_SSE_HEARTBEAT_SECONDS: integerFromEnvironment(
-      "SCENE_SSE_HEARTBEAT_SECONDS", 15, 5, 60,
-    ),
-    SCENE_EVENT_RETENTION_HOURS: integerFromEnvironment(
-      "SCENE_EVENT_RETENTION_HOURS", 24, 1, 168,
+    SCENE_ANALYSIS_POLL_AFTER_MS: integerFromEnvironment(
+      "SCENE_ANALYSIS_POLL_AFTER_MS", 500, 250, 10_000,
     ),
     USAGE_TIMEZONE: z.literal("UTC").default("UTC"),
     GUEST_SCENE_ANALYSES_PER_DAY: integerFromEnvironment(
@@ -384,9 +378,7 @@ export type Environment = {
     workerLeaseSeconds: number;
     workerMaxAttempts: number;
     workerRetryBaseSeconds: number;
-    ssePollIntervalMillis: number;
-    sseHeartbeatSeconds: number;
-    eventRetentionHours: number;
+    pollAfterMillis: number;
     maximumCandidates: number;
     minimumConfidence: number;
   };
@@ -481,9 +473,7 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       workerLeaseSeconds: parsed.data.SCENE_WORKER_LEASE_SECONDS,
       workerMaxAttempts: parsed.data.SCENE_WORKER_MAX_ATTEMPTS,
       workerRetryBaseSeconds: parsed.data.SCENE_WORKER_RETRY_BASE_SECONDS,
-      ssePollIntervalMillis: parsed.data.SCENE_SSE_POLL_INTERVAL_MS,
-      sseHeartbeatSeconds: parsed.data.SCENE_SSE_HEARTBEAT_SECONDS,
-      eventRetentionHours: parsed.data.SCENE_EVENT_RETENTION_HOURS,
+      pollAfterMillis: parsed.data.SCENE_ANALYSIS_POLL_AFTER_MS,
       maximumCandidates: parsed.data.SCENE_RECOMMENDATION_MAX_CANDIDATES,
       minimumConfidence: parsed.data.SCENE_RECOMMENDATION_MIN_CONFIDENCE,
     },

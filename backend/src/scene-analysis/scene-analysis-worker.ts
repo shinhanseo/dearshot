@@ -16,23 +16,18 @@ import type { Database } from "../db/client.js";
 import {
   imageUploads,
   sceneAnalyses,
-  sceneAnalysisEvents,
 } from "../db/schema/jobs.js";
 import {
   type ClaimedSceneAnalysis,
   type SceneAnalysisProcessor,
   SceneProcessingError,
   type SceneProcessingResult,
-  type SceneAnalysisStage,
 } from "./scene-analysis-processor.js";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export type SceneAnalysisWorkerConfig = {
   pollIntervalMillis: number;
   leaseSeconds: number;
   retryBaseSeconds: number;
-  eventRetentionHours: number;
   onTerminal?: (upload: { uploadId: string; storagePath: string }) => Promise<void>;
 };
 
@@ -169,12 +164,6 @@ export class SceneAnalysisWorker {
         .limit(1);
       if (!upload) throw new Error("Claimed scene analysis upload is missing");
 
-      await this.appendEvent(transaction, claimed.analysisId, "status", {
-        stage: "PREPARING_INPUT",
-        attempt: claimed.attemptCount,
-        sceneRevision: claimed.sceneRevision,
-      }, claimed.expiresAt);
-
       return { ...claimed, ...upload, leaseToken };
     });
   }
@@ -194,9 +183,7 @@ export class SceneAnalysisWorker {
     try {
       const result = await this.processor.process(analysis, {
         signal: abortController.signal,
-        emitStage: (stage) => this.emitStage(analysis, stage),
       });
-      await this.emitStage(analysis, "FINALIZING");
       const completed = await this.complete(analysis, result);
       if (completed) await this.cleanupTerminalUpload(analysis);
     } catch (error) {
@@ -207,30 +194,6 @@ export class SceneAnalysisWorker {
     } finally {
       clearInterval(leaseHeartbeat);
     }
-  }
-
-  private async emitStage(analysis: ClaimedSceneAnalysis, stage: SceneAnalysisStage): Promise<void> {
-    const now = this.clock();
-    const leaseExpiresAt = new Date(now.getTime() + this.config.leaseSeconds * 1_000);
-    const updated = await this.database.transaction(async (transaction) => {
-      const [owned] = await transaction
-        .update(sceneAnalyses)
-        .set({ leaseExpiresAt, updatedAt: now })
-        .where(and(
-          eq(sceneAnalyses.id, analysis.analysisId),
-          eq(sceneAnalyses.status, "PROCESSING"),
-          eq(sceneAnalyses.leaseOwner, analysis.leaseToken),
-        ))
-        .returning({ id: sceneAnalyses.id });
-      if (!owned) return false;
-      await this.appendEvent(transaction, analysis.analysisId, "status", {
-        stage,
-        attempt: analysis.attemptCount,
-        sceneRevision: analysis.sceneRevision,
-      }, analysis.expiresAt);
-      return true;
-    });
-    if (!updated) throw new Error("Scene analysis lease was lost");
   }
 
   private async renewLease(analysis: ClaimedSceneAnalysis): Promise<boolean> {
@@ -268,39 +231,25 @@ export class SceneAnalysisWorker {
     result: SceneProcessingResult,
   ): Promise<boolean> {
     const now = this.clock();
-    return this.database.transaction(async (transaction) => {
-      const [completed] = await transaction
-        .update(sceneAnalyses)
-        .set({
-          status: result.outcome === "RECOMMENDED" ? "COMPLETED" : "NEEDS_USER_SELECTION",
-          result,
-          completedAt: now,
-          updatedAt: now,
-          leaseOwner: null,
-          leaseExpiresAt: null,
-          failureCode: null,
-          retryable: null,
-        })
-        .where(and(
-          eq(sceneAnalyses.id, analysis.analysisId),
-          eq(sceneAnalyses.status, "PROCESSING"),
-          eq(sceneAnalyses.leaseOwner, analysis.leaseToken),
-        ))
-        .returning({ id: sceneAnalyses.id });
-      if (!completed) return false;
-      if (result.outcome === "RECOMMENDED") {
-        await this.appendEvent(transaction, analysis.analysisId, "recommendation", {
-          ...result,
-          sceneRevision: analysis.sceneRevision,
-        }, analysis.expiresAt);
-      }
-      await this.appendEvent(transaction, analysis.analysisId, "completed", {
-        analysisId: analysis.analysisId,
+    const [completed] = await this.database
+      .update(sceneAnalyses)
+      .set({
         status: result.outcome === "RECOMMENDED" ? "COMPLETED" : "NEEDS_USER_SELECTION",
-        sceneRevision: analysis.sceneRevision,
-      }, analysis.expiresAt);
-      return true;
-    });
+        result,
+        completedAt: now,
+        updatedAt: now,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        failureCode: null,
+        retryable: null,
+      })
+      .where(and(
+        eq(sceneAnalyses.id, analysis.analysisId),
+        eq(sceneAnalyses.status, "PROCESSING"),
+        eq(sceneAnalyses.leaseOwner, analysis.leaseToken),
+      ))
+      .returning({ id: sceneAnalyses.id });
+    return Boolean(completed);
   }
 
   private async handleFailure(analysis: ClaimedSceneAnalysis, error: unknown): Promise<boolean> {
@@ -309,8 +258,7 @@ export class SceneAnalysisWorker {
       : new SceneProcessingError("SCENE_PROCESSING_FAILED", true, { cause: error });
     const now = this.clock();
     const shouldRetry = failure.retryable && analysis.attemptCount < analysis.maxAttempts;
-    return this.database.transaction(async (transaction) => {
-      const [updated] = await transaction
+    const [updated] = await this.database
         .update(sceneAnalyses)
         .set(shouldRetry ? {
           status: "QUEUED",
@@ -337,24 +285,7 @@ export class SceneAnalysisWorker {
           eq(sceneAnalyses.leaseOwner, analysis.leaseToken),
         ))
         .returning({ id: sceneAnalyses.id, nextAttemptAt: sceneAnalyses.nextAttemptAt });
-      if (!updated) return false;
-      if (shouldRetry) {
-        await this.appendEvent(transaction, analysis.analysisId, "status", {
-          stage: "PREPARING_INPUT",
-          state: "RETRY_SCHEDULED",
-          attempt: analysis.attemptCount,
-          nextAttemptAt: updated.nextAttemptAt.toISOString(),
-          sceneRevision: analysis.sceneRevision,
-        }, analysis.expiresAt);
-      } else {
-        await this.appendEvent(transaction, analysis.analysisId, "failed", {
-          code: failure.code,
-          retryable: failure.retryable,
-          sceneRevision: analysis.sceneRevision,
-        }, analysis.expiresAt);
-      }
-      return !shouldRetry;
-    });
+    return Boolean(updated) && !shouldRetry;
   }
 
   private retryDelaySeconds(attemptCount: number): number {
@@ -392,8 +323,6 @@ export class SceneAnalysisWorker {
         .select({
           id: sceneAnalyses.id,
           uploadId: sceneAnalyses.uploadId,
-          sceneRevision: sceneAnalyses.sceneRevision,
-          expiresAt: sceneAnalyses.expiresAt,
           storagePath: imageUploads.storagePath,
         })
         .from(sceneAnalyses)
@@ -412,11 +341,6 @@ export class SceneAnalysisWorker {
         leaseOwner: null,
         leaseExpiresAt: null,
       }).where(eq(sceneAnalyses.id, candidate.id));
-      await this.appendEvent(transaction, candidate.id, "failed", {
-        code,
-        retryable: false,
-        sceneRevision: candidate.sceneRevision,
-      }, candidate.expiresAt);
       return candidate;
     });
     if (!terminal) return false;
@@ -433,26 +357,4 @@ export class SceneAnalysisWorker {
     }
   }
 
-  private async appendEvent(
-    transaction: Transaction,
-    analysisId: string,
-    eventType: "status" | "recommendation" | "completed" | "failed",
-    payload: Record<string, unknown>,
-    analysisExpiresAt: Date,
-  ): Promise<void> {
-    const retentionExpiresAt = new Date(
-      this.clock().getTime() + this.config.eventRetentionHours * 3_600_000,
-    );
-    const expiresAt = retentionExpiresAt < analysisExpiresAt
-      ? retentionExpiresAt
-      : analysisExpiresAt;
-    await transaction.insert(sceneAnalysisEvents).values({
-      analysisId,
-      eventType,
-      payload,
-      expiresAt,
-    });
-    await transaction.update(sceneAnalyses).set({ eventsExpiresAt: expiresAt })
-      .where(eq(sceneAnalyses.id, analysisId));
-  }
 }
