@@ -55,9 +55,7 @@ describe("environment configuration", () => {
       workerLeaseSeconds: 30,
       workerMaxAttempts: 3,
       workerRetryBaseSeconds: 1,
-      ssePollIntervalMillis: 500,
-      sseHeartbeatSeconds: 15,
-      eventRetentionHours: 24,
+      pollAfterMillis: 500,
       maximumCandidates: 12,
       minimumConfidence: 0.55,
     });

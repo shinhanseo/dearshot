@@ -2,7 +2,7 @@
 
 ## 현재와 목표 범위
 
-현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, multipart 업로드, 비동기 장면 작업과 lease worker, 재연결 가능한 SSE, Gemini 기반 단일 템플릿 추천까지 구현되어 있습니다.
+현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, multipart 업로드, 비동기 장면 작업과 lease worker, 짧은 polling, Gemini 기반 단일 템플릿 추천까지 구현되어 있습니다.
 
 아래 구성은 MVP 목표입니다. 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-14에서 단수형 mock route를 제거하고 인증·소유권·멱등성·사용량 제한이 적용된 작업 API로 교체했습니다.
 
@@ -16,7 +16,7 @@ Android app
  ├─ App storage: unsaved originals and analysis copies
  ├─ MediaStore: user-selected final photos
  └─ WorkManager: upload retry and local cleanup
-          │ HTTPS / SSE
+          │ HTTPS / REST polling
           ▼
 Caddy :80/:443
  ├─ /api/* ───────────────► Node.js API :3000
@@ -40,7 +40,7 @@ Caddy :80/:443
 | 구성 | 역할 | 영속 위치 |
 | --- | --- | --- |
 | Caddy | HTTPS, reverse proxy, template asset 제공 | Caddy data volume |
-| Node API | REST, SSE, OAuth, AI 작업 | stateless image |
+| Node API | REST, OAuth, AI 작업 | stateless image |
 | PostgreSQL | 계정, 템플릿, 작업 상태, 제품 이벤트 | named volume on EBS |
 | Temporary uploads | 압축 분석 이미지 | `/srv/dearshot/uploads` 전용 volume |
 | Template assets | preview, thumbnail, overlay | `/srv/dearshot/templates` bind mount |
@@ -87,10 +87,10 @@ src/
 ## 상태 원칙
 
 - 촬영 세션은 `idle → analyzing → ready → capturing → reviewing → completed`로 관리합니다.
-- 분석 진행률을 임의의 숫자로 만들지 않고 서버의 실제 단계와 SSE event를 표시합니다.
+- ONNX 키워드는 즉시 표시하고 서버 추천 대기 상태는 단순한 진행 상태로 표시합니다.
 - 서버 분석과 로컬 촬영은 분리합니다. 네트워크 실패가 기본 카메라 사용을 막지 않습니다.
 - worker는 `FOR UPDATE SKIP LOCKED`로 작업을 claim하고 lease token이 일치할 때만 단계·완료·실패를 기록합니다. 프로세스가 중단되면 만료 lease를 다른 worker가 다시 claim합니다.
-- 작업 상태와 SSE 이벤트는 같은 트랜잭션에서 확정하며 이벤트는 bigint ID 순서로 재생합니다.
+- 작업 상태는 lease token으로 fencing하며 terminal 결과는 단일 행에서 조회합니다.
 - 서버 템플릿은 ID, version, locale, cache expiry와 함께 Room에 저장합니다.
 - 서버가 새 템플릿을 배포해도 진행 중인 촬영은 선택 당시 version을 사용합니다.
 - 사진 파일과 Room 메타데이터의 저장 성공을 별도로 추적합니다.
@@ -103,10 +103,10 @@ CameraX stable-frame gate
   → compressed stable frame upload
   → device hints + sceneRevision submitted
   → upload consume, usage increment, job creation in one transaction
-  → PostgreSQL worker lease and real-stage SSE
+  → PostgreSQL worker lease and short polling
   → Gemini receives image, hints, and published DB template candidates
   → exactly one template ID/version validated and saved
-  → terminal state and SSE event committed atomically
+  → terminal result committed with lease fencing
   → temporary image immediately deleted after completion or final failure
 ```
 
@@ -126,7 +126,7 @@ DB 장애 시에도 원인을 확인할 수 있도록 일반 로그를 PostgreSQ
 
 - Android는 분석용 이미지만 압축해 명시적인 동의 후 전송합니다.
 - 정확한 위치는 허용한 경우에만 분석 입력으로 사용하고 완료 후 제거합니다.
-- 이미지 최대 1시간, SSE event 24시간, AI 결과 7일, AI attempt 30일, app event 90일을 기본 보존 기간으로 둡니다.
+- 이미지 최대 1시간, AI 결과 7일, AI attempt 30일, app event 90일을 기본 보존 기간으로 둡니다.
 - OAuth token, refresh token 원문, 이미지 Base64, AI 원본 프롬프트·응답은 저장하지 않습니다.
 - 계정 탈퇴 시 세션을 즉시 폐기하고 사용자 연결 데이터와 진행 중 파일을 정리합니다.
 

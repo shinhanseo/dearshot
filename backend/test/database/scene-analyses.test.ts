@@ -17,7 +17,6 @@ import { imageUploads, sceneAnalyses } from "../../src/db/schema/jobs.js";
 import { IdempotencyService } from "../../src/reliability/idempotency-service.js";
 import { UsageLimitService } from "../../src/reliability/usage-limit-service.js";
 import { SceneAnalysisService } from "../../src/scene-analysis/scene-analysis-service.js";
-import { SceneAnalysisEventService } from "../../src/scene-analysis/scene-analysis-event-service.js";
 import { ImageStorage } from "../../src/uploads/image-storage.js";
 import { UploadService } from "../../src/uploads/upload-service.js";
 
@@ -66,14 +65,10 @@ function createContext() {
   const storage = new ImageStorage({ root: uploadRoot, maxBytes: 10_485_760, maxDimensionPixels: 8_192, maxPixels: 40_000_000 });
   const idempotency = new IdempotencyService(connection.db);
   const uploads = new UploadService(connection.db, storage, { ttlSeconds: 3_600 }, idempotency);
-  const service = new SceneAnalysisService(connection.db, uploads, idempotency, new UsageLimitService(connection.db, limits), { retentionDays: 7, maxAttempts: 3 });
-  const eventService = new SceneAnalysisEventService(connection.db, uploads, {
-    pollIntervalMillis: 100,
-    heartbeatSeconds: 5,
-  });
+  const service = new SceneAnalysisService(connection.db, uploads, idempotency, new UsageLimitService(connection.db, limits), { retentionDays: 7, maxAttempts: 3, pollAfterMillis: 500 });
   const app = createApp({
     logger, checkDatabase: () => verifyDatabaseConnection(connection.pool),
-    sceneAnalysis: { service, eventService, tokenService },
+    sceneAnalysis: { service, tokenService },
   });
   return { app, service };
 }
@@ -110,6 +105,7 @@ describe("scene analysis jobs", { concurrency: 1 }, () => {
     assert.equal(created.status, 202, JSON.stringify(created.body));
     assert.equal(created.body.sceneRevision, 3);
     assert.equal(created.body.status, "QUEUED");
+    assert.equal(created.body.pollAfterMs, 500);
 
     const [stored] = await connection.db.select().from(sceneAnalyses).where(eq(sceneAnalyses.id, created.body.analysisId));
     assert.equal(stored.sceneRevision, 3);
@@ -123,6 +119,7 @@ describe("scene analysis jobs", { concurrency: 1 }, () => {
     const fetched = await request(app).get(`/api/v1/scene-analyses/${created.body.analysisId}`).set("Authorization", `Bearer ${principal.token}`);
     assert.equal(fetched.status, 200);
     assert.equal(fetched.body.sceneRevision, 3);
+    assert.equal(fetched.body.pollAfterMs, 500);
     assert.equal(JSON.stringify(fetched.body).includes("deviceAnalysis"), false);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {

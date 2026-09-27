@@ -21,7 +21,6 @@
 | 템플릿 캐시 | Room | PostgreSQL + 정적 자산 | 버전별 영구 |
 | 분석용 압축 이미지 | 임시 파일 | EC2 임시 파일 | 처리 직후, 최대 1시간 |
 | 장면 분석·피드백 결과 | 세션에 필요한 범위 | PostgreSQL | 7일 |
-| SSE 이벤트 | 필요 시 마지막 ID | PostgreSQL | 24시간 |
 | AI 요청 시도 이력 | 저장하지 않음 | PostgreSQL | 30일 |
 | 제품 이벤트 | 저장하지 않음 | PostgreSQL | 원본 90일 |
 
@@ -161,10 +160,6 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 사용자, 한 번만 소비되는 업로드, 상태, `scene_revision`, locale, 촬영 시각, 온디바이스 입력 스냅샷과 실패 정보를 저장합니다. worker 제어에는 `attempt_count`, `max_attempts`, `next_attempt_at`, `lease_owner`, `lease_expires_at`, `updated_at`을 사용합니다. `device_analysis JSONB`에는 최대 5개 Places365 후보와 최대 20개 YOLOX 객체·정규화 좌표를 보관합니다. 정확한 위치는 nullable 컬럼으로 보유하고 보존 작업에서 제거합니다. 최종 장면과 단일 템플릿 추천은 검증된 `result JSONB`로 저장합니다.
 
-### `scene_analysis_events`
-
-`id bigserial`, `analysis_id`, `event_type`, `payload JSONB`, `created_at`, `expires_at`을 가집니다. 허용 event type은 `status`, `recommendation`, `completed`, `failed`입니다. bigint ID를 SSE event ID로 사용해 Android의 `Last-Event-ID` 재연결을 지원하며 기본 24시간 보관합니다. 작업의 terminal 상태와 terminal 이벤트는 하나의 트랜잭션으로 기록합니다.
-
 ### `photo_feedbacks`
 
 사용자와 한 번만 소비되는 업로드, 선택한 불변 `(template_id, template_version)`, 선택적인 `scene_analysis_id`, `previous_feedback_id`, `retake_index`, locale, capture metadata, lease·재시도 상태, 검증된 결과 JSONB와 만료 시각을 저장합니다. 이전 피드백은 같은 사용자·템플릿의 완료 결과만 연결하며 재촬영 chain은 100회로 제한합니다.
@@ -252,7 +247,6 @@ image_uploads(owner_user_id, status)
 image_uploads(expires_at)
 scene_analyses(user_id, created_at DESC)
 scene_analyses(status, created_at)
-scene_analysis_events(analysis_id, id)
 photo_feedbacks(user_id, created_at DESC)
 photo_feedbacks(status, created_at)
 ai_job_attempts(scene_analysis_id, attempt_number)
@@ -264,7 +258,7 @@ idempotency_records(user_id, scope, idempotency_key) UNIQUE
 
 ## 삭제와 보존 작업
 
-- 서버의 주기 작업이 만료된 이미지, SSE 이벤트, AI 결과를 정리합니다.
+- 서버의 주기 작업이 만료된 이미지와 AI 결과를 정리합니다.
 - 회원 탈퇴 시작 시 refresh session을 즉시 폐기하고 진행 중 작업을 취소합니다.
 - 좋아요·북마크·preferences·identity는 사용자 삭제에 맞춰 cascade합니다.
 - 사용자와 연결된 원본 제품 이벤트는 삭제하거나 actor를 제거한 집계치로만 남깁니다.
@@ -293,7 +287,7 @@ template ID/version/locale을 키로 서버 응답과 자산 경로, cache expir
 4. like·bookmark
 5. image upload
 6. usage·idempotency
-7. scene analysis·SSE event
+7. scene analysis polling result
 8. AI attempt·photo feedback
 9. app event·retention job
 

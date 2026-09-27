@@ -41,13 +41,6 @@ export const sceneAnalysisStatusEnum = pgEnum("scene_analysis_status", [
   "CANCELLED",
 ]);
 
-export const sceneAnalysisEventTypeEnum = pgEnum("scene_analysis_event_type", [
-  "status",
-  "recommendation",
-  "completed",
-  "failed",
-]);
-
 export const aiJobAttemptStatusEnum = pgEnum("ai_job_attempt_status", [
   "STARTED",
   "SUCCEEDED",
@@ -164,7 +157,6 @@ export const sceneAnalyses = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
-    eventsExpiresAt: timestamp("events_expires_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -205,28 +197,6 @@ export const sceneAnalyses = pgTable(
     check(
       "scene_analyses_cancelled_at_check",
       sql`${table.status} <> 'CANCELLED' or ${table.cancelledAt} is not null`,
-    ),
-  ],
-);
-
-export const sceneAnalysisEvents = pgTable(
-  "scene_analysis_events",
-  {
-    id: bigserial("id", { mode: "bigint" }).primaryKey(),
-    analysisId: uuid("analysis_id")
-      .notNull()
-      .references(() => sceneAnalyses.id, { onDelete: "cascade" }),
-    eventType: sceneAnalysisEventTypeEnum("event_type").notNull(),
-    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    index("scene_analysis_events_analysis_id_idx").on(table.analysisId, table.id),
-    index("scene_analysis_events_expires_idx").on(table.expiresAt),
-    check(
-      "scene_analysis_events_payload_check",
-      sql`jsonb_typeof(${table.payload}) = 'object'`,
     ),
   ],
 );

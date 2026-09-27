@@ -35,7 +35,6 @@ export class SceneRecommendationProcessor implements SceneAnalysisProcessor {
     analysis: ClaimedSceneAnalysis,
     context: SceneProcessingContext,
   ): Promise<SceneProcessingResult> {
-    await context.emitStage("FILTERING_TEMPLATES");
     context.signal.throwIfAborted();
     const candidates = await this.candidates.find({
       locale: analysis.locale,
@@ -59,7 +58,6 @@ export class SceneRecommendationProcessor implements SceneAnalysisProcessor {
       throw new SceneProcessingError("ANALYSIS_IMAGE_UNAVAILABLE", false, { cause });
     }
 
-    await context.emitStage("REQUESTING_PROVIDER");
     context.signal.throwIfAborted();
     const requestId = randomUUID();
     const startedAt = this.clock();

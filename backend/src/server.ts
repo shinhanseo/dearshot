@@ -23,7 +23,6 @@ import { ImageStorage } from "./uploads/image-storage.js";
 import { UploadService } from "./uploads/upload-service.js";
 import { UsageLimitService } from "./reliability/usage-limit-service.js";
 import { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
-import { SceneAnalysisEventService } from "./scene-analysis/scene-analysis-event-service.js";
 import { SceneAnalysisWorker } from "./scene-analysis/scene-analysis-worker.js";
 import { GeminiSceneRecommendationProvider } from "./scene-analysis/gemini-scene-recommendation-provider.js";
 import { SceneRecommendationProcessor } from "./scene-analysis/scene-recommendation-processor.js";
@@ -75,14 +74,7 @@ async function main() {
     {
       retentionDays: environment.sceneAnalysis.retentionDays,
       maxAttempts: environment.sceneAnalysis.workerMaxAttempts,
-    },
-  );
-  const sceneAnalysisEventService = new SceneAnalysisEventService(
-    database.db,
-    uploadService,
-    {
-      pollIntervalMillis: environment.sceneAnalysis.ssePollIntervalMillis,
-      heartbeatSeconds: environment.sceneAnalysis.sseHeartbeatSeconds,
+      pollAfterMillis: environment.sceneAnalysis.pollAfterMillis,
     },
   );
   const recommendationProvider = environment.ai.provider === "gemini"
@@ -111,7 +103,6 @@ async function main() {
       pollIntervalMillis: environment.sceneAnalysis.workerPollIntervalMillis,
       leaseSeconds: environment.sceneAnalysis.workerLeaseSeconds,
       retryBaseSeconds: environment.sceneAnalysis.workerRetryBaseSeconds,
-      eventRetentionHours: environment.sceneAnalysis.eventRetentionHours,
       onTerminal: ({ uploadId, storagePath }) =>
         uploadService.purgeConsumed(uploadId, storagePath),
     },
@@ -223,7 +214,6 @@ async function main() {
     },
     sceneAnalysis: {
       service: sceneAnalysisService,
-      eventService: sceneAnalysisEventService,
       tokenService,
       ipRateLimiter: sceneAnalysisIpRateLimiter,
     },

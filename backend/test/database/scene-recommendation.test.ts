@@ -16,7 +16,7 @@ import {
   verifyDatabaseConnection,
 } from "../../src/db/client.js";
 import { users } from "../../src/db/schema/identity.js";
-import { aiJobAttempts, imageUploads, sceneAnalyses, sceneAnalysisEvents } from "../../src/db/schema/jobs.js";
+import { aiJobAttempts, imageUploads, sceneAnalyses } from "../../src/db/schema/jobs.js";
 import { SceneRecommendationProcessor } from "../../src/scene-analysis/scene-recommendation-processor.js";
 import type {
   SceneRecommendationInput,
@@ -135,7 +135,6 @@ function worker(provider: SceneRecommendationProvider) {
     pollIntervalMillis: 10,
     leaseSeconds: 30,
     retryBaseSeconds: 1,
-    eventRetentionHours: 24,
     onTerminal: ({ uploadId, storagePath }) => uploadService.purgeConsumed(uploadId, storagePath),
   }, logger);
 }
@@ -156,7 +155,7 @@ describe("scene recommendation pipeline", { concurrency: 1 }, () => {
 
   beforeEach(async () => {
     await connection.db.execute(sql`
-      truncate table ai_job_attempts, scene_analysis_events, scene_analyses, image_uploads,
+      truncate table ai_job_attempts, scene_analyses, image_uploads,
       idempotency_records, daily_usage, oauth_nonce_uses, auth_identities,
       refresh_sessions, user_preferences, users, catalog_state,
       template_version_localizations, template_scenes, template_versions, templates,
@@ -194,12 +193,9 @@ describe("scene recommendation pipeline", { concurrency: 1 }, () => {
     assert.equal(await worker(new TestProvider(0.3)).runOnce(), true);
     const [analysis] = await connection.db.select().from(sceneAnalyses)
       .where(eq(sceneAnalyses.id, job.analysisId));
-    const events = await connection.db.select().from(sceneAnalysisEvents)
-      .where(eq(sceneAnalysisEvents.analysisId, job.analysisId));
     assert.equal(analysis.status, "NEEDS_USER_SELECTION");
-    assert.equal(events.some((event) => event.eventType === "recommendation"), false);
-    assert.equal(events.at(-1)?.eventType, "completed");
-    assert.equal(events.at(-1)?.payload.status, "NEEDS_USER_SELECTION");
+    assert.equal(analysis.result?.outcome, "NEEDS_USER_SELECTION");
+    assert.equal(analysis.result?.reasonCode, "LOW_RECOMMENDATION_CONFIDENCE");
   });
 
   it("rejects a provider choice outside the server allowlist and records the failure", async () => {

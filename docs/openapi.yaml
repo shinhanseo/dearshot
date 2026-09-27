@@ -7,10 +7,10 @@ info:
     identifier: LicenseRef-Proprietary
   description: |
     Android 앱용 DearShot HTTP API 계약입니다.
-    장면 분석 진행 상황은 Server-Sent Events(SSE)로 전달합니다.
+    온디바이스 분석 UX와 서버의 최종 템플릿 추천을 분리하며 비동기 결과는 짧은 폴링으로 조회합니다.
     분석 이미지는 Node API의 multipart 업로드로 전달하고 EC2 임시 저장소에서 처리합니다.
     현재 서버에는 인증, 템플릿 카탈로그·상호작용, 멱등 이미지 업로드, 앱 설정,
-    비동기 장면 작업·SSE와 공개 DB 후보로 제한된 Gemini 템플릿 추천이 구현되어 있습니다.
+    비동기 장면 작업과 공개 DB 후보로 제한된 Gemini 템플릿 추천이 구현되어 있습니다.
 servers:
   - url: /api/v1
     description: Same-origin development or deployment
@@ -24,7 +24,7 @@ tags:
   - name: Uploads
     description: AI 작업용 임시 이미지 업로드
   - name: Scene analysis
-    description: 장면 분석 생성, 조회, SSE 스트리밍
+    description: 장면 분석 생성, 상태 및 최종 추천 조회
   - name: Photo feedback
     description: 촬영 결과에 대한 비동기 피드백
   - name: Catalog
@@ -446,57 +446,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /scene-analyses/{analysisId}/events:
-    get:
-      tags: [Scene analysis]
-      operationId: streamSceneAnalysisEvents
-      summary: 장면 분석 이벤트 SSE 구독
-      description: |
-        `status`, `recommendation`, `completed`, `failed` 이벤트를 전송합니다.
-        Android에서 이미 표시한 Places365·YOLOX 키워드는 SSE로 복제하지 않습니다.
-        이벤트는 PostgreSQL에 저장하며 재연결 시 `Last-Event-ID` 헤더를 사용합니다.
-        15초 heartbeat를 전송하고 terminal 이벤트 뒤 연결을 닫습니다.
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/AnalysisId'
-        - $ref: '#/components/parameters/LastEventId'
-      responses:
-        '200':
-          description: SSE 스트림
-          headers:
-            Cache-Control:
-              schema:
-                type: string
-              example: no-cache
-            X-Accel-Buffering:
-              schema:
-                type: string
-                const: 'no'
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              example: |-
-                id: 1
-                event: status
-                data: {"stage":"FILTERING_TEMPLATES"}
-
-                id: 2
-                event: completed
-                data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          description: 이벤트 보관 기간 만료
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
 
   /photo-feedbacks:
     post:
@@ -1016,12 +965,6 @@ components:
       schema:
         type: string
         format: uuid
-    LastEventId:
-      name: Last-Event-ID
-      in: header
-      required: false
-      schema:
-        type: string
     Locale:
       name: locale
       in: query
@@ -1580,7 +1523,7 @@ components:
 
     CreateSceneAnalysisResponse:
       type: object
-      required: [analysisId, sceneRevision, status, expiresAt]
+      required: [analysisId, sceneRevision, status, pollAfterMs, expiresAt]
       properties:
         analysisId:
           type: string
@@ -1591,6 +1534,9 @@ components:
         status:
           type: string
           const: QUEUED
+        pollAfterMs:
+          type: integer
+          minimum: 250
         expiresAt:
           type: string
           format: date-time
@@ -1635,7 +1581,7 @@ components:
 
     SceneAnalysis:
       type: object
-      required: [analysisId, sceneRevision, status, capturedAt, createdAt, startedAt, completedAt, cancelledAt, expiresAt, result, failureCode, retryable]
+      required: [analysisId, sceneRevision, status, pollAfterMs, capturedAt, createdAt, startedAt, completedAt, cancelledAt, expiresAt, result, failureCode, retryable]
       properties:
         analysisId:
           type: string
@@ -1646,9 +1592,9 @@ components:
         status:
           type: string
           enum: [QUEUED, PROCESSING, COMPLETED, NEEDS_USER_SELECTION, FAILED, CANCELLED]
-        stage:
-          type: string
-          enum: [PREPARING_INPUT, FILTERING_TEMPLATES, REQUESTING_PROVIDER, FINALIZING]
+        pollAfterMs:
+          type: [integer, 'null']
+          minimum: 250
         scene:
           $ref: '#/components/schemas/SceneCandidate'
         sceneCandidates:

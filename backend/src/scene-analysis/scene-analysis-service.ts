@@ -9,8 +9,8 @@ import { UsageLimitService } from "../reliability/usage-limit-service.js";
 import type { UploadService } from "../uploads/upload-service.js";
 import type { CreateSceneAnalysisRequest } from "./scene-analysis-schema.js";
 
-export type SceneAnalysisServiceConfig = { retentionDays: number; maxAttempts: number };
-type CreateResponse = { analysisId: string; sceneRevision: number; status: "QUEUED"; expiresAt: string };
+export type SceneAnalysisServiceConfig = { retentionDays: number; maxAttempts: number; pollAfterMillis: number };
+type CreateResponse = { analysisId: string; sceneRevision: number; status: "QUEUED"; pollAfterMs: number; expiresAt: string };
 
 export class SceneAnalysisService {
   constructor(
@@ -55,7 +55,8 @@ export class SceneAnalysisService {
       await transaction.update(imageUploads).set({ status: "CONSUMED", consumedAt: now })
         .where(and(eq(imageUploads.id, input.uploadId), eq(imageUploads.status, "READY")));
       return { statusCode: 202, resourceId: analysisId, body: {
-        analysisId, sceneRevision: input.sceneRevision, status: "QUEUED" as const, expiresAt: expiresAt.toISOString(),
+        analysisId, sceneRevision: input.sceneRevision, status: "QUEUED" as const,
+        pollAfterMs: this.config.pollAfterMillis, expiresAt: expiresAt.toISOString(),
       } };
     });
   }
@@ -70,7 +71,9 @@ export class SceneAnalysisService {
       failureCode: sceneAnalyses.failureCode, retryable: sceneAnalyses.retryable,
     }).from(sceneAnalyses).where(and(eq(sceneAnalyses.id, analysisId), eq(sceneAnalyses.ownerUserId, ownerUserId))).limit(1);
     if (!analysis) this.notFound();
-    return { ...analysis, capturedAt: analysis.capturedAt.toISOString(), createdAt: analysis.createdAt.toISOString(),
+    return { ...analysis,
+      pollAfterMs: ["QUEUED", "PROCESSING"].includes(analysis.status) ? this.config.pollAfterMillis : null,
+      capturedAt: analysis.capturedAt.toISOString(), createdAt: analysis.createdAt.toISOString(),
       startedAt: analysis.startedAt?.toISOString() ?? null, completedAt: analysis.completedAt?.toISOString() ?? null,
       cancelledAt: analysis.cancelledAt?.toISOString() ?? null, expiresAt: analysis.expiresAt.toISOString() };
   }

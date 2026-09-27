@@ -33,7 +33,7 @@
 | 현재 | `GET /app-config` | 구현됨 | Android 버전·업로드 제한·게스트 한도·정책·기능 플래그 조회 |
 | 현재 | `POST /app-events/batch` | 구현됨 | guest/member 핵심 퍼널 이벤트의 검증·중복 제거·90일 보존 |
 | B-14 구현 | `POST/GET/DELETE /api/v1/scene-analyses` | 구현 | 온디바이스 분석 입력, 작업 생성·조회·취소, 업로드·사용량 원자 처리 |
-| B-15 구현 | `GET /api/v1/scene-analyses/{id}/events` | 구현 | PostgreSQL worker, lease 복구, 실제 단계 SSE와 `Last-Event-ID` replay |
+| B-15R 구현 | `GET /api/v1/scene-analyses/{id}` | 구현 | PostgreSQL worker, lease 복구, `pollAfterMs` 기반 결과 조회 |
 | B-16 구현 | 장면 분석 worker 결과 | 구현 | Gemini 구조화 응답, 공개 DB 후보 allowlist, AI attempt, 원본 이미지 즉시 삭제 |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
 
@@ -47,8 +47,8 @@
 - 좋아요, 북마크, 사용자 설정 동기화는 회원 토큰이 필요하다.
 - Android는 EXIF를 제거하고 긴 변 2048px 이하로 압축한 분석 이미지를 Node API에 multipart로 전송한다.
 - 서버는 분석 이미지를 EC2 임시 저장소에만 두고 작업 완료 후 즉시, 장애 상황에서도 최대 1시간 안에 삭제한다.
-- 장면 분석의 서버 작업 단계와 최종 결과는 SSE(Server-Sent Events)로 전달한다. 온디바이스 키워드는 Android가 바로 표시한다.
-- 촬영 피드백은 비동기로 처리하며 앱이 결과를 조회한다. 이후 필요하면 SSE를 추가한다.
+- Places365·YOLOX 키워드와 스캔 UX는 Android가 온디바이스로 즉시 표시한다.
+- 장면 추천과 촬영 피드백은 서버 비동기 작업으로 처리하며 앱이 `pollAfterMs`에 맞춰 결과를 조회한다.
 - 촬영 세션, 원본 사진 목록, 최종 갤러리 저장은 Android 로컬에서 관리한다.
 - 템플릿은 관리자 API로 등록·수정·배포해 앱 업데이트 없이 교체한다.
 - 모든 날짜는 UTC ISO 8601 문자열을 사용한다. 사용자·업로드·작업 ID는 UUID, scene과 template ID는 변경되지 않는 slug를 사용한다.
@@ -63,7 +63,6 @@
 | `Accept-Language` | 선택 | `ko-KR`, `en-US` 등. 없으면 사용자 설정, 그것도 없으면 `en-US` |
 | `X-Request-Id` | 선택 | 클라이언트가 생성한 추적 ID. 없으면 서버가 생성 |
 | `Idempotency-Key` | 조건부 | 중복 생성이 위험한 `POST` 요청에 사용하는 UUID. 해당 API에서는 필수 |
-| `Last-Event-ID` | 선택 | 끊어진 SSE 스트림 재연결 시 마지막으로 받은 이벤트 ID |
 
 ### 2.2 인증 주체
 
@@ -74,7 +73,7 @@
 | 회원 | 게스트 권한 + 좋아요, 북마크, 개인 설정, 계정 관리 |
 | 관리자 | 템플릿 생성·버전 관리·배포·보관 |
 
-게스트 토큰도 서버가 발급한 Bearer Token이다. 쿼리 파라미터나 SSE URL에 토큰을 넣지 않는다.
+게스트 토큰도 서버가 발급한 Bearer Token이다. 토큰을 쿼리 파라미터에 넣지 않는다.
 
 ### 2.3 페이지네이션
 
@@ -147,7 +146,6 @@
 | `DELETE` | `/uploads/{uploadId}` | 회원/게스트 | 미사용 업로드 폐기 |
 | `POST` | `/scene-analyses` | 회원/게스트 | 장면 분석 작업 생성 |
 | `GET` | `/scene-analyses/{analysisId}` | 회원/게스트 | 분석 현재 상태·결과 조회 |
-| `GET` | `/scene-analyses/{analysisId}/events` | 회원/게스트 | 장면 분석 SSE 구독 |
 | `DELETE` | `/scene-analyses/{analysisId}` | 회원/게스트 | 분석 취소·결과 폐기 |
 | `POST` | `/photo-feedbacks` | 회원/게스트 | 촬영 피드백 작업 생성 |
 | `GET` | `/photo-feedbacks/{feedbackId}` | 회원/게스트 | 피드백 상태·결과 조회 |
@@ -472,58 +470,18 @@ image   = JPEG 또는 WebP binary file
   "analysisId": "ec863a30-d1d8-4285-a043-e1769ee2d7b5",
   "sceneRevision": 3,
   "status": "QUEUED",
+  "pollAfterMs": 500,
   "expiresAt": "2026-09-27T08:41:00Z"
 }
 ```
 
 같은 사용자·멱등 key·요청 본문은 같은 작업을 반환하며 `Idempotency-Replayed: true`를 보낸다. 업로드 소유권·purpose·만료·미사용 상태 확인, 일일 사용량 증가, 업로드 `CONSUMED` 전환, 작업 생성은 한 트랜잭션이다.
 
-### 7.2 SSE 이벤트 구독
-
-`GET /scene-analyses/{analysisId}/events`
-
-```http
-Accept: text/event-stream
-Authorization: Bearer {accessToken}
-Last-Event-ID: 3
-```
-
-Android는 OkHttp 기반 SSE 클라이언트를 사용한다. 토큰을 URL 쿼리에 넣지 않는다. 서버는 15초마다 `: heartbeat` 주석을 보내 프록시 연결 종료를 방지한다. 이벤트는 PostgreSQL에 먼저 저장한 뒤 전송하므로 API 프로세스가 재시작되어도 `Last-Event-ID` 이후 항목을 다시 읽을 수 있다. `completed` 또는 `failed` 뒤 연결을 닫으며 이벤트는 기본 24시간 보관한다. 만료된 스트림은 `410 EVENTS_EXPIRED`를 반환한다.
-
-이벤트 순서 예시:
-
-```text
-id: 1
-event: status
-data: {"stage":"PREPARING_INPUT"}
-
-id: 2
-event: recommendation
-data: {"outcome":"RECOMMENDED","scene":{"sceneKey":"beach","confidence":0.94},"recommendation":{"template":{"id":"beach-breeze","version":3},"reasonCode":"BACKGROUND_BALANCE"},"source":"gemini","sceneRevision":3}
-
-id: 3
-event: completed
-data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","status":"COMPLETED","sceneRevision":3}
-```
-
-| event | 용도 | 여러 번 발생 |
-|---|---|---:|
-| `status` | 실제 작업 단계 | 가능 |
-| `recommendation` | 단일 템플릿 ID·version, 근거, `sceneRevision` | 불가 |
-| `completed` | 정상 종료 | 불가 |
-| `failed` | 오류 코드와 재시도 가능 여부 | 불가 |
-
-재연결 규칙:
-
-1. 앱은 마지막 `id`를 저장한다.
-2. 연결이 끊기면 지수 백오프로 재연결하고 `Last-Event-ID`를 보낸다.
-3. 서버는 보관 중인 다음 이벤트부터 재전송한다.
-4. `completed` 또는 `failed`를 받으면 스트림을 닫는다.
-5. 이벤트 보관 기간이 끝났으면 상태 조회 API로 최종 결과를 조회한다.
-
-### 7.3 분석 상태 조회
+### 7.2 분석 상태 조회
 
 `GET /scene-analyses/{analysisId}`
+
+`QUEUED` 또는 `PROCESSING` 동안에는 `pollAfterMs`가 포함된다. Android는 해당 시간보다 빠르게 재요청하지 않는다. terminal 상태에서는 `pollAfterMs`가 `null`이며 서버의 `sceneRevision`이 현재 카메라 revision과 다르면 오래된 추천으로 적용하지 않는다.
 
 완료 응답:
 
@@ -884,7 +842,7 @@ POST /auth/guest
 → GET /app-config
 → POST /uploads (multipart: purpose + image)
 → POST /scene-analyses
-→ GET /scene-analyses/{id}/events
+→ GET /scene-analyses/{id} (pollAfterMs)
 → GET /templates?scene=beach
 → 촬영
 → POST /uploads (multipart: purpose + image)
@@ -916,7 +874,7 @@ Google Credential Manager 또는 Kakao SDK
 - 장면 분석·피드백 원본은 작업 완료 후 즉시 삭제를 시도하고, 장애 상황에서도 최대 1시간 안에 삭제한다.
 - 좋아요·북마크 API는 사용자별 유일 제약으로 중복 행을 방지한다.
 - 외부 AI 응답은 스키마 검증 후 앱에 전달한다.
-- SSE 이벤트 텍스트도 locale에 맞추되 앱 분기는 문자열이 아닌 `stage`, `action`, `code`로 처리한다.
+- 사용자 문구는 locale에 맞추되 앱 분기는 문자열이 아닌 `status`, `actionCode`, `failureCode`로 처리한다.
 - Android 네이티브 요청은 `Origin` 헤더가 없어도 허용하되, 브라우저 요청은 환경변수에 등록한 정확한 HTTPS origin만 허용한다.
 - 인증·업로드·제품 이벤트에는 IP 기반 보조 제한을 적용한다. 운영에서 `trust proxy`는 API 포트가 외부에 노출되지 않고 정확히 한 개의 프록시를 통과할 때만 `1`로 설정한다.
 - 개발용 동기식 장면 분석 fixture는 production에서 라우팅하지 않는다. B-14의 인증·사용량 제한이 적용된 비동기 API로만 교체한다.
@@ -926,7 +884,7 @@ Google Credential Manager 또는 Kakao SDK
 1. 공통 오류, 요청 ID, 토큰 미들웨어
 2. 게스트·Google·Kakao 인증과 Refresh Token 회전
 3. 임시 업로드와 자동 삭제 작업
-4. 장면 분석 작업 큐와 SSE
+4. 장면 분석 작업 큐와 polling
 5. 장면·템플릿 조회와 캐시 버전
 6. 촬영 피드백 비동기 처리
 7. 좋아요·북마크

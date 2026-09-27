@@ -18,7 +18,7 @@
 
 ```text
 Android app
-    │ HTTPS / SSE
+    │ HTTPS / REST polling
     ▼
 Caddy :80/:443
     ├── /api/* ──────► Node.js + TypeScript API :3000
@@ -49,7 +49,7 @@ Caddy :80/:443
 | B-12 | 사용량·멱등성·앱 설정 | 일일 AI 제한, 중복 비용 방지, 원격 설정 | B-06 |
 | B-13 | 제품 이벤트 수집 | guest/member 퍼널 이벤트, schema 제한, 90일 보존 | B-06, B-05 |
 | B-14 | 온디바이스 분석 입력과 비동기 작업 | 안정 프레임 업로드, Places365·YOLOX 결과 계약, 작업 상태·취소 | B-09, B-11, B-12 |
-| B-15 | 작업 실행기와 SSE | PostgreSQL 작업 lease, 단계 이벤트, `Last-Event-ID` 재연결 | B-14 |
+| B-15R | 작업 실행기와 polling | PostgreSQL 작업 lease, `pollAfterMs` 결과 조회 | B-14 |
 | B-16 | Gemini 템플릿 추천 | DB 후보 제한, 구조화 응답, `ai_job_attempts`, 최종 템플릿 1개 | B-09, B-15 |
 | B-17 | 촬영 피드백 | 템플릿 버전 기반 피드백, 비교·재촬영 결과 | B-11, B-12, B-16 |
 | B-18 | 개인정보와 retention | 임시 파일, 입력 힌트, 결과, 이벤트, 게스트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-17 |
@@ -95,20 +95,19 @@ Caddy :80/:443
 - 사용량 증가, upload 소비, AI 작업 생성은 중복 비용이 생기지 않게 트랜잭션으로 처리합니다.
 - Android가 전송한 Places365 장면 후보와 YOLOX 객체 위치는 선택 입력이며, 서버는 길이·개수·신뢰도·정규화 좌표만 검증하고 사실로 신뢰하지 않습니다.
 - 온디바이스 모델 이름과 버전은 관찰 가능한 메타데이터로만 사용하고 백엔드는 ONNX 모델 실행에 의존하지 않습니다.
-- SSE는 증가하는 event ID를 사용하고 `Last-Event-ID` 재연결 시 누락된 이벤트를 복구합니다.
-- 온디바이스 키워드는 Android가 즉시 표시하므로 SSE는 서버 작업 단계와 최종 추천만 전달합니다.
+- 온디바이스 키워드는 Android가 즉시 표시하고 서버는 `pollAfterMs`에 맞춰 최종 추천만 제공합니다.
 - Gemini에는 공개된 DB 템플릿 후보만 전달하고 응답은 그중 정확히 한 template ID/version만 선택할 수 있습니다.
 - AI 호출마다 provider/model, prompt/schema version, latency, token 수, 표준화된 오류를 `ai_job_attempts`에 남깁니다.
 - AI 원본 프롬프트·응답, 이미지, provider token, 정확한 위치 이력은 저장하지 않습니다.
 - `app_events`는 허용된 이벤트와 속성만 받고 guest/member 퍼널을 동일한 actor 흐름으로 연결합니다.
-- 이미지 최대 1시간, SSE 이벤트 24시간, AI 결과 7일, AI 시도 30일, 제품 이벤트 90일 정책을 자동 검증합니다.
+- 이미지 최대 1시간, AI 결과 7일, AI 시도 30일, 제품 이벤트 90일 정책을 자동 검증합니다.
 
 ### B-19~B-21. 배포와 출시 검증
 
 - 운영 API 이미지는 multi-stage build와 non-root 사용자로 실행됩니다.
 - EC2 보안 그룹은 80/443과 제한된 22만 허용하고 3000/5432를 공개하지 않습니다.
 - 배포는 commit SHA 이미지, 배포 전 백업, 일회성 migration, health check와 이전 이미지 rollback을 사용합니다.
-- 인증, 템플릿, 업로드, 분석 SSE, 피드백, 제품 이벤트, 탈퇴 흐름을 E2E로 검증합니다.
+- 인증, 템플릿, 업로드, 분석 polling, 피드백, 제품 이벤트, 탈퇴 흐름을 E2E로 검증합니다.
 - PostgreSQL 백업을 새 데이터베이스에 복원하고 행 수와 핵심 관계를 확인합니다.
 - 장애 상황에서도 Pino 로그로 request ID를 추적하고 DB의 AI 시도 이력과 연결할 수 있습니다.
 
@@ -125,4 +124,4 @@ Caddy :80/:443
 
 ## 포트폴리오에서 설명할 범위
 
-백엔드는 Android 촬영 경험을 지탱하는 제품 인프라로 구현합니다. 면접에서는 관계형 데이터 모델, 게스트 계정 승격, OAuth 서버 검증, 템플릿 불변 버전, upload 수명주기, SSE 재연결, 멱등성과 AI 비용 제한, provider 시도 이력, 제품 퍼널, Docker 배포와 PostgreSQL 복구를 직접 설명할 수 있어야 합니다. AI의 도움을 받은 코드는 작은 PR과 테스트, CI로 동작과 설계를 검증합니다.
+백엔드는 Android 촬영 경험을 지탱하는 제품 인프라로 구현합니다. 면접에서는 관계형 데이터 모델, 게스트 계정 승격, OAuth 서버 검증, 템플릿 불변 버전, upload 수명주기, lease와 polling, 멱등성과 AI 비용 제한, provider 시도 이력, 제품 퍼널, Docker 배포와 PostgreSQL 복구를 직접 설명할 수 있어야 합니다. AI의 도움을 받은 코드는 작은 PR과 테스트, CI로 동작과 설계를 검증합니다.
