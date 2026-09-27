@@ -452,9 +452,10 @@ paths:
       operationId: streamSceneAnalysisEvents
       summary: 장면 분석 이벤트 SSE 구독
       description: |
-        `status`, `scene`, `recommendation`, `completed`, `failed` 이벤트를 전송합니다.
+        `status`, `recommendation`, `completed`, `failed` 이벤트를 전송합니다.
         Android에서 이미 표시한 Places365·YOLOX 키워드는 SSE로 복제하지 않습니다.
-        재연결 시 `Last-Event-ID` 헤더를 사용합니다.
+        이벤트는 PostgreSQL에 저장하며 재연결 시 `Last-Event-ID` 헤더를 사용합니다.
+        15초 heartbeat를 전송하고 terminal 이벤트 뒤 연결을 닫습니다.
       security:
         - bearerAuth: []
       parameters:
@@ -468,6 +469,10 @@ paths:
               schema:
                 type: string
               example: no-cache
+            X-Accel-Buffering:
+              schema:
+                type: string
+                const: 'no'
           content:
             text/event-stream:
               schema:
@@ -480,6 +485,8 @@ paths:
                 id: 2
                 event: completed
                 data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5"}
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':

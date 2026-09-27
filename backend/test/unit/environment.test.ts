@@ -38,7 +38,17 @@ describe("environment configuration", () => {
       member: { sceneAnalysesPerDay: 50, photoFeedbacksPerDay: 100 },
     });
     assert.equal(environment.idempotency.ttlSeconds, 86_400);
-    assert.deepEqual(environment.sceneAnalysis, { retentionDays: 7 });
+    assert.deepEqual(environment.sceneAnalysis, {
+      retentionDays: 7,
+      workerEnabled: true,
+      workerPollIntervalMillis: 1_000,
+      workerLeaseSeconds: 30,
+      workerMaxAttempts: 3,
+      workerRetryBaseSeconds: 1,
+      ssePollIntervalMillis: 500,
+      sseHeartbeatSeconds: 15,
+      eventRetentionHours: 24,
+    });
     assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
     assert.equal(environment.appConfig.features.kakaoLogin, true);
     assert.deepEqual(environment.productEvents, {
@@ -130,6 +140,10 @@ describe("environment configuration", () => {
     assert.throws(
       () => loadEnvironment({ ...baseEnvironment, APP_EVENT_RETENTION_DAYS: "366" }),
       /APP_EVENT_RETENTION_DAYS must be at most 365/u,
+    );
+    assert.throws(
+      () => loadEnvironment({ ...baseEnvironment, SCENE_WORKER_LEASE_SECONDS: "4" }),
+      /SCENE_WORKER_LEASE_SECONDS must be at least 5/u,
     );
   });
 

@@ -9,7 +9,7 @@ import { UsageLimitService } from "../reliability/usage-limit-service.js";
 import type { UploadService } from "../uploads/upload-service.js";
 import type { CreateSceneAnalysisRequest } from "./scene-analysis-schema.js";
 
-export type SceneAnalysisServiceConfig = { retentionDays: number };
+export type SceneAnalysisServiceConfig = { retentionDays: number; maxAttempts: number };
 type CreateResponse = { analysisId: string; sceneRevision: number; status: "QUEUED"; expiresAt: string };
 
 export class SceneAnalysisService {
@@ -50,6 +50,7 @@ export class SceneAnalysisService {
         capturedAt: new Date(input.capturedAt), locale: input.locale, deviceAnalysis: input.deviceAnalysis,
         timezone: input.context?.timezone, latitude: location?.latitude, longitude: location?.longitude,
         locationAccuracyMeters: location?.accuracyMeters, expiresAt,
+        maxAttempts: this.config.maxAttempts,
       });
       await transaction.update(imageUploads).set({ status: "CONSUMED", consumedAt: now })
         .where(and(eq(imageUploads.id, input.uploadId), eq(imageUploads.status, "READY")));
@@ -81,23 +82,17 @@ export class SceneAnalysisService {
         .where(and(eq(sceneAnalyses.id, analysisId), eq(sceneAnalyses.ownerUserId, ownerUserId))).limit(1).for("update");
       if (!analysis) this.notFound();
       if (analysis.status !== "QUEUED" && analysis.status !== "PROCESSING") return;
-      await transaction.update(sceneAnalyses).set({ status: "CANCELLED", cancelledAt: this.clock() }).where(and(
+      await transaction.update(sceneAnalyses).set({
+        status: "CANCELLED",
+        cancelledAt: this.clock(),
+        updatedAt: this.clock(),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      }).where(and(
         eq(sceneAnalyses.id, analysisId), eq(sceneAnalyses.ownerUserId, ownerUserId),
         inArray(sceneAnalyses.status, ["QUEUED", "PROCESSING"]),
       ));
     });
-  }
-
-  async completeIfProcessing(analysisId: string, result: Record<string, unknown>): Promise<boolean> {
-    const [completed] = await this.database.update(sceneAnalyses).set({
-      status: "COMPLETED",
-      result,
-      completedAt: this.clock(),
-      failureCode: null,
-      retryable: null,
-    }).where(and(eq(sceneAnalyses.id, analysisId), eq(sceneAnalyses.status, "PROCESSING")))
-      .returning({ id: sceneAnalyses.id });
-    return Boolean(completed);
   }
 
   private notFound(): never {

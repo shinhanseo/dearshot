@@ -33,7 +33,7 @@
 | 현재 | `GET /app-config` | 구현됨 | Android 버전·업로드 제한·게스트 한도·정책·기능 플래그 조회 |
 | 현재 | `POST /app-events/batch` | 구현됨 | guest/member 핵심 퍼널 이벤트의 검증·중복 제거·90일 보존 |
 | B-14 구현 | `POST/GET/DELETE /api/v1/scene-analyses` | 구현 | 온디바이스 분석 입력, 작업 생성·조회·취소, 업로드·사용량 원자 처리 |
-| B-15 목표 | `GET /api/v1/scene-analyses/{id}/events` | 미구현 | 작업 실행기와 실제 단계 SSE 전달 |
+| B-15 구현 | `GET /api/v1/scene-analyses/{id}/events` | 구현 | PostgreSQL worker, lease 복구, 실제 단계 SSE와 `Last-Event-ID` replay |
 | MVP 목표 | 이 문서와 `openapi.yaml`의 나머지 API | 미구현 | 각 백엔드 Issue에서 순서대로 구현함 |
 
 단수형 개발 mock `/scene-analysis`는 B-14에서 제거했습니다. Android는 복수형 비동기 작업 계약만 사용합니다.
@@ -46,7 +46,7 @@
 - 좋아요, 북마크, 사용자 설정 동기화는 회원 토큰이 필요하다.
 - Android는 EXIF를 제거하고 긴 변 2048px 이하로 압축한 분석 이미지를 Node API에 multipart로 전송한다.
 - 서버는 분석 이미지를 EC2 임시 저장소에만 두고 작업 완료 후 즉시, 장애 상황에서도 최대 1시간 안에 삭제한다.
-- 장면 분석 진행 상황과 키워드는 SSE(Server-Sent Events)로 전달한다.
+- 장면 분석의 서버 작업 단계와 최종 결과는 SSE(Server-Sent Events)로 전달한다. 온디바이스 키워드는 Android가 바로 표시한다.
 - 촬영 피드백은 비동기로 처리하며 앱이 결과를 조회한다. 이후 필요하면 SSE를 추가한다.
 - 촬영 세션, 원본 사진 목록, 최종 갤러리 저장은 Android 로컬에서 관리한다.
 - 템플릿은 관리자 API로 등록·수정·배포해 앱 업데이트 없이 교체한다.
@@ -487,7 +487,7 @@ Authorization: Bearer {accessToken}
 Last-Event-ID: 3
 ```
 
-Android는 OkHttp 기반 SSE 클라이언트를 사용한다. 토큰을 URL 쿼리에 넣지 않는다. 서버는 15초마다 `: heartbeat` 주석을 보내 프록시 연결 종료를 방지한다.
+Android는 OkHttp 기반 SSE 클라이언트를 사용한다. 토큰을 URL 쿼리에 넣지 않는다. 서버는 15초마다 `: heartbeat` 주석을 보내 프록시 연결 종료를 방지한다. 이벤트는 PostgreSQL에 먼저 저장한 뒤 전송하므로 API 프로세스가 재시작되어도 `Last-Event-ID` 이후 항목을 다시 읽을 수 있다. `completed` 또는 `failed` 뒤 연결을 닫으며 이벤트는 기본 24시간 보관한다. 만료된 스트림은 `410 EVENTS_EXPIRED`를 반환한다.
 
 이벤트 순서 예시:
 
@@ -497,14 +497,10 @@ event: status
 data: {"stage":"PREPARING_INPUT"}
 
 id: 2
-event: scene
-data: {"sceneKey":"beach","displayName":"바다","confidence":0.94}
-
-id: 3
 event: recommendation
 data: {"template":{"id":"beach-breeze","version":3},"reason":"열린 수평선과 부드러운 측면광이 잘 어울려요.","sceneRevision":3}
 
-id: 4
+id: 3
 event: completed
 data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","sceneRevision":3}
 ```
@@ -512,7 +508,6 @@ data: {"analysisId":"ec863a30-d1d8-4285-a043-e1769ee2d7b5","sceneRevision":3}
 | event | 용도 | 여러 번 발생 |
 |---|---|---:|
 | `status` | 실제 작업 단계 | 가능 |
-| `scene` | 최종 장소 카테고리 | 불가 |
 | `recommendation` | 단일 템플릿 ID·version, 근거, `sceneRevision` | 불가 |
 | `completed` | 정상 종료 | 불가 |
 | `failed` | 오류 코드와 재시도 가능 여부 | 불가 |

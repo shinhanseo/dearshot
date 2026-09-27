@@ -23,6 +23,9 @@ import { ImageStorage } from "./uploads/image-storage.js";
 import { UploadService } from "./uploads/upload-service.js";
 import { UsageLimitService } from "./reliability/usage-limit-service.js";
 import { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
+import { SceneAnalysisEventService } from "./scene-analysis/scene-analysis-event-service.js";
+import { FakeSceneAnalysisProcessor } from "./scene-analysis/scene-analysis-processor.js";
+import { SceneAnalysisWorker } from "./scene-analysis/scene-analysis-worker.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -61,7 +64,29 @@ async function main() {
     uploadService,
     idempotencyService,
     usageLimitService,
-    environment.sceneAnalysis,
+    {
+      retentionDays: environment.sceneAnalysis.retentionDays,
+      maxAttempts: environment.sceneAnalysis.workerMaxAttempts,
+    },
+  );
+  const sceneAnalysisEventService = new SceneAnalysisEventService(
+    database.db,
+    uploadService,
+    {
+      pollIntervalMillis: environment.sceneAnalysis.ssePollIntervalMillis,
+      heartbeatSeconds: environment.sceneAnalysis.sseHeartbeatSeconds,
+    },
+  );
+  const sceneAnalysisWorker = new SceneAnalysisWorker(
+    database.db,
+    new FakeSceneAnalysisProcessor(),
+    {
+      pollIntervalMillis: environment.sceneAnalysis.workerPollIntervalMillis,
+      leaseSeconds: environment.sceneAnalysis.workerLeaseSeconds,
+      retryBaseSeconds: environment.sceneAnalysis.workerRetryBaseSeconds,
+      eventRetentionHours: environment.sceneAnalysis.eventRetentionHours,
+    },
+    logger,
   );
   const uploadIpRateLimiter = createIpRateLimiter({
     scope: "uploads",
@@ -90,6 +115,8 @@ async function main() {
     await closeDatabaseConnection(database.pool);
     throw error;
   }
+
+  if (environment.sceneAnalysis.workerEnabled) sceneAnalysisWorker.start();
 
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
@@ -125,6 +152,7 @@ async function main() {
     },
     sceneAnalysis: {
       service: sceneAnalysisService,
+      eventService: sceneAnalysisEventService,
       tokenService,
       ipRateLimiter: sceneAnalysisIpRateLimiter,
     },
@@ -139,15 +167,18 @@ async function main() {
     shuttingDown = true;
     logger.info({ signal }, "Shutting down DearShot API");
 
-    server.close(async (error) => {
-      try {
-        await closeDatabaseConnection(database.pool);
-      } finally {
-        if (error) {
-          logger.error({ err: error }, "HTTP server failed to close cleanly");
-          process.exitCode = 1;
+    void sceneAnalysisWorker.stop().then(() => {
+      server.close(async (error) => {
+        try {
+          await closeDatabaseConnection(database.pool);
+        } finally {
+          if (error) {
+            logger.error({ err: error }, "HTTP server failed to close cleanly");
+            process.exitCode = 1;
+          }
         }
-      }
+      });
+      server.closeAllConnections();
     });
   };
 
