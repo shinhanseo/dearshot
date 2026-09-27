@@ -168,6 +168,8 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 
 ## B-17: 템플릿 기준 촬영 피드백
 
+**상태: 완료**
+
 ### 목표
 
 사용자가 선택한 불변 template version과 촬영 사진을 비교해 다음 촬영에 적용할 한 가지 피드백을 반환합니다.
@@ -177,7 +179,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 - `photo_feedbacks`와 AI attempt 연결 migration
 - 생성·조회·취소 API와 upload/usage/idempotency transaction
 - template version, 선택적인 scene analysis, 이전 feedback 참조 검증
-- provider가 허용된 action code 하나와 짧은 지역화 문구만 반환하도록 schema 제한
+- provider가 허용된 action code 하나만 반환하도록 schema 제한하고 Android가 message key를 지역화
 - `composition`, `pose`, `lighting`, `expression` 피드백 범주
 - 이전 피드백 이후 개선 여부와 재촬영 index 연결
 - timeout·오류·임시 이미지 삭제·DB 통합 테스트

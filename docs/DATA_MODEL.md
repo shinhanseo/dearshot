@@ -167,7 +167,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 ### `photo_feedbacks`
 
-사용자와 업로드, 선택한 `(template_id, template_version)`, 선택적인 `analysis_id`, `previous_feedback_id`, capture metadata, 상태, 검증된 결과 JSONB, provider/model, 실패 정보와 만료 시각을 저장합니다. 템플릿 버전에는 복합 FK를 적용합니다.
+사용자와 한 번만 소비되는 업로드, 선택한 불변 `(template_id, template_version)`, 선택적인 `scene_analysis_id`, `previous_feedback_id`, `retake_index`, locale, capture metadata, lease·재시도 상태, 검증된 결과 JSONB와 만료 시각을 저장합니다. 이전 피드백은 같은 사용자·템플릿의 완료 결과만 연결하며 재촬영 chain은 100회로 제한합니다.
 
 ### `ai_job_attempts`
 
@@ -175,7 +175,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 | 필드 | 설명 |
 | --- | --- |
-| `scene_analysis_id` | 현재 장면 분석 작업 FK. `photo_feedback_id` 연결은 B-17에서 확장 |
+| `scene_analysis_id`, `photo_feedback_id` | 둘 중 정확히 하나만 설정되는 AI 작업 FK |
 | `attempt_number` | 작업별 1부터 증가 |
 | `provider`, `model` | 호출 대상 |
 | `prompt_version`, `schema_version` | 재현 가능한 계약 버전 |
@@ -185,7 +185,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 | `input_tokens`, `output_tokens` | 사용량 추적 |
 | `request_id`, `started_at`, `completed_at` | 요청 추적 |
 
-현재는 `scene_analysis_id`가 필수이며 `(scene_analysis_id, attempt_number)`가 유일합니다. B-17에서 촬영 피드백 FK를 추가할 때 둘 중 하나만 설정되도록 제약을 확장합니다. 원본 프롬프트, 이미지, provider 원본 응답은 저장하지 않습니다.
+각 부모 작업에서 `attempt_number`가 유일하며 DB check로 두 FK 중 하나만 설정되게 합니다. 원본 프롬프트, 이미지, provider 원본 응답은 저장하지 않습니다.
 
 ## 비용과 제품 분석
 

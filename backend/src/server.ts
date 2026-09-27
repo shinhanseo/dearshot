@@ -29,6 +29,11 @@ import { GeminiSceneRecommendationProvider } from "./scene-analysis/gemini-scene
 import { SceneRecommendationProcessor } from "./scene-analysis/scene-recommendation-processor.js";
 import { MockSceneRecommendationProvider } from "./scene-analysis/scene-recommendation-provider.js";
 import { SceneTemplateCandidateService } from "./scene-analysis/scene-template-candidate-service.js";
+import { PhotoFeedbackService } from "./photo-feedback/photo-feedback-service.js";
+import { PhotoFeedbackWorker } from "./photo-feedback/photo-feedback-worker.js";
+import { ProviderPhotoFeedbackProcessor } from "./photo-feedback/photo-feedback-processor.js";
+import { GeminiPhotoFeedbackProvider } from "./photo-feedback/gemini-photo-feedback-provider.js";
+import { MockPhotoFeedbackProvider } from "./photo-feedback/photo-feedback-provider.js";
 
 async function main() {
   const environment = loadEnvironment();
@@ -83,7 +88,7 @@ async function main() {
   const recommendationProvider = environment.ai.provider === "gemini"
     ? new GeminiSceneRecommendationProvider({
       apiKey: environment.ai.apiKey,
-      model: environment.ai.gemini.model,
+      model: environment.ai.gemini.sceneModel,
       timeoutMillis: environment.ai.gemini.timeoutMillis,
       maximumResponseBytes: environment.ai.gemini.maximumResponseBytes,
     })
@@ -112,12 +117,51 @@ async function main() {
     },
     logger,
   );
+  const photoFeedbackService = new PhotoFeedbackService(
+    database.db,
+    uploadService,
+    idempotencyService,
+    usageLimitService,
+    {
+      retentionDays: environment.photoFeedback.retentionDays,
+      maxAttempts: environment.sceneAnalysis.workerMaxAttempts,
+      pollAfterMillis: environment.photoFeedback.pollAfterMillis,
+    },
+  );
+  const photoFeedbackProvider = environment.ai.provider === "gemini"
+    ? new GeminiPhotoFeedbackProvider({
+      apiKey: environment.ai.apiKey,
+      model: environment.ai.gemini.feedbackModel,
+      timeoutMillis: environment.ai.gemini.timeoutMillis,
+      maximumResponseBytes: environment.ai.gemini.maximumResponseBytes,
+    })
+    : new MockPhotoFeedbackProvider();
+  const photoFeedbackProcessor = new ProviderPhotoFeedbackProcessor(
+    database.db,
+    imageStorage,
+    photoFeedbackProvider,
+  );
+  const photoFeedbackWorker = new PhotoFeedbackWorker(
+    database.db,
+    photoFeedbackProcessor,
+    {
+      pollIntervalMillis: environment.sceneAnalysis.workerPollIntervalMillis,
+      leaseSeconds: environment.sceneAnalysis.workerLeaseSeconds,
+      retryBaseSeconds: environment.sceneAnalysis.workerRetryBaseSeconds,
+      onTerminal: ({ uploadId, storagePath }) => uploadService.purgeConsumed(uploadId, storagePath),
+    },
+    logger,
+  );
   const uploadIpRateLimiter = createIpRateLimiter({
     scope: "uploads",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
   });
   const sceneAnalysisIpRateLimiter = createIpRateLimiter({
     scope: "scene-analyses",
+    limit: environment.rateLimits.aiRequestsPerIpPerMinute,
+  });
+  const photoFeedbackIpRateLimiter = createIpRateLimiter({
+    scope: "photo-feedbacks",
     limit: environment.rateLimits.aiRequestsPerIpPerMinute,
   });
   const authIpRateLimiter = createIpRateLimiter({
@@ -140,7 +184,10 @@ async function main() {
     throw error;
   }
 
-  if (environment.sceneAnalysis.workerEnabled) sceneAnalysisWorker.start();
+  if (environment.sceneAnalysis.workerEnabled) {
+    sceneAnalysisWorker.start();
+    photoFeedbackWorker.start();
+  }
 
   const server = createApp({
     checkDatabase: () => verifyDatabaseConnection(database.pool),
@@ -180,6 +227,11 @@ async function main() {
       tokenService,
       ipRateLimiter: sceneAnalysisIpRateLimiter,
     },
+    photoFeedback: {
+      service: photoFeedbackService,
+      tokenService,
+      ipRateLimiter: photoFeedbackIpRateLimiter,
+    },
   }).listen(environment.port, () => {
     logger.info({ port: environment.port }, "DearShot API listening");
   });
@@ -191,7 +243,7 @@ async function main() {
     shuttingDown = true;
     logger.info({ signal }, "Shutting down DearShot API");
 
-    void sceneAnalysisWorker.stop().then(() => {
+    void Promise.all([sceneAnalysisWorker.stop(), photoFeedbackWorker.stop()]).then(() => {
       server.close(async (error) => {
         try {
           await closeDatabaseConnection(database.pool);

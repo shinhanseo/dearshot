@@ -567,6 +567,7 @@ Android는 응답의 `sceneRevision`이 현재 카메라 revision과 다르면 �
 {
   "uploadId": "0215c9d9-e6ad-4eb1-babc-fe88a319cce6",
   "analysisId": "ec863a30-d1d8-4285-a043-e1769ee2d7b5",
+  "locale": "ko-KR",
   "template": {"id": "beach-breeze", "version": 3},
   "capture": {
     "aspectRatio": "4:3",
@@ -577,7 +578,7 @@ Android는 응답의 `sceneRevision`이 현재 카메라 revision과 다르면 �
 }
 ```
 
-`previousFeedbackId`가 있으면 직전 촬영보다 개선되었는지 비교한다. 이전 사진 원본을 장기 보관하는 대신, 만료되지 않은 분석 결과나 추출 특징만 재사용한다.
+`previousFeedbackId`가 있으면 직전 결과의 행동 코드와 현재 사진을 함께 평가해 개선 여부를 반환한다. 직전 사진 원본은 재사용하거나 장기 보관하지 않는다.
 
 응답 `202 Accepted`:
 
@@ -598,26 +599,29 @@ Android는 응답의 `sceneRevision`이 현재 카메라 revision과 다르면 �
 {
   "feedbackId": "8d396cba-63aa-4769-ad97-2c16b7a4627d",
   "status": "COMPLETED",
-  "primary": {
-    "type": "SUBJECT_POSITION",
-    "message": "인물을 화면 오른쪽으로 조금 이동해 보세요.",
-    "action": "MOVE_RIGHT",
-    "severity": "RECOMMENDED",
-    "confidence": 0.89
+  "templateId": "beach-breeze",
+  "templateVersion": 3,
+  "previousFeedbackId": "7ed9021b-6f15-4522-b877-b20f9a4a3612",
+  "retakeIndex": 1,
+  "result": {
+    "primary": {
+      "category": "COMPOSITION",
+      "actionCode": "MOVE_SUBJECT_RIGHT",
+      "strength": "SMALL",
+      "messageKey": "feedback.move_subject_right",
+      "confidence": 0.89
+    },
+    "comparison": {
+      "available": true,
+      "improvedFromPrevious": true
+    },
+    "retakeRecommended": true,
+    "retakeIndex": 1,
+    "source": "gemini"
   },
-  "secondary": {
-    "type": "HORIZON_LEVEL",
-    "message": "수평선을 조금만 바로잡으면 더 안정적으로 보여요.",
-    "action": "LEVEL_CAMERA",
-    "severity": "OPTIONAL",
-    "confidence": 0.77
-  },
-  "comparison": {
-    "available": true,
-    "improvedFromPrevious": true,
-    "summary": "인물 위치가 가이드에 더 가까워졌어요."
-  },
-  "retakeRecommended": true,
+  "pollAfterMs": null,
+  "failureCode": null,
+  "retryable": null,
   "createdAt": "2026-09-20T08:43:00Z",
   "completedAt": "2026-09-20T08:43:03Z",
   "expiresAt": "2026-09-21T08:43:00Z"
@@ -627,10 +631,11 @@ Android는 응답의 `sceneRevision`이 현재 카메라 revision과 다르면 �
 피드백 원칙:
 
 - `primary`는 항상 하나만 반환한다.
-- `secondary`는 정말 필요한 경우에만 반환한다.
+- Gemini는 사용자 문장을 만들지 않고 허용된 `actionCode`만 고른다. Android가 `messageKey`를 지역화한다.
 - 얼굴의 미적 점수, 체형 평가, 매력도 평가는 하지 않는다.
-- 사용자가 바로 행동할 수 있는 위치·수평·거리·여백·노출 중심으로 표현한다.
+- 사용자가 바로 행동할 수 있는 구도·포즈·조명·표정 행동 하나만 선택한다.
 - 동일 사진에 대한 재요청은 `Idempotency-Key`로 중복 과금을 막는다.
+- 완료·최종 실패·취소 뒤 업로드 원본은 즉시 삭제를 시도한다.
 
 ## 9. 장면과 템플릿
 

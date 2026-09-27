@@ -24,7 +24,8 @@ describe("environment configuration", () => {
       provider: "mock",
       apiKey: "",
       gemini: {
-        model: "gemini-3.5-flash",
+        sceneModel: "gemini-3.5-flash-lite",
+        feedbackModel: "gemini-3.5-flash",
         timeoutMillis: 10_000,
         maximumResponseBytes: 262_144,
       },
@@ -59,6 +60,10 @@ describe("environment configuration", () => {
       eventRetentionHours: 24,
       maximumCandidates: 12,
       minimumConfidence: 0.55,
+    });
+    assert.deepEqual(environment.photoFeedback, {
+      retentionDays: 7,
+      pollAfterMillis: 1_000,
     });
     assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
     assert.equal(environment.appConfig.features.kakaoLogin, true);

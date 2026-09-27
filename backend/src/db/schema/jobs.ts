@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   bigserial,
   check,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -16,6 +18,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./identity.js";
+import { templateVersions } from "./catalog.js";
 
 export const uploadPurposeEnum = pgEnum("upload_purpose", [
   "SCENE_ANALYSIS",
@@ -50,6 +53,20 @@ export const aiJobAttemptStatusEnum = pgEnum("ai_job_attempt_status", [
   "SUCCEEDED",
   "FAILED",
 ]);
+
+export const photoFeedbackStatusEnum = pgEnum("photo_feedback_status", [
+  "QUEUED",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+]);
+
+export type CaptureMetadata = {
+  aspectRatio: "4:3" | "9:16" | "1:1";
+  orientation: "PORTRAIT" | "LANDSCAPE";
+  guideEnabled: boolean;
+};
 
 export type DeviceAnalysisSnapshot = {
   sceneClassifier?: {
@@ -214,13 +231,84 @@ export const sceneAnalysisEvents = pgTable(
   ],
 );
 
+export const photoFeedbacks = pgTable(
+  "photo_feedbacks",
+  {
+    id: uuid("id").primaryKey(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    uploadId: uuid("upload_id")
+      .notNull()
+      .references(() => imageUploads.id, { onDelete: "restrict" }),
+    templateId: varchar("template_id", { length: 80 }).notNull(),
+    templateVersion: integer("template_version").notNull(),
+    sceneAnalysisId: uuid("scene_analysis_id")
+      .references(() => sceneAnalyses.id, { onDelete: "restrict" }),
+    previousFeedbackId: uuid("previous_feedback_id")
+      .references((): AnyPgColumn => photoFeedbacks.id, { onDelete: "restrict" }),
+    retakeIndex: integer("retake_index").notNull().default(0),
+    locale: varchar("locale", { length: 35 }).notNull(),
+    capture: jsonb("capture").$type<CaptureMetadata>().notNull(),
+    status: photoFeedbackStatusEnum("status").notNull().default("QUEUED"),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    failureCode: varchar("failure_code", { length: 64 }),
+    retryable: boolean("retryable"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseOwner: varchar("lease_owner", { length: 128 }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("photo_feedbacks_upload_uidx").on(table.uploadId),
+    index("photo_feedbacks_owner_created_idx").on(table.ownerUserId, table.createdAt),
+    index("photo_feedbacks_status_created_idx").on(table.status, table.createdAt),
+    index("photo_feedbacks_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt),
+    index("photo_feedbacks_expires_idx").on(table.expiresAt),
+    foreignKey({
+      columns: [table.templateId, table.templateVersion],
+      foreignColumns: [templateVersions.templateId, templateVersions.version],
+      name: "photo_feedbacks_template_version_fk",
+    }).onDelete("restrict"),
+    check("photo_feedbacks_retake_index_check", sql`${table.retakeIndex} between 0 and 100`),
+    check(
+      "photo_feedbacks_attempts_check",
+      sql`${table.attemptCount} between 0 and ${table.maxAttempts} and ${table.maxAttempts} between 1 and 10`,
+    ),
+    check(
+      "photo_feedbacks_lease_check",
+      sql`(${table.status} = 'PROCESSING' and ${table.leaseOwner} is not null and ${table.leaseExpiresAt} is not null) or (${table.status} <> 'PROCESSING' and ${table.leaseOwner} is null and ${table.leaseExpiresAt} is null)`,
+    ),
+    check(
+      "photo_feedbacks_capture_check",
+      sql`jsonb_typeof(${table.capture}) = 'object'`,
+    ),
+    check(
+      "photo_feedbacks_cancelled_at_check",
+      sql`${table.status} <> 'CANCELLED' or ${table.cancelledAt} is not null`,
+    ),
+    check(
+      "photo_feedbacks_previous_check",
+      sql`${table.previousFeedbackId} is null or ${table.previousFeedbackId} <> ${table.id}`,
+    ),
+  ],
+);
+
 export const aiJobAttempts = pgTable(
   "ai_job_attempts",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     sceneAnalysisId: uuid("scene_analysis_id")
-      .notNull()
       .references(() => sceneAnalyses.id, { onDelete: "cascade" }),
+    photoFeedbackId: uuid("photo_feedback_id")
+      .references(() => photoFeedbacks.id, { onDelete: "cascade" }),
     attemptNumber: integer("attempt_number").notNull(),
     requestId: uuid("request_id").notNull(),
     provider: varchar("provider", { length: 32 }).notNull(),
@@ -242,9 +330,18 @@ export const aiJobAttempts = pgTable(
     uniqueIndex("ai_job_attempts_scene_number_uidx").on(
       table.sceneAnalysisId,
       table.attemptNumber,
-    ),
+    ).where(sql`${table.sceneAnalysisId} is not null`),
+    uniqueIndex("ai_job_attempts_feedback_number_uidx").on(
+      table.photoFeedbackId,
+      table.attemptNumber,
+    ).where(sql`${table.photoFeedbackId} is not null`),
     uniqueIndex("ai_job_attempts_request_uidx").on(table.requestId),
     index("ai_job_attempts_scene_started_idx").on(table.sceneAnalysisId, table.startedAt),
+    index("ai_job_attempts_feedback_started_idx").on(table.photoFeedbackId, table.startedAt),
+    check(
+      "ai_job_attempts_parent_check",
+      sql`num_nonnulls(${table.sceneAnalysisId}, ${table.photoFeedbackId}) = 1`,
+    ),
     check("ai_job_attempts_number_check", sql`${table.attemptNumber} > 0`),
     check("ai_job_attempts_latency_check", sql`${table.latencyMs} is null or ${table.latencyMs} >= 0`),
     check("ai_job_attempts_input_tokens_check", sql`${table.inputTokens} is null or ${table.inputTokens} >= 0`),

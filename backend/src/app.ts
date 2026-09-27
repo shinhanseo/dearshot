@@ -24,6 +24,8 @@ import type { AppEventService } from "./product-events/app-event-service.js";
 import { createAppEventRouter } from "./routes/app-events.js";
 import type { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
 import type { SceneAnalysisEventService } from "./scene-analysis/scene-analysis-event-service.js";
+import type { PhotoFeedbackService } from "./photo-feedback/photo-feedback-service.js";
+import { createPhotoFeedbackRouter } from "./routes/photo-feedback.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -62,6 +64,11 @@ type AppDependencies = {
     tokenService: TokenService;
     ipRateLimiter?: RequestHandler;
   };
+  photoFeedback?: {
+    service: PhotoFeedbackService;
+    tokenService: TokenService;
+    ipRateLimiter?: RequestHandler;
+  };
 };
 
 export function createApp({
@@ -74,6 +81,7 @@ export function createApp({
   appConfig,
   productEvents,
   sceneAnalysis,
+  photoFeedback,
 }: AppDependencies) {
   const app = express();
 
@@ -179,6 +187,13 @@ export function createApp({
       sceneAnalysis.service,
       sceneAnalysis.eventService,
       sceneAnalysis.ipRateLimiter,
+    ));
+  }
+  if (photoFeedback) {
+    app.use("/api/v1", createPhotoFeedbackRouter(
+      photoFeedback.tokenService,
+      photoFeedback.service,
+      photoFeedback.ipRateLimiter,
     ));
   }
 
