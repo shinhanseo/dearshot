@@ -110,7 +110,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·Kakao 인증, 공개 카탈로그, 회원 전용 좋아요·북마크, multipart 이미지 업로드와 비동기 장면 분석을 사용할 수 있습니다. 장면 작업은 PostgreSQL lease worker가 처리하며 `GET /api/v1/scene-analyses/{id}/events`에서 실제 단계·추천·종료 이벤트를 SSE로 전달합니다. 이벤트는 bigint ID로 저장되어 `Last-Event-ID` 재연결 후에도 이어집니다. 장면 추천은 공개된 DB 템플릿 후보만 Gemini에 전달하고, 구조화 응답을 서버 allowlist로 다시 검증한 뒤 단일 template ID/version을 확정합니다. 로컬 개발은 `AI_PROVIDER=mock`, 실제 호출은 `AI_PROVIDER=gemini`와 `AI_API_KEY`를 사용합니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao 인증, 공개 카탈로그, 회원 전용 좋아요·북마크, multipart 이미지 업로드, 비동기 장면 분석과 촬영 피드백을 사용할 수 있습니다. 장면 작업은 PostgreSQL lease worker가 처리하며 `GET /api/v1/scene-analyses/{id}/events`에서 실제 단계·추천·종료 이벤트를 SSE로 전달합니다. 이벤트는 bigint ID로 저장되어 `Last-Event-ID` 재연결 후에도 이어집니다. 장면 추천은 공개된 DB 템플릿 후보만 Gemini에 전달하고, 구조화 응답을 서버 allowlist로 다시 검증한 뒤 단일 template ID/version을 확정합니다. 피드백도 선택된 불변 템플릿 버전을 기준으로 허용된 행동 하나만 반환하며 재촬영 결과를 이전 피드백과 연결합니다. 로컬 개발은 `AI_PROVIDER=mock`, 실제 호출은 `AI_PROVIDER=gemini`와 `AI_API_KEY`를 사용합니다. 비용을 분리해 조정할 수 있도록 장면 추천은 `GEMINI_SCENE_MODEL`, 피드백은 `GEMINI_FEEDBACK_MODEL`로 설정합니다.
 
 ## 문서와 디자인
 

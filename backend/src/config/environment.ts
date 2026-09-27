@@ -58,7 +58,8 @@ const environmentSchema = z
     CORS_ALLOWED_ORIGINS: commaSeparatedOrigins,
     AI_PROVIDER: z.enum(["mock", "gemini"]).default("mock"),
     AI_API_KEY: z.string().default(""),
-    GEMINI_MODEL: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,79}$/u).default("gemini-3.5-flash"),
+    GEMINI_SCENE_MODEL: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,79}$/u).default("gemini-3.5-flash-lite"),
+    GEMINI_FEEDBACK_MODEL: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,79}$/u).default("gemini-3.5-flash"),
     GEMINI_TIMEOUT_MS: integerFromEnvironment("GEMINI_TIMEOUT_MS", 10_000, 1_000, 30_000),
     GEMINI_MAX_RESPONSE_BYTES: integerFromEnvironment(
       "GEMINI_MAX_RESPONSE_BYTES", 262_144, 4_096, 1_048_576,
@@ -68,6 +69,12 @@ const environmentSchema = z
     ),
     SCENE_RECOMMENDATION_MIN_CONFIDENCE: numberFromEnvironment(
       "SCENE_RECOMMENDATION_MIN_CONFIDENCE", 0.55, 0, 1,
+    ),
+    PHOTO_FEEDBACK_RETENTION_DAYS: integerFromEnvironment(
+      "PHOTO_FEEDBACK_RETENTION_DAYS", 7, 1, 30,
+    ),
+    PHOTO_FEEDBACK_POLL_AFTER_MS: integerFromEnvironment(
+      "PHOTO_FEEDBACK_POLL_AFTER_MS", 1_000, 250, 10_000,
     ),
     JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
     JWT_ISSUER: z.string().min(1).default("dearshot-api"),
@@ -356,7 +363,7 @@ export type Environment = {
   ai: {
     provider: "mock" | "gemini";
     apiKey: string;
-    gemini: { model: string; timeoutMillis: number; maximumResponseBytes: number };
+    gemini: { sceneModel: string; feedbackModel: string; timeoutMillis: number; maximumResponseBytes: number };
   };
   auth: AuthConfig;
   google: { webClientId: string };
@@ -383,6 +390,7 @@ export type Environment = {
     maximumCandidates: number;
     minimumConfidence: number;
   };
+  photoFeedback: { retentionDays: number; pollAfterMillis: number };
   usage: UsageLimitConfig;
   rateLimits: {
     aiRequestsPerIpPerMinute: number;
@@ -436,7 +444,8 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       provider: parsed.data.AI_PROVIDER,
       apiKey: parsed.data.AI_API_KEY,
       gemini: {
-        model: parsed.data.GEMINI_MODEL,
+        sceneModel: parsed.data.GEMINI_SCENE_MODEL,
+        feedbackModel: parsed.data.GEMINI_FEEDBACK_MODEL,
         timeoutMillis: parsed.data.GEMINI_TIMEOUT_MS,
         maximumResponseBytes: parsed.data.GEMINI_MAX_RESPONSE_BYTES,
       },
@@ -477,6 +486,10 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       eventRetentionHours: parsed.data.SCENE_EVENT_RETENTION_HOURS,
       maximumCandidates: parsed.data.SCENE_RECOMMENDATION_MAX_CANDIDATES,
       minimumConfidence: parsed.data.SCENE_RECOMMENDATION_MIN_CONFIDENCE,
+    },
+    photoFeedback: {
+      retentionDays: parsed.data.PHOTO_FEEDBACK_RETENTION_DAYS,
+      pollAfterMillis: parsed.data.PHOTO_FEEDBACK_POLL_AFTER_MS,
     },
     usage: {
       timezone: parsed.data.USAGE_TIMEZONE,

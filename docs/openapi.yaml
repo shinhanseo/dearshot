@@ -1726,7 +1726,7 @@ components:
 
     CreatePhotoFeedbackRequest:
       type: object
-      required: [uploadId, template, capture]
+      required: [uploadId, locale, template, capture]
       properties:
         uploadId:
           type: string
@@ -1734,6 +1734,9 @@ components:
         analysisId:
           type: [string, 'null']
           format: uuid
+        locale:
+          type: string
+          pattern: '^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$'
         template:
           $ref: '#/components/schemas/TemplateReference'
         capture:
@@ -1761,19 +1764,19 @@ components:
 
     FeedbackItem:
       type: object
-      required: [type, message, action, severity, confidence]
+      required: [category, actionCode, strength, messageKey, confidence]
       properties:
-        type:
+        category:
           type: string
-          enum: [SUBJECT_POSITION, HORIZON_LEVEL, DISTANCE, HEADROOM, EXPOSURE, BACKGROUND]
-        message:
+          enum: [COMPOSITION, POSE, LIGHTING, EXPRESSION]
+        actionCode:
           type: string
-        action:
+          enum: [MOVE_SUBJECT_LEFT, MOVE_SUBJECT_RIGHT, MOVE_SUBJECT_UP, MOVE_SUBJECT_DOWN, STEP_CLOSER, STEP_BACK, STRAIGHTEN_HORIZON, LOWER_CAMERA, RAISE_CAMERA, REDUCE_HEADROOM, FACE_CAMERA, RELAX_POSE, IMPROVE_LIGHTING, SOFTEN_EXPRESSION, KEEP_CURRENT]
+        strength:
           type: string
-          enum: [MOVE_LEFT, MOVE_RIGHT, MOVE_CLOSER, MOVE_BACK, LEVEL_CAMERA, LOWER_CAMERA, RAISE_CAMERA, ADJUST_EXPOSURE]
-        severity:
+          enum: [SMALL, MEDIUM]
+        messageKey:
           type: string
-          enum: [RECOMMENDED, OPTIONAL]
         confidence:
           type: number
           minimum: 0
@@ -1787,12 +1790,27 @@ components:
           type: boolean
         improvedFromPrevious:
           type: [boolean, 'null']
-        summary:
-          type: [string, 'null']
+
+    PhotoFeedbackResult:
+      type: object
+      required: [primary, comparison, retakeRecommended, retakeIndex, source]
+      properties:
+        primary:
+          $ref: '#/components/schemas/FeedbackItem'
+        comparison:
+          $ref: '#/components/schemas/FeedbackComparison'
+        retakeRecommended:
+          type: boolean
+        retakeIndex:
+          type: integer
+          minimum: 0
+          maximum: 100
+        source:
+          type: string
 
     PhotoFeedback:
       type: object
-      required: [feedbackId, status, createdAt, expiresAt]
+      required: [feedbackId, status, templateId, templateVersion, retakeIndex, createdAt, expiresAt]
       properties:
         feedbackId:
           type: string
@@ -1801,21 +1819,39 @@ components:
           type: string
           enum: [QUEUED, PROCESSING, COMPLETED, FAILED, CANCELLED]
         pollAfterMs:
+          type: [integer, 'null']
+        templateId:
+          type: string
+        templateVersion:
           type: integer
-        primary:
-          $ref: '#/components/schemas/FeedbackItem'
-        secondary:
-          $ref: '#/components/schemas/FeedbackItem'
-        comparison:
-          $ref: '#/components/schemas/FeedbackComparison'
-        retakeRecommended:
-          type: boolean
-        failure:
-          $ref: '#/components/schemas/JobFailure'
+        analysisId:
+          type: [string, 'null']
+          format: uuid
+        previousFeedbackId:
+          type: [string, 'null']
+          format: uuid
+        retakeIndex:
+          type: integer
+          minimum: 0
+          maximum: 100
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/PhotoFeedbackResult'
+            - type: 'null'
+        failureCode:
+          type: [string, 'null']
+        retryable:
+          type: [boolean, 'null']
         createdAt:
           type: string
           format: date-time
         completedAt:
+          type: [string, 'null']
+          format: date-time
+        startedAt:
+          type: [string, 'null']
+          format: date-time
+        cancelledAt:
           type: [string, 'null']
           format: date-time
         expiresAt:
