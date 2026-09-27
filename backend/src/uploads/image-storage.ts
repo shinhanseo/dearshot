@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { chmod, mkdir, open, rename, rm } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
 import type { Request } from "express";
@@ -201,6 +201,11 @@ export class ImageStorage {
     await this.initialized;
     const absolutePath = this.resolveStoredPath(storagePath);
     await rm(absolutePath, { force: true });
+  }
+
+  async read(storagePath: string): Promise<Buffer> {
+    await this.initialized;
+    return readFile(this.resolveStoredPath(storagePath));
   }
 
   async quarantine(storagePath: string): Promise<QuarantinedFile> {
