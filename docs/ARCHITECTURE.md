@@ -2,7 +2,7 @@
 
 ## 현재와 목표 범위
 
-현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, 스트리밍 multipart 업로드, 비동기 장면 작업 생성·조회·취소까지 구현되어 있습니다. 실제 작업 실행기, SSE와 AI provider는 B-15·B-16에서 연결합니다.
+현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, multipart 업로드, 비동기 장면 작업과 lease worker, 재연결 가능한 SSE까지 구현되어 있습니다. 실제 Gemini provider와 공개 템플릿 후보 검증은 B-16에서 연결합니다.
 
 아래 구성은 MVP 목표입니다. 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-14에서 단수형 mock route를 제거하고 인증·소유권·멱등성·사용량 제한이 적용된 작업 API로 교체했습니다.
 
@@ -89,6 +89,8 @@ src/
 - 촬영 세션은 `idle → analyzing → ready → capturing → reviewing → completed`로 관리합니다.
 - 분석 진행률을 임의의 숫자로 만들지 않고 서버의 실제 단계와 SSE event를 표시합니다.
 - 서버 분석과 로컬 촬영은 분리합니다. 네트워크 실패가 기본 카메라 사용을 막지 않습니다.
+- worker는 `FOR UPDATE SKIP LOCKED`로 작업을 claim하고 lease token이 일치할 때만 단계·완료·실패를 기록합니다. 프로세스가 중단되면 만료 lease를 다른 worker가 다시 claim합니다.
+- 작업 상태와 SSE 이벤트는 같은 트랜잭션에서 확정하며 이벤트는 bigint ID 순서로 재생합니다.
 - 서버 템플릿은 ID, version, locale, cache expiry와 함께 Room에 저장합니다.
 - 서버가 새 템플릿을 배포해도 진행 중인 촬영은 선택 당시 version을 사용합니다.
 - 사진 파일과 Room 메타데이터의 저장 성공을 별도로 추적합니다.

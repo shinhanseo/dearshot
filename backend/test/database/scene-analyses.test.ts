@@ -17,6 +17,7 @@ import { imageUploads, sceneAnalyses } from "../../src/db/schema/jobs.js";
 import { IdempotencyService } from "../../src/reliability/idempotency-service.js";
 import { UsageLimitService } from "../../src/reliability/usage-limit-service.js";
 import { SceneAnalysisService } from "../../src/scene-analysis/scene-analysis-service.js";
+import { SceneAnalysisEventService } from "../../src/scene-analysis/scene-analysis-event-service.js";
 import { ImageStorage } from "../../src/uploads/image-storage.js";
 import { UploadService } from "../../src/uploads/upload-service.js";
 
@@ -65,10 +66,14 @@ function createContext() {
   const storage = new ImageStorage({ root: uploadRoot, maxBytes: 10_485_760, maxDimensionPixels: 8_192, maxPixels: 40_000_000 });
   const idempotency = new IdempotencyService(connection.db);
   const uploads = new UploadService(connection.db, storage, { ttlSeconds: 3_600 }, idempotency);
-  const service = new SceneAnalysisService(connection.db, uploads, idempotency, new UsageLimitService(connection.db, limits), { retentionDays: 7 });
+  const service = new SceneAnalysisService(connection.db, uploads, idempotency, new UsageLimitService(connection.db, limits), { retentionDays: 7, maxAttempts: 3 });
+  const eventService = new SceneAnalysisEventService(connection.db, uploads, {
+    pollIntervalMillis: 100,
+    heartbeatSeconds: 5,
+  });
   const app = createApp({
     logger, checkDatabase: () => verifyDatabaseConnection(connection.pool),
-    sceneAnalysis: { service, tokenService },
+    sceneAnalysis: { service, eventService, tokenService },
   });
   return { app, service };
 }
@@ -124,7 +129,6 @@ describe("scene analysis jobs", { concurrency: 1 }, () => {
       const cancelled = await request(app).delete(`/api/v1/scene-analyses/${created.body.analysisId}`).set("Authorization", `Bearer ${principal.token}`);
       assert.equal(cancelled.status, 204);
     }
-    assert.equal(await service.completeIfProcessing(created.body.analysisId, { templateId: "beach-walk" }), false);
     const [cancelled] = await connection.db.select().from(sceneAnalyses).where(eq(sceneAnalyses.id, created.body.analysisId));
     assert.equal(cancelled.status, "CANCELLED");
     assert.ok(cancelled.cancelledAt);

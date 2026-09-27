@@ -23,6 +23,7 @@ import type { UploadService } from "./uploads/upload-service.js";
 import type { AppEventService } from "./product-events/app-event-service.js";
 import { createAppEventRouter } from "./routes/app-events.js";
 import type { SceneAnalysisService } from "./scene-analysis/scene-analysis-service.js";
+import type { SceneAnalysisEventService } from "./scene-analysis/scene-analysis-event-service.js";
 
 type AppDependencies = {
   checkDatabase: () => Promise<void>;
@@ -57,6 +58,7 @@ type AppDependencies = {
   };
   sceneAnalysis?: {
     service: SceneAnalysisService;
+    eventService: SceneAnalysisEventService;
     tokenService: TokenService;
     ipRateLimiter?: RequestHandler;
   };
@@ -175,6 +177,7 @@ export function createApp({
     app.use("/api/v1", createSceneAnalysisRouter(
       sceneAnalysis.tokenService,
       sceneAnalysis.service,
+      sceneAnalysis.eventService,
       sceneAnalysis.ipRateLimiter,
     ));
   }

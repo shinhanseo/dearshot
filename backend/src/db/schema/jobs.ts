@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  bigserial,
   check,
   doublePrecision,
   index,
@@ -35,6 +36,13 @@ export const sceneAnalysisStatusEnum = pgEnum("scene_analysis_status", [
   "NEEDS_USER_SELECTION",
   "FAILED",
   "CANCELLED",
+]);
+
+export const sceneAnalysisEventTypeEnum = pgEnum("scene_analysis_event_type", [
+  "status",
+  "recommendation",
+  "completed",
+  "failed",
 ]);
 
 export type DeviceAnalysisSnapshot = {
@@ -123,18 +131,34 @@ export const sceneAnalyses = pgTable(
     result: jsonb("result").$type<Record<string, unknown>>(),
     failureCode: varchar("failure_code", { length: 64 }),
     retryable: boolean("retryable"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseOwner: varchar("lease_owner", { length: 128 }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    eventsExpiresAt: timestamp("events_expires_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (table) => [
     uniqueIndex("scene_analyses_upload_uidx").on(table.uploadId),
     index("scene_analyses_owner_created_idx").on(table.ownerUserId, table.createdAt),
     index("scene_analyses_status_created_idx").on(table.status, table.createdAt),
+    index("scene_analyses_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt),
     index("scene_analyses_expires_idx").on(table.expiresAt),
     check("scene_analyses_revision_check", sql`${table.sceneRevision} >= 0`),
+    check(
+      "scene_analyses_attempts_check",
+      sql`${table.attemptCount} between 0 and ${table.maxAttempts} and ${table.maxAttempts} between 1 and 10`,
+    ),
+    check(
+      "scene_analyses_lease_check",
+      sql`(${table.status} = 'PROCESSING' and ${table.leaseOwner} is not null and ${table.leaseExpiresAt} is not null) or (${table.status} <> 'PROCESSING' and ${table.leaseOwner} is null and ${table.leaseExpiresAt} is null)`,
+    ),
     check(
       "scene_analyses_location_pair_check",
       sql`(${table.latitude} is null and ${table.longitude} is null) or (${table.latitude} is not null and ${table.longitude} is not null)`,
@@ -158,6 +182,28 @@ export const sceneAnalyses = pgTable(
     check(
       "scene_analyses_cancelled_at_check",
       sql`${table.status} <> 'CANCELLED' or ${table.cancelledAt} is not null`,
+    ),
+  ],
+);
+
+export const sceneAnalysisEvents = pgTable(
+  "scene_analysis_events",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    analysisId: uuid("analysis_id")
+      .notNull()
+      .references(() => sceneAnalyses.id, { onDelete: "cascade" }),
+    eventType: sceneAnalysisEventTypeEnum("event_type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("scene_analysis_events_analysis_id_idx").on(table.analysisId, table.id),
+    index("scene_analysis_events_expires_idx").on(table.expiresAt),
+    check(
+      "scene_analysis_events_payload_check",
+      sql`jsonb_typeof(${table.payload}) = 'object'`,
     ),
   ],
 );

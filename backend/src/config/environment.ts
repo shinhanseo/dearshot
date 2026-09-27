@@ -116,6 +116,28 @@ const environmentSchema = z
       1,
       30,
     ),
+    SCENE_WORKER_ENABLED: booleanFromEnvironment(true),
+    SCENE_WORKER_POLL_INTERVAL_MS: integerFromEnvironment(
+      "SCENE_WORKER_POLL_INTERVAL_MS", 1_000, 100, 60_000,
+    ),
+    SCENE_WORKER_LEASE_SECONDS: integerFromEnvironment(
+      "SCENE_WORKER_LEASE_SECONDS", 30, 5, 300,
+    ),
+    SCENE_WORKER_MAX_ATTEMPTS: integerFromEnvironment(
+      "SCENE_WORKER_MAX_ATTEMPTS", 3, 1, 10,
+    ),
+    SCENE_WORKER_RETRY_BASE_SECONDS: integerFromEnvironment(
+      "SCENE_WORKER_RETRY_BASE_SECONDS", 1, 1, 300,
+    ),
+    SCENE_SSE_POLL_INTERVAL_MS: integerFromEnvironment(
+      "SCENE_SSE_POLL_INTERVAL_MS", 500, 100, 10_000,
+    ),
+    SCENE_SSE_HEARTBEAT_SECONDS: integerFromEnvironment(
+      "SCENE_SSE_HEARTBEAT_SECONDS", 15, 5, 60,
+    ),
+    SCENE_EVENT_RETENTION_HOURS: integerFromEnvironment(
+      "SCENE_EVENT_RETENTION_HOURS", 24, 1, 168,
+    ),
     USAGE_TIMEZONE: z.literal("UTC").default("UTC"),
     GUEST_SCENE_ANALYSES_PER_DAY: integerFromEnvironment(
       "GUEST_SCENE_ANALYSES_PER_DAY",
@@ -309,7 +331,17 @@ export type Environment = {
     ttlSeconds: number;
   };
   idempotency: { ttlSeconds: number };
-  sceneAnalysis: { retentionDays: number };
+  sceneAnalysis: {
+    retentionDays: number;
+    workerEnabled: boolean;
+    workerPollIntervalMillis: number;
+    workerLeaseSeconds: number;
+    workerMaxAttempts: number;
+    workerRetryBaseSeconds: number;
+    ssePollIntervalMillis: number;
+    sseHeartbeatSeconds: number;
+    eventRetentionHours: number;
+  };
   usage: UsageLimitConfig;
   rateLimits: {
     aiRequestsPerIpPerMinute: number;
@@ -383,7 +415,17 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       ttlSeconds: parsed.data.UPLOAD_TTL_SECONDS,
     },
     idempotency: { ttlSeconds: parsed.data.IDEMPOTENCY_TTL_SECONDS },
-    sceneAnalysis: { retentionDays: parsed.data.SCENE_ANALYSIS_RETENTION_DAYS },
+    sceneAnalysis: {
+      retentionDays: parsed.data.SCENE_ANALYSIS_RETENTION_DAYS,
+      workerEnabled: parsed.data.SCENE_WORKER_ENABLED,
+      workerPollIntervalMillis: parsed.data.SCENE_WORKER_POLL_INTERVAL_MS,
+      workerLeaseSeconds: parsed.data.SCENE_WORKER_LEASE_SECONDS,
+      workerMaxAttempts: parsed.data.SCENE_WORKER_MAX_ATTEMPTS,
+      workerRetryBaseSeconds: parsed.data.SCENE_WORKER_RETRY_BASE_SECONDS,
+      ssePollIntervalMillis: parsed.data.SCENE_SSE_POLL_INTERVAL_MS,
+      sseHeartbeatSeconds: parsed.data.SCENE_SSE_HEARTBEAT_SECONDS,
+      eventRetentionHours: parsed.data.SCENE_EVENT_RETENTION_HOURS,
+    },
     usage: {
       timezone: parsed.data.USAGE_TIMEZONE,
       guest: {

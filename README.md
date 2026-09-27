@@ -110,7 +110,7 @@ sh scripts/verify-compose.sh
 
 Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
 
-서버가 실행되면 `GET /health`, 게스트·Google·Kakao·refresh·logout·`GET /me` 인증 기반, 공개 카탈로그 조회, 회원 전용 템플릿 좋아요·북마크·컬렉션, 스트리밍 multipart `POST /api/v1/uploads`, 비동기 장면 작업 `POST/GET/DELETE /api/v1/scene-analyses`를 사용할 수 있습니다. 장면 작업은 Android의 Places365·YOLOX 온디바이스 분석 결과를 선택적으로 받으며, 업로드 소비·일일 한도 증가·작업 생성을 하나의 트랜잭션으로 처리합니다. 작업 실행기와 SSE는 B-15에서 연결합니다.
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao 인증, 공개 카탈로그, 회원 전용 좋아요·북마크, multipart 이미지 업로드와 비동기 장면 분석을 사용할 수 있습니다. 장면 작업은 PostgreSQL lease worker가 처리하며 `GET /api/v1/scene-analyses/{id}/events`에서 실제 단계·추천·종료 이벤트를 SSE로 전달합니다. 이벤트는 bigint ID로 저장되어 `Last-Event-ID` 재연결 후에도 이어집니다. 현재 processor는 B-15 파이프라인 검증용 fake이며 B-16에서 Gemini와 DB 템플릿 후보 검증으로 교체합니다.
 
 ## 문서와 디자인
 
