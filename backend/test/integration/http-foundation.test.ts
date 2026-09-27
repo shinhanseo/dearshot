@@ -13,6 +13,8 @@ import { createHttpLogger } from "../../src/http/http-logger.js";
 import { requestContext } from "../../src/http/request-context.js";
 import { createLogger } from "../../src/observability/logger.js";
 import { ApiError } from "../../src/http/api-error.js";
+import { validateBody } from "../../src/http/validation.js";
+import { createSceneAnalysisSchema } from "../../src/scene-analysis/scene-analysis-schema.js";
 
 const silentLogger = pino({ level: "silent" });
 
@@ -67,19 +69,21 @@ describe("HTTP foundation", () => {
   });
 
   it("returns the OpenAPI error shape for validation failures", async () => {
-    const app = createApp({
-      logger: silentLogger,
-      checkDatabase: async () => undefined,
-      enableMockSceneAnalysis: true,
-    });
+    const app = express();
+    app.use(requestContext);
+    app.use(createHttpLogger(silentLogger));
+    app.use(express.json());
+    app.post("/api/v1/scene-analyses", validateBody(createSceneAnalysisSchema), (_request, response) => response.sendStatus(202));
+    app.use(errorHandler);
 
-    const response = await request(app).post("/api/v1/scene-analysis").send({ locale: "ko" });
+    const response = await request(app).post("/api/v1/scene-analyses").send({ locale: "ko" });
 
     assert.equal(response.status, 400);
     assert.equal(response.body.requestId, response.headers["x-request-id"]);
     assert.equal(response.body.code, "INVALID_REQUEST");
     assert.equal(response.body.message, "Request body is invalid");
-    assert.ok(response.body.details.fieldErrors.imageReference);
+    assert.ok(response.body.details.fieldErrors.uploadId);
+    assert.ok(response.body.details.fieldErrors.sceneRevision);
     assert.ok(response.body.details.fieldErrors.capturedAt);
   });
 
@@ -126,7 +130,6 @@ describe("HTTP foundation", () => {
     const app = createApp({
       logger: silentLogger,
       checkDatabase: async () => undefined,
-      enableMockSceneAnalysis: true,
     });
 
     const malformed = await request(app)
@@ -217,7 +220,7 @@ describe("HTTP foundation", () => {
     assert.equal(nativeResponse.headers["x-powered-by"], undefined);
   });
 
-  it("does not expose the unauthenticated scene-analysis fixture by default", async () => {
+  it("does not expose the removed singular scene-analysis fixture", async () => {
     const app = createApp({ logger: silentLogger, checkDatabase: async () => undefined });
 
     const response = await request(app).post("/api/v1/scene-analysis").send({

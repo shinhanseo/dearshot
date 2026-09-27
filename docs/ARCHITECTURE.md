@@ -2,9 +2,9 @@
 
 ## 현재와 목표 범위
 
-현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크와 스트리밍 multipart `POST /api/v1/uploads`까지 구현되어 있습니다. 동기 mock `POST /api/v1/scene-analysis`는 Android 연결 확인용으로 남아 있으며 실제 AI provider와 SSE는 아직 사용하지 않습니다.
+현재 백엔드는 PostgreSQL 기반 인증·템플릿 카탈로그·좋아요/북마크, 스트리밍 multipart 업로드, 비동기 장면 작업 생성·조회·취소까지 구현되어 있습니다. 실제 작업 실행기, SSE와 AI provider는 B-15·B-16에서 연결합니다.
 
-아래 구성은 MVP 목표입니다. 목표 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-01 이후 기능 Issue는 이 목표 계약을 기준으로 구현하고, 목표 분석이 준비되면 단수형 mock route를 제거합니다.
+아래 구성은 MVP 목표입니다. 장면 분석은 multipart `POST /api/v1/uploads`로 이미지를 먼저 전달한 뒤 복수형 `POST /api/v1/scene-analyses`로 비동기 작업을 생성합니다. B-14에서 단수형 mock route를 제거하고 인증·소유권·멱등성·사용량 제한이 적용된 작업 API로 교체했습니다.
 
 ## 전체 구성
 
@@ -96,19 +96,18 @@ src/
 ## AI 작업 흐름
 
 ```text
-compressed image upload
-  → Node multipart stream and file validation
-  → usage and idempotency transaction
-  → analysis job created
-  → SSE progress and clue events
-  → Gemini adapter call
-  → response schema validation
-  → template ID validation
-  → normalized result saved
-  → temporary image deleted
+CameraX stable-frame gate
+  → Places365 scene candidates + YOLOX objects on device
+  → compressed stable frame upload
+  → device hints + sceneRevision submitted
+  → upload consume, usage increment, job creation in one transaction
+  → PostgreSQL worker lease and real-stage SSE
+  → Gemini receives image, hints, and published DB template candidates
+  → exactly one template ID/version validated and saved
+  → temporary image and exact location removed by retention policy
 ```
 
-서버 AI는 장면 분류와 추천 후보 생성에 사용합니다. 수평, 인물 위치, 밝기처럼 즉각성이 중요한 신호는 추후 ML Kit 또는 온디바이스 모델로 이동합니다. 모델 출력은 그대로 UI에 노출하지 않고 허용된 장소·템플릿 ID와 action code로 검증합니다.
+Android는 화면 안정성 판단과 Places365·YOLOX 추론을 담당해 즉시 키워드를 보여 줍니다. 서버는 이 값을 신뢰 판정으로 사용하지 않고 Gemini 추천의 보조 입력으로만 사용합니다. Gemini는 서버가 조회한 공개 템플릿 후보 밖의 ID를 반환할 수 없으며 최종 추천은 템플릿 한 개입니다. 화면이 크게 바뀌면 Android가 `sceneRevision`을 올려 새 작업을 만들고 이전 revision 결과를 무시합니다.
 
 ## 관찰과 로그
 

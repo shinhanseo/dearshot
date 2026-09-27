@@ -38,6 +38,7 @@ describe("environment configuration", () => {
       member: { sceneAnalysesPerDay: 50, photoFeedbacksPerDay: 100 },
     });
     assert.equal(environment.idempotency.ttlSeconds, 86_400);
+    assert.deepEqual(environment.sceneAnalysis, { retentionDays: 7 });
     assert.equal(environment.appConfig.minimumSupportedVersion, "1.0.0");
     assert.equal(environment.appConfig.features.kakaoLogin, true);
     assert.deepEqual(environment.productEvents, {

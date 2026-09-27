@@ -159,7 +159,7 @@ API가 반환할 `deletion_id`, `user_id`, `status`, `reason`, `requested_at`, `
 
 ### `scene_analyses`
 
-사용자, 업로드, 상태, 실제 처리 단계, 진행률, locale, 촬영 시각, provider/model, 실패 코드, 재시도 가능 여부와 생성·완료·만료 시각을 저장합니다. 정확한 위치가 필요한 경우 작업 중에만 nullable 컬럼으로 보유하고 완료 후 제거합니다. UI에 반환하는 clues, candidates, recommendation은 독립 검색 대상이 아니므로 검증된 `result JSONB`로 저장합니다.
+사용자, 한 번만 소비되는 업로드, 상태, `scene_revision`, locale, 촬영 시각, 온디바이스 입력 스냅샷, 실패 코드, 재시도 가능 여부와 생성·시작·완료·취소·만료 시각을 저장합니다. `device_analysis JSONB`에는 최대 5개 Places365 후보와 최대 20개 YOLOX 객체·정규화 좌표, 각 모델·버전·runtime을 보관합니다. 이 값은 보조 신호이며 신뢰 경계 밖의 입력입니다. 정확한 위치는 nullable 컬럼으로 보유하고 보존 작업에서 제거합니다. 최종 장면과 단일 템플릿 추천은 검증된 `result JSONB`로 저장합니다.
 
 ### `scene_analysis_events`
 

@@ -57,6 +57,13 @@
       "when": 1790131772830,
       "tag": "0007_product_events",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790497516724,
+      "tag": "0008_easy_stingray",
+      "breakpoints": true
     }
   ]
 }
