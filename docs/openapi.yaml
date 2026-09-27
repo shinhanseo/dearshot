@@ -263,12 +263,6 @@ paths:
       summary: 회원 탈퇴 요청
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeleteAccountRequest'
       responses:
         '202':
           description: 탈퇴 처리 예약
@@ -307,6 +301,33 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /account-deletions/{deletionId}:
+    get:
+      tags: [User]
+      operationId: getAccountDeletion
+      summary: 회원 탈퇴 처리 상태 조회
+      description: DELETE /me가 refresh session을 폐기하므로, 기존의 짧은 수명 Access Token으로만 조회합니다.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deletionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 탈퇴 처리 상태
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteAccountResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /uploads:
     post:
@@ -1331,28 +1352,25 @@ components:
         allowLocationContext:
           type: boolean
         aiProcessingConsentVersion:
-          type: string
-
-    DeleteAccountRequest:
-      type: object
-      required: [confirmation]
-      properties:
-        confirmation:
-          type: string
-          const: DELETE
-        reason:
-          type: string
-          enum: [NOT_USEFUL, PRIVACY_CONCERN, TOO_EXPENSIVE, OTHER]
+          type: [string, 'null']
+          maxLength: 32
 
     DeleteAccountResponse:
       type: object
-      required: [deletionId, scheduledAt]
+      required: [deletionId, status, requestedAt, completedAt]
+      additionalProperties: false
       properties:
         deletionId:
           type: string
           format: uuid
-        scheduledAt:
+        status:
           type: string
+          enum: [PENDING, PROCESSING, COMPLETED]
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, 'null']
           format: date-time
 
     CreateUploadMultipartRequest:

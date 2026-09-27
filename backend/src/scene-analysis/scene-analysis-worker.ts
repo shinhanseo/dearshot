@@ -139,6 +139,7 @@ export class SceneAnalysisWorker {
         .where(eq(sceneAnalyses.id, candidate.id))
         .returning({
           analysisId: sceneAnalyses.id,
+          ownerUserId: sceneAnalyses.ownerUserId,
           sceneRevision: sceneAnalyses.sceneRevision,
           uploadId: sceneAnalyses.uploadId,
           locale: sceneAnalyses.locale,
@@ -242,6 +243,11 @@ export class SceneAnalysisWorker {
         leaseExpiresAt: null,
         failureCode: null,
         retryable: null,
+        deviceAnalysis: null,
+        timezone: null,
+        latitude: null,
+        longitude: null,
+        locationAccuracyMeters: null,
       })
       .where(and(
         eq(sceneAnalyses.id, analysis.analysisId),
@@ -278,6 +284,11 @@ export class SceneAnalysisWorker {
           leaseExpiresAt: null,
           failureCode: failure.code,
           retryable: failure.retryable,
+          deviceAnalysis: null,
+          timezone: null,
+          latitude: null,
+          longitude: null,
+          locationAccuracyMeters: null,
         })
         .where(and(
           eq(sceneAnalyses.id, analysis.analysisId),
@@ -340,6 +351,11 @@ export class SceneAnalysisWorker {
         updatedAt: now,
         leaseOwner: null,
         leaseExpiresAt: null,
+        deviceAnalysis: null,
+        timezone: null,
+        latitude: null,
+        longitude: null,
+        locationAccuracyMeters: null,
       }).where(eq(sceneAnalyses.id, candidate.id));
       return candidate;
     });

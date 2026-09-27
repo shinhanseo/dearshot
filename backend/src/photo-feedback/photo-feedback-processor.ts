@@ -19,6 +19,7 @@ const SCHEMA_VERSION = "photo-feedback-v1";
 
 export type ClaimedPhotoFeedback = {
   feedbackId: string;
+  ownerUserId: string;
   uploadId: string;
   storagePath: string;
   contentType: string;
@@ -112,6 +113,7 @@ export class ProviderPhotoFeedbackProcessor implements PhotoFeedbackProcessor {
 
     const startedAt = this.clock();
     await this.database.insert(aiJobAttempts).values({
+      ownerUserId: feedback.ownerUserId,
       photoFeedbackId: feedback.feedbackId,
       attemptNumber: feedback.attemptCount,
       requestId: randomUUID(),

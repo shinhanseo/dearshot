@@ -115,6 +115,7 @@ export class PhotoFeedbackWorker {
         retryable: null,
       }).where(eq(photoFeedbacks.id, candidate.id)).returning({
         feedbackId: photoFeedbacks.id,
+        ownerUserId: photoFeedbacks.ownerUserId,
         uploadId: photoFeedbacks.uploadId,
         templateId: photoFeedbacks.templateId,
         templateVersion: photoFeedbacks.templateVersion,

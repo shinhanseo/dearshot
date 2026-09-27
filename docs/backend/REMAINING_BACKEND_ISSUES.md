@@ -1,6 +1,6 @@
 # DearShot 남은 백엔드 Issue 검토안
 
-> 상태: 사용자 확정, B-16 구현 완료
+> 상태: B-18까지 구현 완료, 배포 구성 전
 >
 > 기준일: 2026-09-27
 
@@ -97,24 +97,22 @@ Android가 선택한 안정 프레임과 선택적인 Places365·YOLOX 결과를
 
 ### 목표
 
-API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하고, Android가 재연결할 수 있는 서버 작업 이벤트를 전달합니다.
+API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하고, Android가 짧은 polling으로 최종 상태를 조회하게 합니다.
 
 ### 작업
 
 - PostgreSQL 기반 worker polling, lease, 재시도 횟수, stale lease 복구
 - 경쟁 worker가 같은 작업을 처리하지 않도록 원자적 claim
 - `GET /scene-analyses/{id}`의 `pollAfterMs` 기반 상태 조회
-- 이벤트 종류를 `status`, `recommendation`, `completed`, `failed`로 제한
-- 서버 단계 enum: `PREPARING_INPUT`, `FILTERING_TEMPLATES`, `REQUESTING_PROVIDER`, `FINALIZING`
-- terminal event 이후 연결 종료, 취소·소유권·만료 처리
+- terminal 상태 이후 `pollAfterMs: null`, 취소·소유권·만료 처리
 - fake recommendation adapter로 worker와 polling 통합 테스트
 
 ### 완료 조건
 
 - 프로세스를 재시작해도 QUEUED 또는 만료된 lease 작업이 이어집니다.
 - 동시 worker가 같은 작업의 terminal 결과를 두 번 만들지 않습니다.
-- 재연결한 앱이 누락 이벤트를 순서대로 받습니다.
-- 다른 사용자의 event stream을 구독할 수 없습니다.
+- 재연결한 앱이 같은 작업 ID로 현재 상태와 최종 결과를 복구합니다.
+- 다른 사용자의 작업 상태를 조회할 수 없습니다.
 - 로컬 Places365·YOLOX 키워드를 서버 `clue` 이벤트로 복제하지 않습니다.
 - 실제 provider 진행률처럼 보이는 임의의 퍼센트를 보내지 않습니다.
 
@@ -162,7 +160,7 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 - 백엔드의 Places365·YOLOX 실행
 - 사용자 취향 개인화와 추천 학습
 
-이미지의 정상 완료·최종 실패 직후 삭제는 구현했습니다. 파일 삭제 장애와 프로세스 강제 종료 뒤의 최대 1시간 보정 정리는 B-18 정리 작업에서 추가합니다.
+이미지의 정상 완료·최종 실패 직후 삭제와 파일 삭제 장애·프로세스 강제 종료 뒤의 최대 1시간 보정 정리를 구현했습니다.
 
 ---
 
@@ -194,6 +192,8 @@ API 프로세스 재시작에도 남는 장면 작업을 안전하게 claim하�
 ---
 
 ## B-18: 개인정보, 계정 삭제와 retention
+
+**상태: 구현 완료**
 
 ### 목표
 

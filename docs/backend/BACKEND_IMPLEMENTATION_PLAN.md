@@ -52,7 +52,7 @@ Caddy :80/:443
 | B-15R | 작업 실행기와 polling | PostgreSQL 작업 lease, `pollAfterMs` 결과 조회 | B-14 |
 | B-16 | Gemini 템플릿 추천 | DB 후보 제한, 구조화 응답, `ai_job_attempts`, 최종 템플릿 1개 | B-09, B-15 |
 | B-17 | 촬영 피드백 | 템플릿 버전 기반 피드백, 비교·재촬영 결과 | B-11, B-12, B-16 |
-| B-18 | 개인정보와 retention | 임시 파일, 입력 힌트, 결과, 이벤트, 게스트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-17 |
+| B-18 ✅ | 개인정보와 retention | 임시 파일, 입력 힌트, 결과, 이벤트, 탈퇴 데이터 정리 | B-06, B-11, B-13~B-17 |
 | B-19 | 운영 컨테이너 | multi-stage API, non-root, Caddy, PostgreSQL volume | B-01~B-18 |
 | B-20 | GHCR·EC2 배포 | SHA 이미지, migration, health check, rollback | B-19 |
 | B-21 | 출시 검증 | E2E, 보안 점검, 로그·지표 확인, 백업·복구 | B-20 |

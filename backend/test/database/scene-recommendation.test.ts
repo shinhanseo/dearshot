@@ -181,6 +181,10 @@ describe("scene recommendation pipeline", { concurrency: 1 }, () => {
     const [upload] = await connection.db.select().from(imageUploads)
       .where(eq(imageUploads.id, job.uploadId));
     assert.equal(analysis.status, "COMPLETED");
+    assert.equal(analysis.deviceAnalysis, null);
+    assert.equal(analysis.timezone, null);
+    assert.equal(analysis.latitude, null);
+    assert.equal(analysis.longitude, null);
     assert.equal(attempt.status, "SUCCEEDED");
     assert.equal(attempt.inputTokens, 120);
     assert.equal(upload.status, "DELETED");

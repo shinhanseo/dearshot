@@ -3,6 +3,7 @@ import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import type { AuthConfig } from "../config/environment.js";
 import type { Database } from "../db/client.js";
 import {
+  accountDeletionRequests,
   authIdentities,
   oauthNonceUses,
   refreshSessions,
@@ -10,6 +11,7 @@ import {
   users,
 } from "../db/schema/identity.js";
 import { ApiError } from "../http/api-error.js";
+import { photoFeedbacks, sceneAnalyses } from "../db/schema/jobs.js";
 import type { TokenService } from "./token-service.js";
 
 export type AuthProvider = "GOOGLE" | "KAKAO";
@@ -41,6 +43,7 @@ export class SocialIdentityAuthService {
     private readonly db: Database,
     private readonly tokenService: TokenService,
     private readonly config: AuthConfig,
+    private readonly deletionStatusRetentionDays = 7,
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
@@ -145,6 +148,40 @@ export class SocialIdentityAuthService {
             .update(users)
             .set({ status: "DELETION_PENDING", updatedAt: now })
             .where(eq(users.id, guestUserId));
+          await transaction.insert(accountDeletionRequests).values({
+            id: randomUUID(),
+            userId: guestUserId,
+            requestedAt: now,
+            nextAttemptAt: now,
+            expiresAt: new Date(
+              now.getTime() + this.deletionStatusRetentionDays * 86_400_000,
+            ),
+          }).onConflictDoNothing({ target: accountDeletionRequests.userId });
+          await transaction.update(sceneAnalyses).set({
+            status: "CANCELLED",
+            cancelledAt: now,
+            updatedAt: now,
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            deviceAnalysis: null,
+            timezone: null,
+            latitude: null,
+            longitude: null,
+            locationAccuracyMeters: null,
+          }).where(and(
+            eq(sceneAnalyses.ownerUserId, guestUserId),
+            sql`${sceneAnalyses.status} in ('QUEUED', 'PROCESSING')`,
+          ));
+          await transaction.update(photoFeedbacks).set({
+            status: "CANCELLED",
+            cancelledAt: now,
+            updatedAt: now,
+            leaseOwner: null,
+            leaseExpiresAt: null,
+          }).where(and(
+            eq(photoFeedbacks.ownerUserId, guestUserId),
+            sql`${photoFeedbacks.status} in ('QUEUED', 'PROCESSING')`,
+          ));
         }
 
         await transaction

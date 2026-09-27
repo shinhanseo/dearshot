@@ -237,6 +237,19 @@ const environmentSchema = z
       0,
       3_600,
     ),
+    PRIVACY_WORKER_ENABLED: booleanFromEnvironment(true),
+    PRIVACY_CLEANUP_INTERVAL_MS: integerFromEnvironment(
+      "PRIVACY_CLEANUP_INTERVAL_MS", 300_000, 1_000, 86_400_000,
+    ),
+    AI_ATTEMPT_RETENTION_DAYS: integerFromEnvironment(
+      "AI_ATTEMPT_RETENTION_DAYS", 30, 7, 90,
+    ),
+    ACCOUNT_DELETION_STATUS_RETENTION_DAYS: integerFromEnvironment(
+      "ACCOUNT_DELETION_STATUS_RETENTION_DAYS", 7, 1, 30,
+    ),
+    ACCOUNT_DELETION_RETRY_BASE_SECONDS: integerFromEnvironment(
+      "ACCOUNT_DELETION_RETRY_BASE_SECONDS", 5, 1, 300,
+    ),
   })
   .superRefine((environment, context) => {
     if (environment.NODE_ENV === "production" && environment.AI_PROVIDER !== "gemini") {
@@ -412,6 +425,13 @@ export type Environment = {
     maximumPastAgeDays: number;
     maximumFutureSkewSeconds: number;
   };
+  privacy: {
+    workerEnabled: boolean;
+    cleanupIntervalMillis: number;
+    aiAttemptRetentionDays: number;
+    deletionStatusRetentionDays: number;
+    deletionRetryBaseSeconds: number;
+  };
 };
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -519,6 +539,13 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       retentionDays: parsed.data.APP_EVENT_RETENTION_DAYS,
       maximumPastAgeDays: parsed.data.APP_EVENT_MAX_PAST_AGE_DAYS,
       maximumFutureSkewSeconds: parsed.data.APP_EVENT_MAX_FUTURE_SKEW_SECONDS,
+    },
+    privacy: {
+      workerEnabled: parsed.data.PRIVACY_WORKER_ENABLED,
+      cleanupIntervalMillis: parsed.data.PRIVACY_CLEANUP_INTERVAL_MS,
+      aiAttemptRetentionDays: parsed.data.AI_ATTEMPT_RETENTION_DAYS,
+      deletionStatusRetentionDays: parsed.data.ACCOUNT_DELETION_STATUS_RETENTION_DAYS,
+      deletionRetryBaseSeconds: parsed.data.ACCOUNT_DELETION_RETRY_BASE_SECONDS,
     },
     database: {
       connectionString: parsed.data.DATABASE_URL,

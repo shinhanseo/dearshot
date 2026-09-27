@@ -62,6 +62,7 @@ export class SceneRecommendationProcessor implements SceneAnalysisProcessor {
     const requestId = randomUUID();
     const startedAt = this.clock();
     await this.database.insert(aiJobAttempts).values({
+      ownerUserId: analysis.ownerUserId,
       sceneAnalysisId: analysis.analysisId,
       attemptNumber: analysis.attemptCount,
       requestId,

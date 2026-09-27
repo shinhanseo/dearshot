@@ -70,6 +70,13 @@ describe("environment configuration", () => {
       maximumPastAgeDays: 7,
       maximumFutureSkewSeconds: 300,
     });
+    assert.deepEqual(environment.privacy, {
+      workerEnabled: true,
+      cleanupIntervalMillis: 300_000,
+      aiAttemptRetentionDays: 30,
+      deletionStatusRetentionDays: 7,
+      deletionRetryBaseSeconds: 5,
+    });
   });
 
   it("requires a real Google web client ID in production", () => {
