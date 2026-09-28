@@ -47,6 +47,11 @@ const authConfig: AuthConfig = {
   refreshTokenTtlSeconds: 2_592_000,
 };
 
+const guestLimits = {
+  sceneAnalysesPerDay: 7,
+  photoFeedbacksPerDay: 13,
+};
+
 const logger = pino({ level: "silent" });
 let connection: DatabaseConnection;
 let authService: AuthService;
@@ -80,7 +85,7 @@ describe("authentication database flows", { concurrency: 1 }, () => {
   before(async () => {
     connection = createDatabaseConnection(databaseConfig, logger);
     tokenService = new TokenService(authConfig);
-    authService = new AuthService(connection.db, tokenService, authConfig);
+    authService = new AuthService(connection.db, tokenService, authConfig, guestLimits);
     const socialIdentityAuthService = new SocialIdentityAuthService(
       connection.db,
       tokenService,
@@ -124,6 +129,15 @@ describe("authentication database flows", { concurrency: 1 }, () => {
     assert.equal(storedSessions[0].tokenHash.length, 64);
     assert.ok(storedSessions.every((session) => session.tokenHash !== first.refreshToken));
     assert.ok(storedSessions.every((session) => session.tokenHash !== second.refreshToken));
+  });
+
+  it("returns guest limits from the configured usage policy", async () => {
+    const guest = await createGuest();
+
+    assert.deepEqual(guest.limits, {
+      sceneAnalysesRemainingToday: guestLimits.sceneAnalysesPerDay,
+      photoFeedbacksRemainingToday: guestLimits.photoFeedbacksPerDay,
+    });
   });
 
   it("creates only one guest user for concurrent requests from the same installation", async () => {

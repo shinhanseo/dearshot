@@ -43,7 +43,12 @@ async function main() {
   const database = createDatabaseConnection(environment.database, logger);
   const tokenService = new TokenService(environment.auth);
   const googleVerifier = new GoogleAuthLibraryVerifier(environment.google.webClientId);
-  const authService = new AuthService(database.db, tokenService, environment.auth);
+  const authService = new AuthService(
+    database.db,
+    tokenService,
+    environment.auth,
+    environment.usage.guest,
+  );
   const accountService = new AccountService(
     database.db,
     environment.privacy.deletionStatusRetentionDays,

@@ -87,7 +87,10 @@ async function createUploadApp(overrides: Partial<ImageStorageConfig> = {}) {
     { ttlSeconds: 3_600 },
     new IdempotencyService(connection.db),
   );
-  const authService = new AuthService(connection.db, tokenService, authConfig);
+  const authService = new AuthService(connection.db, tokenService, authConfig, {
+    sceneAnalysesPerDay: 5,
+    photoFeedbacksPerDay: 10,
+  });
   const identityService = new SocialIdentityAuthService(
     connection.db,
     tokenService,
