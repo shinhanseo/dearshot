@@ -4,10 +4,8 @@ import type { AuthConfig } from "../config/environment.js";
 import type { Database } from "../db/client.js";
 import { authIdentities, refreshSessions, userPreferences, users } from "../db/schema/identity.js";
 import { ApiError } from "../http/api-error.js";
+import type { UsageLimitConfig } from "../reliability/usage-limit-service.js";
 import type { AccessPrincipal, TokenService } from "./token-service.js";
-
-const GUEST_SCENE_ANALYSIS_LIMIT = 5;
-const GUEST_PHOTO_FEEDBACK_LIMIT = 10;
 
 type TokenPair = {
   tokenType: "Bearer";
@@ -39,6 +37,7 @@ export class AuthService {
     private readonly db: Database,
     private readonly tokenService: TokenService,
     private readonly config: AuthConfig,
+    private readonly guestLimits: UsageLimitConfig["guest"],
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
@@ -123,8 +122,8 @@ export class AuthService {
       ...(await this.createTokenPair(session, now)),
       principal: { id: session.userId, type: "GUEST" as const },
       limits: {
-        sceneAnalysesRemainingToday: GUEST_SCENE_ANALYSIS_LIMIT,
-        photoFeedbacksRemainingToday: GUEST_PHOTO_FEEDBACK_LIMIT,
+        sceneAnalysesRemainingToday: this.guestLimits.sceneAnalysesPerDay,
+        photoFeedbacksRemainingToday: this.guestLimits.photoFeedbacksPerDay,
       },
     };
   }
