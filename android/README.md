@@ -59,6 +59,12 @@ CameraX 프리뷰와 `ImageAnalysis`는 화면 수명주기에 맞춰 연결하�
 
 전경에서 진행되는 장면 추천·피드백 폴링은 해당 화면/작업의 coroutine 수명주기에 묶습니다. WorkManager는 앱 종료 뒤에도 반드시 완료해야 할 독립적인 작업이 생길 때만 검토합니다. 위 라이브러리는 실제 사용 이슈에서 버전 카탈로그와 Gradle 의존성에 추가합니다.
 
+## 영어·한국어 지원
+
+`res/values/strings.xml`은 기본 영어(`en-US`), `res/values-ko/strings.xml`은 한국어입니다. 새 화면 문구는 두 파일에 같은 리소스 키로 추가하고 Compose에서는 `stringResource()`로 읽습니다. 지원하지 않는 기기 언어는 영어로 돌아갑니다. `resources.properties`와 `generateLocaleConfig`는 Android 13 이상 시스템 설정의 앱별 언어 목록을 만들고, `localeFilters`는 패키지에 포함할 번역 언어를 영어·한국어로 제한합니다.
+
+Android 12 이하에서는 우선 기기 언어를 따릅니다. 앱 안에서 직접 언어를 바꾸는 화면과 하위 버전 호환 처리는 A-20에서 구현합니다. 백엔드 요청의 locale은 실제 앱에 적용된 언어를 기준으로 `en-US` 또는 `ko-KR`로 매핑하며, 시스템 locale 문자열을 그대로 하드코딩해 보내지 않습니다. 서버의 `messageKey`와 온디바이스 분석 키워드도 화면에서 지역화합니다.
+
 ## API 주소와 민감 설정
 
 서버 주소는 소스에 넣지 않습니다. 현재 Gradle은 `dearshotApiBaseUrl` 프로젝트 속성 또는 `DEARSHOT_API_BASE_URL` 환경변수를 받아 `BuildConfig.API_BASE_URL`로 제공합니다. 둘 다 없으면 빈 문자열로 빌드되며, A-07에서 네트워크 클라이언트를 연결할 때 빈 값의 처리와 빌드 변형별 URL 정책을 완성합니다. 주소는 비밀 값이 아니지만 API 키나 토큰은 Gradle 속성·`BuildConfig`·Git 파일에 넣지 않습니다.

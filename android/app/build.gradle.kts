@@ -47,6 +47,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters.addAll(listOf("en", "ko"))
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
