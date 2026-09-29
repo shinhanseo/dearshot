@@ -37,6 +37,7 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./backend/src:/app/src:ro
+      - ./backend/catalog:/app/catalog:ro
       - upload_data:/srv/dearshot/uploads
     healthcheck:
       test:

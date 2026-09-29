@@ -1,0 +1,465 @@
+{
+  "catalogVersion": "green-space-2026-09-28-v1",
+  "scenes": [
+    {
+      "key": "green-space",
+      "active": true,
+      "thumbnailPath": "templates/green-picnic-pause/v1/thumbnail.webp",
+      "sortOrder": 3,
+      "localizations": {
+        "ko-KR": {
+          "displayName": "공원 · 초록 공간"
+        },
+        "en-US": {
+          "displayName": "Green space"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "green-picnic-pause",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 1,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 1
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-picnic-pause/v1/preview.webp",
+          "thumbnailPath": "templates/green-picnic-pause/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-picnic-pause/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.08,
+                "top": 0.39,
+                "right": 0.93,
+                "bottom": 0.84
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "나무 그늘 아래 피크닉",
+              "summary": "인물을 오른쪽 아래에 두고 잔디 여백을 넓게 남기세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 오른쪽 아래에 두고 잔디 여백을 넓게 남기세요."
+                },
+                {
+                  "order": 2,
+                  "text": "무릎에 손을 모으고 카메라 쪽으로 고개를 돌리세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Picnic pause",
+              "summary": "Place the subject lower right and leave room for the lawn.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the subject lower right and leave room for the lawn."
+                },
+                {
+                  "order": 2,
+                  "text": "Rest both hands on the knees and turn toward the camera."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "green-garden-flowers",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 2,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 2
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-garden-flowers/v1/preview.webp",
+          "thumbnailPath": "templates/green-garden-flowers/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-garden-flowers/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0,
+                "top": 0.11,
+                "right": 0.61,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "꽃 사이로 가까이",
+              "summary": "얼굴을 왼쪽 위에 두고 꽃을 앞쪽에 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "얼굴을 왼쪽 위에 두고 꽃을 앞쪽에 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "꽃을 내려다보는 자연스러운 옆모습을 촬영하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Among the flowers",
+              "summary": "Place the face upper left with flowers in the foreground.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the face upper left with flowers in the foreground."
+                },
+                {
+                  "order": 2,
+                  "text": "Capture a relaxed glance down toward the flowers."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "green-garden-arch",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 3,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 3
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-garden-arch/v1/preview.webp",
+          "thumbnailPath": "templates/green-garden-arch/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-garden-arch/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.23,
+                "top": 0.375,
+                "right": 0.53,
+                "bottom": 0.915
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "정원 아치 아래",
+              "summary": "아치 안쪽에 인물을 세우고 발끝까지 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "아치 안쪽에 인물을 세우고 발끝까지 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "아치의 곡선과 길이 인물 주변을 감싸도록 맞추세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Garden arch",
+              "summary": "Frame the full body inside the garden arch.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the full body inside the garden arch."
+                },
+                {
+                  "order": 2,
+                  "text": "Use the arch and path to frame the subject."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "green-hedge-look-back",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 4,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 4
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-hedge-look-back/v1/preview.webp",
+          "thumbnailPath": "templates/green-hedge-look-back/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-hedge-look-back/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.35,
+                "top": 0.19,
+                "right": 0.94,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "초록빛 어깨 너머",
+              "summary": "인물을 오른쪽에 두고 왼쪽에 초록 여백을 남기세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 오른쪽에 두고 왼쪽에 초록 여백을 남기세요."
+                },
+                {
+                  "order": 2,
+                  "text": "어깨 너머로 돌아보며 머리카락을 가볍게 정리하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Green look-back",
+              "summary": "Keep the subject on the right with greenery on the left.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Keep the subject on the right with greenery on the left."
+                },
+                {
+                  "order": 2,
+                  "text": "Look back over the shoulder and lightly touch the hair."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "green-tree-lean",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 5,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 5
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-tree-lean/v1/preview.webp",
+          "thumbnailPath": "templates/green-tree-lean/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-tree-lean/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.085,
+                "top": 0.25,
+                "right": 0.5,
+                "bottom": 0.91
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "나무에 기대어",
+              "summary": "인물을 왼쪽 나무 옆에 두고 오른쪽 잔디를 넓게 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 왼쪽 나무 옆에 두고 오른쪽 잔디를 넓게 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "어깨를 가볍게 기대고 발목을 편하게 교차하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Beside the tree",
+              "summary": "Place the subject beside the left tree with open lawn on the right.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the subject beside the left tree with open lawn on the right."
+                },
+                {
+                  "order": 2,
+                  "text": "Lean a shoulder lightly and cross the ankles comfortably."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "green-garden-reading",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 6,
+      "scenes": [
+        {
+          "key": "green-space",
+          "sortOrder": 6
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/green-garden-reading/v1/preview.webp",
+          "thumbnailPath": "templates/green-garden-reading/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/green-garden-reading/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0,
+                "top": 0.1,
+                "right": 1,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "공원에서 책 한 페이지",
+              "summary": "책과 손이 함께 보이도록 비스듬히 내려다보며 촬영하세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "책과 손이 함께 보이도록 비스듬히 내려다보며 촬영하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "얼굴은 왼쪽 위에 두고 돌담의 사선을 살리세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A page in the park",
+              "summary": "Shoot slightly downward so the book and hands are visible.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Shoot slightly downward so the book and hands are visible."
+                },
+                {
+                  "order": 2,
+                  "text": "Place the face upper left and use the diagonal stone ledge."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,465 @@
+{
+  "catalogVersion": "cafe-2026-09-28-v1",
+  "scenes": [
+    {
+      "key": "cafe",
+      "active": true,
+      "thumbnailPath": "templates/cafe-terrace-relax/v1/thumbnail.webp",
+      "sortOrder": 2,
+      "localizations": {
+        "ko-KR": {
+          "displayName": "카페"
+        },
+        "en-US": {
+          "displayName": "Cafe"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "cafe-terrace-relax",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 1,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 1
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-terrace-relax/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-terrace-relax/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-terrace-relax/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.25,
+                "top": 0.33,
+                "right": 1,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "테라스의 여유",
+              "summary": "인물을 오른쪽에 두고 왼쪽에 테이블과 풍경을 남기세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 오른쪽에 두고 왼쪽에 테이블과 풍경을 남기세요."
+                },
+                {
+                  "order": 2,
+                  "text": "앉은 눈높이에서 편하게 기대는 모습을 담으세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Terrace pause",
+              "summary": "Place the subject on the right with the table and view on the left.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the subject on the right with the table and view on the left."
+                },
+                {
+                  "order": 2,
+                  "text": "Shoot at seated eye level while the subject leans back."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cafe-window-look-back",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 2,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 2
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-window-look-back/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-window-look-back/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-window-look-back/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.29,
+                "top": 0.14,
+                "right": 0.98,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "창가에서 돌아보기",
+              "summary": "창가 쪽으로 앉고 어깨 너머로 카메라를 보세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "창가 쪽으로 앉고 어깨 너머로 카메라를 보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "창틀은 세로로, 테이블은 사선으로 담으세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Window look-back",
+              "summary": "Sit toward the window and look back over your shoulder.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Sit toward the window and look back over your shoulder."
+                },
+                {
+                  "order": 2,
+                  "text": "Keep the window vertical and the counter diagonal."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cafe-cheek-rest",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 3,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 3
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-cheek-rest/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-cheek-rest/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-cheek-rest/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.07,
+                "top": 0.11,
+                "right": 0.96,
+                "bottom": 0.85
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "햇살과 턱 괴기",
+              "summary": "테이블 맞은편에서 상반신과 음료를 함께 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "테이블 맞은편에서 상반신과 음료를 함께 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "한 손에 볼을 가볍게 기대고 카메라를 보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Sunlit cheek rest",
+              "summary": "Frame the upper body and drink from across the table.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the upper body and drink from across the table."
+                },
+                {
+                  "order": 2,
+                  "text": "Rest the cheek lightly in one hand and look toward the camera."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cafe-brunch-high-angle",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 4,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 4
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-brunch-high-angle/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-brunch-high-angle/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-brunch-high-angle/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0,
+                "top": 0.015,
+                "right": 0.84,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "테이블 위의 브런치",
+              "summary": "서 있는 높이에서 아래로 비스듬히 촬영하세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "서 있는 높이에서 아래로 비스듬히 촬영하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "얼굴은 왼쪽 위, 음료와 접시는 오른쪽 아래에 배치하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Brunch from above",
+              "summary": "Photograph diagonally downward from a standing position.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Photograph diagonally downward from a standing position."
+                },
+                {
+                  "order": 2,
+                  "text": "Keep the face upper left and brunch lower right."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cafe-through-window",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 5,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 5
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-through-window/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-through-window/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-through-window/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.24,
+                "top": 0.33,
+                "right": 0.98,
+                "bottom": 0.77
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "유리창 너머",
+              "summary": "창밖에서 유리 너머 인물을 오른쪽에 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "창밖에서 유리 너머 인물을 오른쪽에 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "반사는 여백에 두고 얼굴이 잘 보이는 위치를 찾으세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Through the window",
+              "summary": "Photograph through the window with the subject on the right.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Photograph through the window with the subject on the right."
+                },
+                {
+                  "order": 2,
+                  "text": "Keep reflections in the empty space and the face readable."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cafe-bench-afternoon",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 6,
+      "scenes": [
+        {
+          "key": "cafe",
+          "sortOrder": 6
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/cafe-bench-afternoon/v1/preview.webp",
+          "thumbnailPath": "templates/cafe-bench-afternoon/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/cafe-bench-afternoon/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.13,
+                "top": 0.32,
+                "right": 0.72,
+                "bottom": 0.91
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "벤치에 앉은 오후",
+              "summary": "신발까지 담고 벽 쪽에 여백을 남기세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "신발까지 담고 벽 쪽에 여백을 남기세요."
+                },
+                {
+                  "order": 2,
+                  "text": "벤치에 편하게 앉아 시선을 옆으로 돌리세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Afternoon bench",
+              "summary": "Include the shoes and leave space on the wall side.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Include the shoes and leave space on the wall side."
+                },
+                {
+                  "order": 2,
+                  "text": "Sit comfortably on the bench and look to one side."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

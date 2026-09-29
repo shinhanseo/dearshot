@@ -1,0 +1,465 @@
+{
+  "catalogVersion": "waterfront-2026-09-28-v1",
+  "scenes": [
+    {
+      "key": "waterfront",
+      "active": true,
+      "thumbnailPath": "templates/shoreline-sunset-walk/v1/thumbnail.webp",
+      "sortOrder": 1,
+      "localizations": {
+        "ko-KR": {
+          "displayName": "바다 · 물가"
+        },
+        "en-US": {
+          "displayName": "Waterfront"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "shoreline-sunset-walk",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 1,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/shoreline-sunset-walk/v1/preview.webp",
+          "thumbnailPath": "templates/shoreline-sunset-walk/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/shoreline-sunset-walk/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.56,
+                "top": 0.45,
+                "right": 0.8,
+                "bottom": 0.79
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "노을 따라 걷는 뒷모습",
+              "summary": "해안선을 따라 걷는 뒷모습과 노을을 넓게 담아요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 화면 오른쪽 아래에 두세요."
+                },
+                {
+                  "order": 2,
+                  "text": "수평선을 가이드 선에 맞추고 걷는 순간 촬영하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Walking into the sunset",
+              "summary": "Leave room for the sunset as the subject walks along the shore.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the subject in the lower right."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the horizon and capture a natural walking moment."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "shoreline-side-gaze",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 2,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/shoreline-side-gaze/v1/preview.webp",
+          "thumbnailPath": "templates/shoreline-side-gaze/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/shoreline-side-gaze/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.1,
+                "top": 0.41,
+                "right": 0.34,
+                "bottom": 0.88
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "바다를 바라보는 옆모습",
+              "summary": "인물은 왼쪽에, 시선이 향하는 바다는 넓게 남겨요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 왼쪽 가이드에 맞춰 전신을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "시선이 향하는 오른쪽에 바다 여백을 남기세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Looking out to sea",
+              "summary": "Place the subject on the left and leave space in their gaze direction.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Fit the full body inside the left-side guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Leave open sea in the direction of their gaze."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "shoreline-look-back",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 3,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/shoreline-look-back/v1/preview.webp",
+          "thumbnailPath": "templates/shoreline-look-back/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/shoreline-look-back/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.1,
+                "top": 0.19,
+                "right": 0.72,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "어깨 너머로 돌아보기",
+              "summary": "어깨 너머 시선과 얼굴을 크게 담는 가까운 바다 사진이에요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "얼굴을 가이드 상단에 맞춰 가까이 찍으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "몸은 바다 쪽으로 두고 고개만 카메라로 돌리세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Looking back over the shoulder",
+              "summary": "Make the over-the-shoulder glance the focus of a close beach portrait.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Move closer and align the face with the upper guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Keep the body toward the water, then turn the head toward the camera."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "shoreline-candid-step",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 4,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/shoreline-candid-step/v1/preview.webp",
+          "thumbnailPath": "templates/shoreline-candid-step/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/shoreline-candid-step/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.14,
+                "top": 0.25,
+                "right": 0.67,
+                "bottom": 0.9
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "파도 옆을 걷는 순간",
+              "summary": "움직이는 전신과 바닷물 경계를 함께 담아요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "발끝까지 들어오도록 인물과 거리를 맞추세요."
+                },
+                {
+                  "order": 2,
+                  "text": "한 걸음 내딛는 순간 연속 촬영해 보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A step beside the waves",
+              "summary": "Capture a candid full-body step along the edge of the waves.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Step back until the whole body and feet fit."
+                },
+                {
+                  "order": 2,
+                  "text": "Capture a few frames during a natural step."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "shoreline-sunset-profile",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 5,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/shoreline-sunset-profile/v1/preview.webp",
+          "thumbnailPath": "templates/shoreline-sunset-profile/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/shoreline-sunset-profile/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.05,
+                "top": 0.25,
+                "right": 0.48,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "노을빛 옆모습",
+              "summary": "인물을 왼쪽에 크게 두고 노을과 물빛을 오른쪽에 담아요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물의 옆모습을 왼쪽 가이드에 맞추세요."
+                },
+                {
+                  "order": 2,
+                  "text": "노을과 물 위 반사가 오른쪽에 보이게 하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Sunlit side profile",
+              "summary": "Frame a close side profile against the sunset reflected on water.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the side profile inside the left guide."
+                },
+                {
+                  "order": 2,
+                  "text": "Keep the sunset and its reflection visible on the right."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    },
+    {
+      "id": "waterfront-railing-portrait",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 6,
+      "scenes": [
+        {
+          "key": "waterfront",
+          "sortOrder": 1
+        }
+      ],
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/waterfront-railing-portrait/v1/preview.webp",
+          "thumbnailPath": "templates/waterfront-railing-portrait/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/waterfront-railing-portrait/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "targetSubjectBox": {
+                "left": 0.5,
+                "top": 0.23,
+                "right": 1,
+                "bottom": 1
+              },
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-09-28T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "난간 너머 물빛",
+              "summary": "난간의 사선을 따라 인물을 오른쪽에 두고 강물을 넓게 담아요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "인물을 오른쪽 가이드에 맞춰 난간 안쪽에 서게 하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "난간의 사선이 인물 쪽으로 이어지도록 촬영하세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Beyond the riverside railing",
+              "summary": "Use the railing as a diagonal leading line and leave the river open beside the subject.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place the subject inside the right-side guide, behind the railing."
+                },
+                {
+                  "order": 2,
+                  "text": "Angle the railing so its line leads toward the subject."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "currentVersion": 1
+    }
+  ]
+}
