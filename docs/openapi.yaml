@@ -1953,6 +1953,9 @@ components:
           type: integer
         referenceHeight:
           type: integer
+        targetSubjectBox:
+          description: Normalized target region for the person in the guide. Compare a detected person box with this fixed region; do not resize the target to match detection.
+          $ref: '#/components/schemas/SafeArea'
         safeArea:
           $ref: '#/components/schemas/SafeArea'
 

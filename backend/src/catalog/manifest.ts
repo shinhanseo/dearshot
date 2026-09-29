@@ -25,6 +25,15 @@ const guideConfigSchema = z.object({
   coordinateSpace: z.literal("NORMALIZED"),
   referenceWidth: z.number().int().positive(),
   referenceHeight: z.number().int().positive(),
+  targetSubjectBox: z
+    .object({
+      left: z.number().min(0).max(1),
+      top: z.number().min(0).max(1),
+      right: z.number().min(0).max(1),
+      bottom: z.number().min(0).max(1),
+    })
+    .refine((box) => box.left < box.right && box.top < box.bottom, "target subject box is inverted")
+    .optional(),
   safeArea: z
     .object({
       left: z.number().min(0).max(1),
