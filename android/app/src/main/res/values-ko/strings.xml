@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">디어샷</string>
+    <!-- values-ko/strings.xml -->
+    <string name="screen_start">시작</string>
+    <string name="screen_camera">카메라</string>
+    <string name="screen_templates">템플릿 목록</string>
+    <string name="screen_login">로그인</string>
+    <string name="open_camera">카메라 화면 보기</string>
+    <string name="open_login">로그인 화면 보기</string>
+    <string name="open_templates">템플릿 보기</string>
+    <string name="go_back">뒤로</string>
 </resources>

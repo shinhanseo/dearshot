@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">DearShot</string>
+    <!-- values/strings.xml -->
+    <string name="screen_start">Start</string>
+    <string name="screen_camera">Camera</string>
+    <string name="screen_templates">Templates</string>
+    <string name="screen_login">Sign in</string>
+    <string name="open_camera">Open camera preview</string>
+    <string name="open_login">Open sign-in preview</string>
+    <string name="open_templates">View templates</string>
+    <string name="go_back">Back</string>
 </resources>
