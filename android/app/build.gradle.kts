@@ -75,5 +75,6 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.json)
     implementation(libs.okhttp.core)
+    implementation(libs.androidx.datastore.preferences)
 }
 
