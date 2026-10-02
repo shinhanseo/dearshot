@@ -71,4 +71,31 @@ class TokenStore(context: Context) {
             preferences.remove(REFRESH_TOKEN)
         }
     }
+
+    suspend fun replaceIfCurrent(
+        expected: AuthTokens,
+        replacement: AuthTokens?,
+    ): Boolean {
+        var replaced = false
+
+        dataStore.edit { preferences ->
+            val matches =
+                preferences[ACCESS_TOKEN] == expected.accessToken &&
+                        preferences[REFRESH_TOKEN] == expected.refreshToken
+
+            if (!matches) return@edit
+
+            if (replacement == null) {
+                preferences.remove(ACCESS_TOKEN)
+                preferences.remove(REFRESH_TOKEN)
+            } else {
+                preferences[ACCESS_TOKEN] = replacement.accessToken
+                preferences[REFRESH_TOKEN] = replacement.refreshToken
+            }
+
+            replaced = true
+        }
+
+        return replaced
+    }
 }
