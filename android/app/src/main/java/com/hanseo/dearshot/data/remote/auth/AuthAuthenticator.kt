@@ -1,9 +1,14 @@
 package com.hanseo.dearshot.data.remote.auth
 
+import android.os.SystemClock
 import com.hanseo.dearshot.data.local.AuthTokens
 import com.hanseo.dearshot.data.local.TokenStore
+import com.hanseo.dearshot.data.remote.ApiFailure
 import com.hanseo.dearshot.data.remote.parseApiFailure
 import java.io.IOException
+import java.net.ConnectException
+import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import okhttp3.Authenticator
@@ -20,6 +25,8 @@ class AuthAuthenticator(
 
     private var lastAttemptedRefreshToken: String? = null
     private var lastSuccessfulRefresh: RefreshTransition? = null
+    private var lastRefreshFailure: ApiFailure? = null
+    private var nextRefreshAllowedAt: Long? = null
 
     private data class RefreshTransition(
         val previousAccessToken: String,
@@ -84,12 +91,24 @@ class AuthAuthenticator(
                     )
                 }
 
-                // 같은 refreshToken으로 갱신을 반복하지 않는다.
+                // 같은 토큰의 재시도는 실패 종류와 대기 시간에 따라 허용한다.
                 if (lastAttemptedRefreshToken == currentTokens.refreshToken) {
-                    return@runBlocking null
+                    val retryAt = nextRefreshAllowedAt
+                    val canRetry = retryAt != null &&
+                            SystemClock.elapsedRealtime() >= retryAt
+
+                    if (!canRetry) {
+                        throw RefreshFailedException(
+                            lastRefreshFailure
+                                ?: ApiFailure.SessionRecoveryRequired
+                        )
+                    }
                 }
 
                 lastAttemptedRefreshToken = currentTokens.refreshToken
+                nextRefreshAllowedAt = null
+                // 결과를 확인하기 전에는 토큰이 이미 회전했을 가능성을 남긴다.
+                lastRefreshFailure = ApiFailure.SessionRecoveryRequired
 
                 val refreshResponse = try {
                     refreshApi.refresh(
@@ -98,32 +117,94 @@ class AuthAuthenticator(
                         )
                     ).execute()
                 } catch (e: IOException) {
-                    return@runBlocking null
+                    val failedBeforeConnection =
+                        e is UnknownHostException || e is ConnectException
+
+                    if (failedBeforeConnection) {
+                        lastRefreshFailure = ApiFailure.Network
+                        nextRefreshAllowedAt =
+                            SystemClock.elapsedRealtime() + 3_000L
+                    }
+
+                    throw RefreshFailedException(
+                        lastRefreshFailure
+                            ?: ApiFailure.SessionRecoveryRequired
+                    )
                 } catch (e: SerializationException) {
-                    return@runBlocking null
+                    throw RefreshFailedException(
+                        ApiFailure.SessionRecoveryRequired
+                    )
                 }
 
                 if (!refreshResponse.isSuccessful) {
-                    refreshResponse.errorBody()?.close()
+                    val errorBody = try {
+                        refreshResponse.errorBody()?.use { body ->
+                            body.string()
+                        }
+                    } catch (e: IOException) {
+                        null
+                    }
 
-                    // 서버가 refreshToken을 거절한 경우에만 삭제한다.
-                    if (refreshResponse.code() == 401) {
+                    val refreshFailure = parseApiFailure(
+                        status = refreshResponse.code(),
+                        errorBody = errorBody,
+                        requestIdHeader =
+                            refreshResponse.headers()["X-Request-ID"],
+                        retryAfterHeader =
+                            refreshResponse.headers()["Retry-After"],
+                    )
+
+                    val tokenWasRejected =
+                        refreshFailure.status == 401 &&
+                                (refreshFailure.code == "TOKEN_EXPIRED" ||
+                                    refreshFailure.code == "INVALID_TOKEN")
+
+                    if (tokenWasRejected) {
                         tokenStore.replaceIfCurrent(
                             expected = currentTokens,
                             replacement = null,
                         )
+                        return@runBlocking null
                     }
 
-                    return@runBlocking null
+                    // 현재 백엔드의 RATE_LIMITED는 갱신 처리 전에 발생한다.
+                    if (refreshFailure.status == 429 &&
+                        refreshFailure.code == "RATE_LIMITED"
+                    ) {
+                        val retryAfterSeconds =
+                            (refreshFailure.retryAfterSeconds ?: 5L)
+                                .coerceAtLeast(1L)
+                        val delayMillis =
+                            TimeUnit.SECONDS.toMillis(retryAfterSeconds)
+                        val now = SystemClock.elapsedRealtime()
+
+                        nextRefreshAllowedAt =
+                            if (delayMillis > Long.MAX_VALUE - now) {
+                                Long.MAX_VALUE
+                            } else {
+                                now + delayMillis
+                            }
+                        lastRefreshFailure = refreshFailure
+
+                        throw RefreshFailedException(refreshFailure)
+                    }
+
+                    throw RefreshFailedException(
+                        ApiFailure.SessionRecoveryRequired
+                    )
                 }
 
-                val body =
-                    refreshResponse.body() ?: return@runBlocking null
+                val body = refreshResponse.body()
+                    ?: throw RefreshFailedException(
+                        ApiFailure.SessionRecoveryRequired
+                    )
 
                 if (body.accessToken.isBlank() ||
                     body.refreshToken.isBlank()
                 ) {
-                    return@runBlocking null
+                    throw RefreshFailedException(
+                        ApiFailure.SessionRecoveryRequired
+                    )
                 }
 
                 val newTokens = AuthTokens(
@@ -143,6 +224,8 @@ class AuthAuthenticator(
                     previousAccessToken = currentTokens.accessToken,
                     newTokens = newTokens,
                 )
+                lastRefreshFailure = null
+                nextRefreshAllowedAt = null
 
                 retryRequest(response, newTokens.accessToken)
             }

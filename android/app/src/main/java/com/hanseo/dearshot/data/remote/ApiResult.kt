@@ -17,6 +17,7 @@ sealed interface ApiFailure {
     ) : ApiFailure
 
     data object Network : ApiFailure
+    data object SessionRecoveryRequired : ApiFailure
     data object Unexpected : ApiFailure
 }
 

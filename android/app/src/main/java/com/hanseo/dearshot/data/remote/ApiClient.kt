@@ -5,6 +5,7 @@ import com.hanseo.dearshot.data.local.TokenStore
 import com.hanseo.dearshot.data.remote.auth.AuthAuthenticator
 import com.hanseo.dearshot.data.remote.auth.AuthInterceptor
 import com.hanseo.dearshot.data.remote.auth.RefreshApi
+import com.hanseo.dearshot.data.remote.auth.RefreshRequestInterceptor
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
@@ -37,6 +38,7 @@ class ApiClient(
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
+            .addInterceptor(RefreshRequestInterceptor())
             .authenticator(Authenticator.NONE)
             .retryOnConnectionFailure(false)
             .followRedirects(false)

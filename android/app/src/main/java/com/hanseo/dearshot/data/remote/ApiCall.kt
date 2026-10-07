@@ -1,5 +1,6 @@
 package com.hanseo.dearshot.data.remote
 
+import com.hanseo.dearshot.data.remote.auth.RefreshFailedException
 import java.io.IOException
 import java.util.concurrent.CancellationException
 import retrofit2.Response
@@ -30,6 +31,8 @@ suspend fun <T : Any> apiCall(
         }
     } catch (e: CancellationException) {
         throw e
+    } catch (e: RefreshFailedException) {
+        ApiResult.Failure(e.failure)
     } catch (e: IOException) {
         ApiResult.Failure(ApiFailure.Network)
     } catch (e: Exception) {
