@@ -9,9 +9,15 @@ class AppInfoProvider(context: Context) {
     private val appContext = context.applicationContext
 
     fun getLocale(): String {
-        val locale = appContext.resources.configuration.locales[0] ?: Locale.getDefault()
+        val language = appContext.resources.configuration.locales[0]
+            ?.language
+            ?: Locale.getDefault().language
 
-        return locale.toLanguageTag()
+        return if (language == "ko") {
+            "ko-KR"
+        } else {
+            "en-US"
+        }
     }
 
     fun getAppVersion(): String {
