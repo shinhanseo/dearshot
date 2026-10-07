@@ -5,6 +5,7 @@ import com.hanseo.dearshot.data.local.TokenStore
 import com.hanseo.dearshot.data.remote.ApiClient
 import com.hanseo.dearshot.data.local.InstallationStore
 import com.hanseo.dearshot.data.device.AppInfoProvider
+import com.hanseo.dearshot.data.remote.config.AppConfigApi
 
 class AppContainer(context: Context) {
 
@@ -15,5 +16,9 @@ class AppContainer(context: Context) {
 
     val apiClient: ApiClient by lazy {
         ApiClient(tokenStore)
+    }
+
+    val appConfig: AppConfigApi by lazy {
+        apiClient.create(AppConfigApi::class.java)
     }
 }
