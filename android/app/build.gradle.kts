@@ -76,5 +76,6 @@ dependencies {
     implementation(libs.retrofit.json)
     implementation(libs.okhttp.core)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
 }
 
