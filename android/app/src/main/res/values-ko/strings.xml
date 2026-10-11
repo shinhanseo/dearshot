@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">디어샷</string>
+    <string name="app_name">DearShot</string>
     <!-- values-ko/strings.xml -->
     <string name="screen_start">시작</string>
     <string name="screen_camera">카메라</string>
