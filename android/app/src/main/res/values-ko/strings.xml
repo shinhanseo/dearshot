@@ -22,4 +22,7 @@
     <string name="start_update_description">계속 사용하려면\n최신 버전으로 업데이트해주세요.</string>
     <string name="start_update_hint">안정적인 촬영을 위한 업데이트예요.</string>
     <string name="start_update_action">업데이트하기</string>
+    <string name="start_error_network">인터넷 연결을 확인해주세요.</string>
+    <string name="start_error_generic">앱을 시작하지 못했어요.\n잠시 후 다시 시도해주세요.</string>
+    <string name="start_retry">다시 시도</string>
 </resources>
