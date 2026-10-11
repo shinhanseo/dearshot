@@ -12,4 +12,9 @@
     <string name="start_loading_title">Getting ready for your next shot</string>
     <string name="start_loading_description">Please wait a moment.</string>
     <string name="app_tagline">Good moments, framed your way.</string>
+    <string name="start_maintenance_badge">Under maintenance</string>
+    <string name="start_maintenance_title">Taking a short break</string>
+    <string name="start_maintenance_description">We’re improving the service\nfor a more reliable camera experience.</string>
+    <string name="start_maintenance_hint">Please check again shortly.</string>
+    <string name="start_maintenance_retry">Check again</string>
 </resources>
