@@ -23,24 +23,24 @@ fun StartScreen(
     val currentOnLoginRequired by rememberUpdatedState(onLoginRequired)
 
     LaunchedEffect(uiState) {
-        when (val state = uiState) {
+        when (uiState) {
             is StartUiState.Ready -> {
                 currentOnReady()
             }
 
             is StartUiState.LoginRequired -> {
-                currentOnLoginRequired(state.provider)
+                currentOnLoginRequired(uiState.provider)
             }
 
             is StartUiState.RecoveryRequired -> {
-                currentOnLoginRequired(state.provider)
+                currentOnLoginRequired(uiState.provider)
             }
 
             else -> Unit
         }
     }
 
-    when (val state = uiState) {
+    when (uiState) {
         StartUiState.Loading -> {
             StartLoadingScreen(
                 modifier = modifier,
@@ -63,7 +63,7 @@ fun StartScreen(
 
         is StartUiState.Error -> {
             StartErrorScreen(
-                failure = state.failure,
+                failure = uiState.failure,
                 onRetry = onRetry,
                 modifier = modifier,
             )
