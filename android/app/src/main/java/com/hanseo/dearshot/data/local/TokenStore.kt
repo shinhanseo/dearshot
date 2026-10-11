@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private val Context.authDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "auth_tokens",
@@ -29,7 +32,10 @@ data class AuthTokens(
     }
 }
 
-class TokenStore(context: Context) {
+@Singleton
+class TokenStore @Inject constructor(
+    @ApplicationContext context: Context,
+) {
 
     private val dataStore = context.applicationContext.authDataStore
 

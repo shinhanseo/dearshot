@@ -1,11 +1,7 @@
 package com.hanseo.dearshot
 
 import android.app.Application
-import com.hanseo.dearshot.di.AppContainer
+import dagger.hilt.android.HiltAndroidApp
 
-class DearShotApplication : Application() {
-
-    val container: AppContainer by lazy {
-        AppContainer(this)
-    }
-}
+@HiltAndroidApp
+class DearShotApplication : Application()

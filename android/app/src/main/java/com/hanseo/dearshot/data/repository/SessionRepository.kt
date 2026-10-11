@@ -9,6 +9,8 @@ import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import javax.inject.Inject
+import javax.inject.Singleton
 
 sealed interface SessionRestoreResult {
 
@@ -21,7 +23,8 @@ sealed interface SessionRestoreResult {
     ) : SessionRestoreResult
 }
 
-class SessionRepository(
+@Singleton
+class SessionRepository @Inject constructor(
     private val api: SessionApi,
     private val tokenStore: TokenStore,
 ) {

@@ -7,11 +7,17 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.util.UUID
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private val Context.installationDataStore: DataStore<Preferences>
     by preferencesDataStore(name = "installation")
 
-class InstallationStore(context: Context) {
+@Singleton
+class InstallationStore @Inject constructor(
+    @ApplicationContext context: Context,
+) {
     private val dataStore = context.applicationContext.installationDataStore
 
     private companion object {

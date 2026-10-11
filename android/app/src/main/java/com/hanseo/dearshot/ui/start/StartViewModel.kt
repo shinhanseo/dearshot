@@ -15,15 +15,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class StartViewModel (
-    private val appConfigRepository: AppConfigRepository, // 앱 설정을 조회한다.
-    private val sessionRepository: SessionRepository, // 로그인 상태를 확인한다.
-    private val appInfoProvider: AppInfoProvider // 앱의 언어를 확인한다.
+@HiltViewModel
+class StartViewModel @Inject constructor(
+    private val appConfigRepository: AppConfigRepository,
+    private val sessionRepository: SessionRepository,
+    private val appInfoProvider: AppInfoProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<StartUiState>(StartUiState.Loading)
 
     val uiState: StateFlow<StartUiState> = _uiState.asStateFlow()
+
+    private var loadJob: Job? = null
 
     init {
         load()
@@ -32,7 +37,6 @@ class StartViewModel (
     fun retry() {
         load(forceRefresh = true)
     }
-    private var loadJob: Job? = null
 
     private fun load(forceRefresh: Boolean = false) {
         if (loadJob?.isActive == true) return

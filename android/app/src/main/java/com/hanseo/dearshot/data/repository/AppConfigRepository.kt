@@ -8,8 +8,11 @@ import com.hanseo.dearshot.data.remote.config.AppConfigApi
 import com.hanseo.dearshot.data.remote.config.AppConfigResponse
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AppConfigRepository(
+@Singleton
+class AppConfigRepository @Inject constructor(
     private val api: AppConfigApi,
     private val appInfoProvider: AppInfoProvider,
 ) {
