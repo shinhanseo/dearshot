@@ -19,6 +19,10 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.hanseo.dearshot.R
 import kotlinx.serialization.Serializable
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import com.hanseo.dearshot.ui.start.StartViewModel
 
 @Serializable
 private data object StartRoute : NavKey
@@ -38,11 +42,17 @@ fun AppNavigation() {
 
     NavDisplay(
         backStack = backStack,
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         onBack = {
             if (backStack.size > 1) backStack.removeLastOrNull()
         },
         entryProvider = entryProvider {
             entry<StartRoute> {
+                val viewModel: StartViewModel = hiltViewModel()
+
                 PlaceholderScreen(stringResource(R.string.screen_start)) {
                     Button(onClick = {
                         backStack.clear()
