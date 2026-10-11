@@ -8,6 +8,7 @@ import com.hanseo.dearshot.data.device.AppInfoProvider
 import com.hanseo.dearshot.data.remote.config.AppConfigApi
 import com.hanseo.dearshot.data.remote.auth.SessionApi
 import com.hanseo.dearshot.data.repository.SessionRepository
+import com.hanseo.dearshot.data.repository.AppConfigRepository
 
 class AppContainer(context: Context) {
 
@@ -32,6 +33,13 @@ class AppContainer(context: Context) {
         SessionRepository(
             api = sessionApi,
             tokenStore = tokenStore,
+        )
+    }
+
+    val appConfigRepository: AppConfigRepository by lazy {
+        AppConfigRepository(
+            api = appConfig,
+            appInfoProvider = appInfoProvider,
         )
     }
 }
