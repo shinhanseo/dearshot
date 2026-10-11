@@ -20,6 +20,7 @@ private val DearShotColors = lightColorScheme(
 fun DearShotTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DearShotColors,
+        typography = DearShotTypography,
         content = content,
     )
 }
