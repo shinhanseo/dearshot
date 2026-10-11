@@ -9,7 +9,7 @@
     <string name="open_login">로그인 화면 보기</string>
     <string name="open_templates">템플릿 보기</string>
     <string name="go_back">뒤로</string>
-    <string name="start_loading_title">좋은 순간을 준비하고 있어요</string>
+    <string name="start_loading_title">좋은 구도를 준비하고 있어요</string>
     <string name="start_loading_description">잠시만 기다려주세요.</string>
     <string name="app_tagline">좋은 순간을, 마음에 드는 구도로.</string>
     <string name="start_maintenance_badge">서비스 점검 중</string>
@@ -17,4 +17,9 @@
     <string name="start_maintenance_description">더 안정적인 촬영을 위해\n서비스를 점검하고 있어요.</string>
     <string name="start_maintenance_hint">잠시 후 다시 확인해주세요.</string>
     <string name="start_maintenance_retry">다시 확인</string>
+    <string name="start_update_badge">필수 업데이트</string>
+    <string name="start_update_title">새 버전으로 만나보세요</string>
+    <string name="start_update_description">계속 사용하려면\n최신 버전으로 업데이트해주세요.</string>
+    <string name="start_update_hint">안정적인 촬영을 위한 업데이트예요.</string>
+    <string name="start_update_action">업데이트하기</string>
 </resources>

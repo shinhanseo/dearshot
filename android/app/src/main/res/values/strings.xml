@@ -17,4 +17,9 @@
     <string name="start_maintenance_description">We’re improving the service\nfor a more reliable camera experience.</string>
     <string name="start_maintenance_hint">Please check again shortly.</string>
     <string name="start_maintenance_retry">Check again</string>
+    <string name="start_update_badge">Update required</string>
+    <string name="start_update_title">Meet the latest version</string>
+    <string name="start_update_description">Please update to the latest version\nto keep using DearShot.</string>
+    <string name="start_update_hint">An update for a more reliable camera experience.</string>
+    <string name="start_update_action">Update now</string>
 </resources>
