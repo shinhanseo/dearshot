@@ -26,6 +26,13 @@
     <string name="start_error_generic">Unable to start DearShot.\nPlease try again shortly.</string>
     <string name="start_retry">Try again</string>
     <string name="start_update_open_failed">Unable to open the store.</string>
-    <string name="login_provider_kakao">Kakao login</string>
-    <string name="login_provider_google">Google login</string>
+    <string name="login_provider_kakao">Login with Kakao</string>
+    <string name="login_provider_google">Continue with Google</string>
+    <string name="login_description">Sign in or start as a guest\nto find your next composition.</string>
+    <string name="login_member_description">Sign in to save your favorite templates.</string>
+    <string name="login_guest_action">Start as a guest</string>
+    <string name="login_in_progress">Getting ready…</string>
+    <string name="login_guest_hint">You can get composition recommendations and take photos as a guest.</string>
+    <string name="login_error_network">Please check your internet connection and try again.</string>
+    <string name="login_error_generic">Unable to sign in.\nPlease try again shortly.</string>
 </resources>
