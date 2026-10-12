@@ -2,7 +2,9 @@ package com.hanseo.dearshot.ui.start
 
 import com.hanseo.dearshot.data.remote.ApiFailure
 import com.hanseo.dearshot.data.remote.config.AppConfigResponse
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class SocialLoginProvider {
     KAKAO,
     GOOGLE,
