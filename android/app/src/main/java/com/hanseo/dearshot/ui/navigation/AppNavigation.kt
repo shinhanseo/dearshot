@@ -33,6 +33,8 @@ import com.hanseo.dearshot.ui.start.SocialLoginProvider
 import com.hanseo.dearshot.ui.start.StartScreen
 import com.hanseo.dearshot.ui.start.StartViewModel
 import kotlinx.serialization.Serializable
+import com.hanseo.dearshot.ui.login.LoginViewModel
+import com.hanseo.dearshot.ui.login.LoginScreen
 
 @Serializable
 private data object StartRoute : NavKey
@@ -153,31 +155,26 @@ fun AppNavigation() {
             }
 
             entry<LoginRoute> { route ->
-                val providerLabel = when (route.provider) {
-                    SocialLoginProvider.KAKAO -> {
-                        R.string.login_provider_kakao
-                    }
+                val viewModel: LoginViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-                    SocialLoginProvider.GOOGLE -> {
-                        R.string.login_provider_google
-                    }
-                }
+                val openedFromCamera = backStack.contains(CameraRoute)
 
-                PlaceholderScreen(
-                    title = stringResource(R.string.screen_login),
-                ) {
-                    Text(stringResource(providerLabel))
+                LoginScreen(
+                    provider = route.provider,
+                    uiState = uiState,
+                    onGuestLogin = viewModel::loginGuest,
+                    onSocialLogin = {
+                        // 미구현
+                    },
+                    onLoggedIn = {
+                        backStack.clear()
+                        backStack.add(CameraRoute)
+                    },
+                    showGuestLogin = !openedFromCamera,
+                    socialLoginEnabled = false,
+                )
 
-                    if (backStack.size > 1) {
-                        Button(
-                            onClick = {
-                                backStack.removeLastOrNull()
-                            },
-                        ) {
-                            Text(stringResource(R.string.go_back))
-                        }
-                    }
-                }
             }
         },
     )
