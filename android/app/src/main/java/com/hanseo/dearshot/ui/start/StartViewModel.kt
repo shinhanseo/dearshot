@@ -82,7 +82,11 @@ class StartViewModel @Inject constructor(
             )
         }
 
-        val provider = if (appInfoProvider.getLocale() == "ko-KR") {
+        val provider = if (
+            appInfoProvider.getLocale()
+                .substringBefore('-')
+                .equals("ko", ignoreCase = true)
+        ) {
             SocialLoginProvider.KAKAO
         } else {
             SocialLoginProvider.GOOGLE
