@@ -22,7 +22,23 @@ if (apiBaseUrl.isNotEmpty()) {
         "dearshotApiBaseUrl must be an HTTP(S) URL without credentials"
     }
 }
+val kakaoNativeAppKey = providers
+    .gradleProperty("dearshotKakaoNativeAppKey")
+    .orElse(
+        providers.environmentVariable("KAKAO_NATIVE_APP_KEY")
+    )
+    .getOrElse("")
+    .trim()
 
+if (kakaoNativeAppKey.isNotEmpty()) {
+    require(
+        kakaoNativeAppKey.matches(
+            Regex("[0-9a-fA-F]{32}")
+        )
+    ) {
+        "Kakao native app key must be 32 hexadecimal characters"
+    }
+}
 android {
     namespace = "com.hanseo.dearshot"
     compileSdk = 36
@@ -34,6 +50,14 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField(
+            "String",
+            "KAKAO_NATIVE_APP_KEY",
+            "\"$kakaoNativeAppKey\"",
+        )
+
+        manifestPlaceholders["kakaoLoginScheme"] =
+            "kakao$kakaoNativeAppKey"
     }
 
     buildTypes {
@@ -85,5 +109,6 @@ dependencies {
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.kakao.user)
 }
 
