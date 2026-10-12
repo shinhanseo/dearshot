@@ -25,4 +25,7 @@
     <string name="start_error_network">인터넷 연결을 확인해주세요.</string>
     <string name="start_error_generic">앱을 시작하지 못했어요.\n잠시 후 다시 시도해주세요.</string>
     <string name="start_retry">다시 시도</string>
+    <string name="start_update_open_failed">스토어를 열지 못했어요.</string>
+    <string name="login_provider_kakao">카카오 로그인</string>
+    <string name="login_provider_google">구글 로그인</string>
 </resources>
