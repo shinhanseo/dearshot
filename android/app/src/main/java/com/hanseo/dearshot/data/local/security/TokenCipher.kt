@@ -164,9 +164,12 @@ class TokenCipher @Inject constructor() {
 
     private fun getExistingKey(): SecretKey =
         synchronized(keyLock) {
-            keyStore.getKey(KEY_ALIAS, null) as? SecretKey
+            val existingKey = keyStore.getKey(KEY_ALIAS, null)
+                ?: throw TokenKeyMissingException()
+
+            existingKey as? SecretKey
                 ?: throw KeyStoreException(
-                    "Token encryption key is unavailable"
+                    "Unexpected token key type"
                 )
         }
 
