@@ -49,6 +49,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField(
             "String",
@@ -103,6 +104,10 @@ dependencies {
     implementation(libs.retrofit.json)
     implementation(libs.okhttp.core)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore.tink)
+    implementation(libs.tink.android)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
