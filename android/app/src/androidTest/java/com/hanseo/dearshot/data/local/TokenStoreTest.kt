@@ -15,7 +15,6 @@ import androidx.datastore.tink.AeadSerializer
 import com.google.crypto.tink.Aead
 import com.google.crypto.tink.integration.android.AndroidKeystore
 import com.hanseo.dearshot.data.local.security.EncryptedTokenDataStore
-import com.hanseo.dearshot.data.local.security.LegacyTokenMigration
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
