@@ -93,7 +93,7 @@ class TokenStore @Inject constructor(
     }
 
     suspend fun replaceIfCurrent(
-        expected: AuthTokens,
+        expected: AuthTokens?,
         replacement: AuthTokens?,
     ): Boolean {
         var replaced = false
