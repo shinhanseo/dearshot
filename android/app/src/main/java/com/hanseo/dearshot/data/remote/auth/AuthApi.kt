@@ -9,5 +9,10 @@ interface AuthApi {
     suspend fun loginGuest(
         @Body request: GuestAuthRequest
     ): Response<GuestAuthResponse>
+
+    @POST("auth/kakao")
+    suspend fun loginKakao(
+        @Body request: KakaoAuthRequest,
+    ): Response<MemberAuthResponse>
 }
 
