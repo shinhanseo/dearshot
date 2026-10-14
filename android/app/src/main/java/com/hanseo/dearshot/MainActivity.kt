@@ -5,32 +5,45 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import com.hanseo.dearshot.ui.theme.DearShotTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.hanseo.dearshot.data.device.auth.KakaoLoginClient
 import com.hanseo.dearshot.ui.navigation.AppNavigation
+import com.hanseo.dearshot.ui.theme.DearShotTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var kakaoLoginClient: KakaoLoginClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent { DearShotApp() }
-    }
-}
 
-@Composable
-private fun DearShotApp() {
-    DearShotTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            AppNavigation()
+        enableEdgeToEdge()
+
+        setContent {
+            DearShotApp(
+                kakaoLoginClient = kakaoLoginClient,
+            )
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-private fun DearShotPreview() = DearShotApp()
+private fun DearShotApp(
+    kakaoLoginClient: KakaoLoginClient,
+) {
+    DearShotTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            AppNavigation(
+                kakaoLoginClient = kakaoLoginClient,
+            )
+        }
+    }
+}

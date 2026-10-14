@@ -126,27 +126,31 @@ fun LoginScreen(
                     .heightIn(min = 52.dp),
                 shape = RoundedCornerShape(12.dp),
             ) {
-                if (isBusy) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        strokeWidth = 2.dp,
-                    )
-
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
-
                 Text(
                     text = stringResource(
-                        if (isBusy) {
-                            R.string.login_in_progress
-                        } else {
-                            R.string.login_guest_action
-                        }
+                        R.string.login_guest_action
                     ),
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
+        }
+
+        if (uiState == LoginUiState.Loading) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 2.dp,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(R.string.login_in_progress),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (uiState is LoginUiState.Error) {

@@ -35,6 +35,8 @@ import com.hanseo.dearshot.ui.start.StartViewModel
 import kotlinx.serialization.Serializable
 import com.hanseo.dearshot.ui.login.LoginViewModel
 import com.hanseo.dearshot.ui.login.LoginScreen
+import androidx.activity.compose.LocalActivity
+import com.hanseo.dearshot.data.device.auth.KakaoLoginClient
 
 @Serializable
 private data object StartRoute : NavKey
@@ -51,9 +53,12 @@ private data class LoginRoute(
 ) : NavKey
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    kakaoLoginClient: KakaoLoginClient
+) {
     val backStack = rememberNavBackStack(StartRoute)
     val context = LocalContext.current
+    val activity = LocalActivity.current
     val configuration = LocalConfiguration.current
 
     val loginProvider = if (
@@ -156,25 +161,42 @@ fun AppNavigation() {
 
             entry<LoginRoute> { route ->
                 val viewModel: LoginViewModel = hiltViewModel()
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-                val openedFromCamera = backStack.contains(CameraRoute)
+                val uiState by viewModel.uiState
+                    .collectAsStateWithLifecycle()
+
+                val openedFromCamera =
+                    backStack.contains(CameraRoute)
 
                 LoginScreen(
                     provider = route.provider,
                     uiState = uiState,
                     onGuestLogin = viewModel::loginGuest,
                     onSocialLogin = {
-                        // 미구현
+                        if (
+                            route.provider == SocialLoginProvider.KAKAO &&
+                            activity != null &&
+                            viewModel.beginKakaoLogin()
+                        ) {
+                            kakaoLoginClient.login(
+                                activity = activity,
+                            ) { result ->
+                                viewModel.onKakaoLoginResult(
+                                    result = result,
+                                    linkGuestSession = openedFromCamera,
+                                )
+                            }
+                        }
                     },
                     onLoggedIn = {
                         backStack.clear()
                         backStack.add(CameraRoute)
                     },
                     showGuestLogin = !openedFromCamera,
-                    socialLoginEnabled = false,
+                    socialLoginEnabled =
+                        route.provider == SocialLoginProvider.KAKAO &&
+                                activity != null,
                 )
-
             }
         },
     )
