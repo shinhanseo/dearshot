@@ -1,14 +1,9 @@
 package com.hanseo.dearshot.data.local
 
-import android.util.Base64
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.FileStorage
-import androidx.datastore.core.Serializer
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferencesFileSerializer
-import androidx.datastore.preferences.core.preferencesOf
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.datastore.tink.AeadSerializer
@@ -16,14 +11,9 @@ import com.google.crypto.tink.Aead
 import com.google.crypto.tink.integration.android.AndroidKeystore
 import com.hanseo.dearshot.data.local.security.EncryptedTokenDataStore
 import java.io.File
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 import java.security.GeneralSecurityException
-import java.security.KeyStore
 import java.util.UUID
 import javax.crypto.BadPaddingException
-import javax.crypto.Cipher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -43,9 +33,7 @@ class TokenStoreTest {
     private val id = UUID.randomUUID().toString()
     private val directory = File(context.cacheDir, "token-store-test-$id").apply { mkdirs() }
     private val secureFile = File(directory, "secure.preferences_pb")
-    private val legacyFile = File(directory, "legacy.preferences_pb")
     private val keyAlias = "dearshot_test_secure_$id"
-    private val legacyKeyAlias = "dearshot_test_legacy_$id"
     private val jobs = mutableListOf<Job>()
     private val initial = AuthTokens("test-access-$id", "test-refresh-$id")
 
@@ -54,9 +42,7 @@ class TokenStoreTest {
         val factory = EncryptedTokenDataStore(
             context = context,
             file = secureFile,
-            legacyFile = legacyFile,
             keyAlias = keyAlias,
-            legacyKeyAlias = legacyKeyAlias,
             coroutineContext = Dispatchers.IO + job,
         )
         return TokenStore(factory::get)
@@ -71,7 +57,6 @@ class TokenStoreTest {
     fun cleanUp() = runBlocking {
         closeStores()
         AndroidKeystore.deleteKey(keyAlias)
-        AndroidKeystore.deleteKey(legacyKeyAlias)
         check(directory.deleteRecursively())
     }
 
@@ -121,41 +106,14 @@ class TokenStoreTest {
     }
 
     @Test
-    fun plaintextLegacyPairIsImportedAndOldFileRemoved() = runBlocking {
-        writeLegacy(preferencesOf(
-            TokenStore.ACCESS_TOKEN to initial.accessToken,
-            TokenStore.REFRESH_TOKEN to initial.refreshToken,
-        ))
-        assertEquals(initial, open().getTokens())
-        assertFalse(legacyFile.exists())
-        assertFalse(secureFile.readBytes().toString(Charsets.ISO_8859_1).contains(initial.accessToken))
-    }
-
-    @Test
-    fun oldCipherFormatIsImportedUsingTheExistingKeystoreKey() = runBlocking {
-        AndroidKeystore.generateNewAes256GcmKey(legacyKeyAlias)
-        writeLegacy(preferencesOf(
-            stringPreferencesKey("encrypted_access_token") to oldEncrypt(initial.accessToken, "ACCESS_TOKEN"),
-            stringPreferencesKey("encrypted_refresh_token") to oldEncrypt(initial.refreshToken, "REFRESH_TOKEN"),
-        ))
-        assertEquals(initial, open().getTokens())
-        assertFalse(legacyFile.exists())
-    }
-
-    @Test
-    fun tamperedFileReturnsToLoginWithoutResurrectingLegacyTokens() = runBlocking {
+    fun tamperedFileClearsTokensAndAllowsNewTokensToBeSaved() = runBlocking {
         open().save(initial)
         closeStores()
-        writeLegacy(preferencesOf(
-            TokenStore.ACCESS_TOKEN to "stale-access",
-            TokenStore.REFRESH_TOKEN to "stale-refresh",
-        ))
         val bytes = secureFile.readBytes()
         bytes[bytes.lastIndex] = (bytes.last().toInt() xor 1).toByte()
         secureFile.writeBytes(bytes)
         val store = open()
         assertNull(store.getTokens())
-        assertFalse(legacyFile.exists())
         store.save(initial)
         assertEquals(initial, store.getTokens())
     }
@@ -173,30 +131,14 @@ class TokenStoreTest {
     }
 
     @Test
-    fun truncatedFileDoesNotImportAnOlderSession() = runBlocking {
+    fun truncatedFileClearsTokensAndAllowsNewTokensToBeSaved() = runBlocking {
         open().save(initial)
         closeStores()
         secureFile.writeBytes(byteArrayOf())
-        writeLegacy(preferencesOf(
-            TokenStore.ACCESS_TOKEN to "stale-access",
-            TokenStore.REFRESH_TOKEN to "stale-refresh",
-        ))
         val store = open()
         assertNull(store.getTokens())
-        assertFalse(legacyFile.exists())
         store.save(initial)
         assertEquals(initial, store.getTokens())
-    }
-
-    @Test
-    fun incompleteEncryptedLegacyPairDoesNotFallBackToPlaintext() = runBlocking {
-        writeLegacy(preferencesOf(
-            stringPreferencesKey("encrypted_access_token") to "v1:invalid:invalid",
-            TokenStore.ACCESS_TOKEN to initial.accessToken,
-            TokenStore.REFRESH_TOKEN to initial.refreshToken,
-        ))
-        assertNull(open().getTokens())
-        assertFalse(legacyFile.exists())
     }
 
     @Test
@@ -228,46 +170,4 @@ class TokenStoreTest {
         assertArrayEquals(originalBytes, secureFile.readBytes())
     }
 
-    @Test
-    fun failedDestinationWriteDoesNotDeleteLegacyTokens() = runBlocking {
-        writeLegacy(preferencesOf(
-            TokenStore.ACCESS_TOKEN to initial.accessToken,
-            TokenStore.REFRESH_TOKEN to initial.refreshToken,
-        ))
-        val failingSerializer = object : Serializer<Preferences> {
-            override val defaultValue = PreferencesFileSerializer.defaultValue
-            override suspend fun readFrom(input: InputStream) = PreferencesFileSerializer.readFrom(input)
-            override suspend fun writeTo(t: Preferences, output: OutputStream) {
-                throw IOException("Simulated destination write failure")
-            }
-        }
-        val job = SupervisorJob().also { jobs += it }
-        val dataStore = DataStore.Builder(
-            FileStorage(serializer = failingSerializer, produceFile = { secureFile }),
-            Dispatchers.IO + job,
-        ).addMigrations(listOf(LegacyTokenMigration(legacyFile, legacyKeyAlias))).build()
-        try {
-            dataStore.data.first()
-            fail("Migration must surface a destination write failure")
-        } catch (_: IOException) { /* Expected. */ }
-        assertTrue(legacyFile.exists())
-        closeStores()
-        assertEquals(initial, open().getTokens())
-        assertFalse(legacyFile.exists())
-    }
-
-    private suspend fun writeLegacy(preferences: Preferences) {
-        legacyFile.outputStream().use { PreferencesFileSerializer.writeTo(preferences, it) }
-    }
-
-    // Fixture matches the removed implementation, independently of Tink's encryption code.
-    private fun oldEncrypt(value: String, field: String): String {
-        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, keyStore.getKey(legacyKeyAlias, null))
-        cipher.updateAAD("dearshot.auth:v1:$field".encodeToByteArray())
-        val encrypted = cipher.doFinal(value.encodeToByteArray())
-        return "v1:${Base64.encodeToString(cipher.iv, Base64.NO_WRAP)}:" +
-            Base64.encodeToString(encrypted, Base64.NO_WRAP)
-    }
 }
