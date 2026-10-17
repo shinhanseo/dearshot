@@ -39,6 +39,19 @@ if (kakaoNativeAppKey.isNotEmpty()) {
         "Kakao native app key must be 32 hexadecimal characters"
     }
 }
+// Use the Web OAuth client ID, matching GOOGLE_WEB_CLIENT_ID on the backend.
+val googleWebClientId = providers
+    .gradleProperty("dearshotGoogleWebClientId")
+    .orElse(providers.environmentVariable("GOOGLE_WEB_CLIENT_ID"))
+    .getOrElse("")
+    .trim()
+
+if (googleWebClientId.isNotEmpty()) {
+    require(googleWebClientId.matches(Regex("[0-9]+-[A-Za-z0-9_-]+\\.apps\\.googleusercontent\\.com"))) {
+        "Google web client ID must be an OAuth client ID ending in .apps.googleusercontent.com"
+    }
+}
+
 android {
     namespace = "com.hanseo.dearshot"
     compileSdk = 36
@@ -59,6 +72,7 @@ android {
 
         manifestPlaceholders["kakaoLoginScheme"] =
             "kakao$kakaoNativeAppKey"
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildTypes {
@@ -115,5 +129,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kakao.user)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.id)
 }
 
