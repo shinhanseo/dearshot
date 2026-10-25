@@ -35,4 +35,10 @@
     <string name="login_guest_hint">You can get composition recommendations and take photos as a guest.</string>
     <string name="login_error_network">Please check your internet connection and try again.</string>
     <string name="login_error_generic">Unable to sign in.\nPlease try again shortly.</string>
+    <string name="camera_permission_title">Allow camera access</string>
+    <string name="camera_permission_description">Camera access is needed to take photos and use composition guides.</string>
+    <string name="camera_permission_denied">Camera access is not allowed. Try requesting permission again. If no permission dialog appears, allow camera access in app settings.</string>
+    <string name="camera_permission_request">Request camera access</string>
+    <string name="camera_permission_open_settings">Open app settings</string>
+    <string name="camera_permission_ready">Camera access is allowed. The preview will be added in the next step.</string>
 </resources>

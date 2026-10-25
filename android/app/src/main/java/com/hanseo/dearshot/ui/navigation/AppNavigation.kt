@@ -40,6 +40,7 @@ import com.hanseo.dearshot.ui.login.LoginViewModel
 import com.hanseo.dearshot.ui.login.LoginScreen
 import androidx.activity.compose.LocalActivity
 import com.hanseo.dearshot.data.device.auth.KakaoLoginClient
+import com.hanseo.dearshot.ui.camera.CameraScreen
 
 @Serializable
 private data object StartRoute : NavKey
@@ -124,27 +125,17 @@ fun AppNavigation(
             }
 
             entry<CameraRoute> {
-                PlaceholderScreen(
-                    title = stringResource(R.string.screen_camera),
-                ) {
-                    Button(
-                        onClick = {
-                            backStack.add(TemplatesRoute)
-                        },
-                    ) {
-                        Text(stringResource(R.string.open_templates))
-                    }
-
-                    Button(
-                        onClick = {
-                            backStack.add(
-                                LoginRoute(provider = loginProvider)
-                            )
-                        },
-                    ) {
-                        Text(stringResource(R.string.open_login))
-                    }
-                }
+                CameraScreen(
+                    onOpenTemplates = {
+                        backStack.add(TemplatesRoute)
+                    },
+                    onOpenLogin = {
+                        backStack.add(
+                            LoginRoute(provider = loginProvider)
+                        )
+                    },
+                    modifier = Modifier
+                )
             }
 
             entry<TemplatesRoute> {
