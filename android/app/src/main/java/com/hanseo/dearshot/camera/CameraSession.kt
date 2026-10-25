@@ -3,10 +3,16 @@ package com.hanseo.dearshot.camera
 import android.content.Context
 import androidx.annotation.MainThread
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.hanseo.dearshot.analysis.FrameAnalyzer
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import com.hanseo.dearshot.analysis.DebugFrameWriter
+import com.hanseo.dearshot.analysis.FrameBitmapConverter
 
 class CameraSession(
     context: Context,
@@ -18,8 +24,11 @@ class CameraSession(
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
+    private var imageAnalysis: ImageAnalysis? = null
 
-    // 이전 연결 요청이 뒤늦게 실행되는 것을 막기 위한 번호.
+    private var analysisExecutor: ExecutorService? = null
+
+    // 준비 중인 이전 연결 요청을 무효화하기 위한 번호.
     private var connectionVersion = 0L
 
     @MainThread
@@ -37,24 +46,53 @@ class CameraSession(
 
         providerFuture.addListener(
             {
-                // 대기 중 화면을 떠났거나 새 연결을 시작했다면 무시.
                 if (requestedVersion == connectionVersion) {
                     try {
                         val provider = providerFuture.get()
+                        cameraProvider = provider
+
+                        // 분석 작업은 메인 스레드와 분리한다.
+                        val executor =
+                            Executors.newSingleThreadExecutor { task ->
+                                Thread(
+                                    task,
+                                    "DearShot-FrameAnalyzer",
+                                )
+                            }
+
+                        analysisExecutor = executor
 
                         val previewUseCase = Preview.Builder()
                             .build()
-                            .also {
-                                it.setSurfaceProvider(surfaceProvider)
-                            }
 
-                        cameraProvider = provider
                         preview = previewUseCase
 
+                        previewUseCase.setSurfaceProvider(
+                            surfaceProvider
+                        )
+
+                        val analysisUseCase = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(
+                                ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
+                            )
+                            .build()
+
+                        imageAnalysis = analysisUseCase
+
+                        analysisUseCase.setAnalyzer(
+                            executor,
+                            FrameAnalyzer(
+                                bitmapConverter = FrameBitmapConverter(),
+                                debugFrameWriter = DebugFrameWriter(appContext),
+                            ),
+                        )
+
+                        // 같은 카메라에 미리보기와 분석을 함께 연결.
                         provider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             previewUseCase,
+                            analysisUseCase,
                         )
                     } catch (exception: Exception) {
                         stop()
@@ -70,12 +108,29 @@ class CameraSession(
     fun stop() {
         connectionVersion += 1
 
-        preview?.let { useCase ->
-            cameraProvider?.unbind(useCase)
-            useCase.setSurfaceProvider(null)
+        val currentProvider = cameraProvider
+        val currentPreview = preview
+        val currentAnalysis = imageAnalysis
+
+        // 분석기로 새로운 프레임이 전달되는 것을 중단한다.
+        currentAnalysis?.clearAnalyzer()
+
+        // 이 세션에서 연결한 기능만 해제한다.
+        currentAnalysis?.let {
+            currentProvider?.unbind(it)
         }
 
+        currentPreview?.let {
+            currentProvider?.unbind(it)
+            it.setSurfaceProvider(null)
+        }
+
+        // 진행 중인 작업은 마치고 실행기를 종료한다.
+        analysisExecutor?.shutdown()
+
+        imageAnalysis = null
         preview = null
         cameraProvider = null
+        analysisExecutor = null
     }
 }
