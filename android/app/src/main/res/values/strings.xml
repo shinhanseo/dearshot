@@ -40,5 +40,6 @@
     <string name="camera_permission_denied">Camera access is not allowed. Try requesting permission again. If no permission dialog appears, allow camera access in app settings.</string>
     <string name="camera_permission_request">Request camera access</string>
     <string name="camera_permission_open_settings">Open app settings</string>
-    <string name="camera_permission_ready">Camera access is allowed. The preview will be added in the next step.</string>
+    <string name="camera_preview_start_failed">Unable to start the camera. Please try again.</string>
+    <string name="camera_preview_retry">Try again</string>
 </resources>

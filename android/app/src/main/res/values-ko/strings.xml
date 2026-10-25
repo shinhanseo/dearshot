@@ -40,5 +40,6 @@
     <string name="camera_permission_denied">카메라 권한이 허용되지 않았어요. 다시 요청하거나, 권한 팝업이 나타나지 않으면 앱 설정에서 카메라 권한을 허용해 주세요.</string>
     <string name="camera_permission_request">카메라 권한 요청</string>
     <string name="camera_permission_open_settings">앱 설정 열기</string>
-    <string name="camera_permission_ready">카메라 권한이 허용되었어요. 다음 단계에서 미리보기를 연결해요.</string>
+    <string name="camera_preview_start_failed">카메라를 시작하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="camera_preview_retry">다시 시도</string>
 </resources>

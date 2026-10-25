@@ -33,12 +33,14 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.hanseo.dearshot.R
+import androidx.compose.foundation.layout.fillMaxWidth
+import com.hanseo.dearshot.ui.camera.component.CameraPreview
 
 @Composable
 fun CameraScreen(
     onOpenTemplates: () -> Unit,
     onOpenLogin: () -> Unit,
-    modifier: Modifier
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
@@ -87,12 +89,10 @@ fun CameraScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (hasCameraPermission) {
-                // 다음 단계에서 이 자리에 실제 미리보기를 연결한다.
-                Text(
-                    text = stringResource(
-                        R.string.camera_permission_ready
-                    ),
-                    textAlign = TextAlign.Center,
+                CameraPreview(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 )
             } else {
                 Text(
