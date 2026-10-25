@@ -15,6 +15,9 @@ import com.hanseo.dearshot.analysis.DebugFrameWriter
 import com.hanseo.dearshot.analysis.FrameBitmapConverter
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.core.ViewPort
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import java.io.File
 
 class CameraSession(
     context: Context,
@@ -27,6 +30,11 @@ class CameraSession(
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     private var imageAnalysis: ImageAnalysis? = null
+
+    private var imageCapture: ImageCapture? = null
+
+    // 촬영 요청이 완료될 때까지 추가 요청을 막는다.
+    private var captureInProgress = false
 
     private var analysisExecutor: ExecutorService? = null
 
@@ -104,11 +112,20 @@ class CameraSession(
                             ),
                         )
 
-                        // 같은 카메라에 미리보기와 분석을 함께 연결.
+                        val captureUseCase = ImageCapture.Builder()
+                            .setTargetRotation(viewPort.rotation)
+                            .setCaptureMode(
+                                ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                            )
+                            .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+                            .build()
+
+                        // 같은 카메라에 미리보기와 분석과 촬영을 함께 연결.
                         val useCaseGroup = UseCaseGroup.Builder()
                             .setViewPort(viewPort)
                             .addUseCase(previewUseCase)
                             .addUseCase(analysisUseCase)
+                            .addUseCase(captureUseCase)
                             .build()
 
                         provider.bindToLifecycle(
@@ -129,12 +146,98 @@ class CameraSession(
     }
 
     @MainThread
+    fun takePhoto(
+        outputFile: File,
+        onResult: (Result<File>) -> Unit
+    ) {
+        val capture = imageCapture
+
+        if (capture == null) {
+            onResult(
+                Result.failure(
+                    IllegalStateException("Camera is not ready for capture")
+                )
+            )
+
+            return
+        }
+
+        if (captureInProgress) {
+            onResult(
+                Result.failure(
+                    IllegalStateException(
+                        "A photo capture is already in progress"
+                    )
+                )
+            )
+            return
+        }
+
+        if (outputFile.exists()) {
+            onResult(
+                Result.failure(
+                    IllegalArgumentException(
+                        "Output file already exists"
+                    )
+                )
+            )
+            return
+        }
+
+        captureInProgress = true
+
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+            outputFile
+        ).build()
+
+        try {
+            capture.takePicture(
+                outputOptions,
+                mainExecutor,
+                object : ImageCapture.OnImageSavedCallback {
+
+                    override fun onImageSaved(
+                        outputFileResults: ImageCapture.OutputFileResults,
+                    ) {
+                        captureInProgress = false
+
+                        onResult(
+                            Result.success(outputFile)
+                        )
+                    }
+
+                    override fun onError(
+                        exception: ImageCaptureException,
+                    ) {
+                        captureInProgress = false
+
+                        // 실패하면서 생긴 불완전한 파일을 정리한다.
+                        outputFile.delete()
+
+                        onResult(
+                            Result.failure(exception)
+                        )
+                    }
+                },
+            )
+        } catch (exception: Exception) {
+            captureInProgress = false
+            outputFile.delete()
+
+            onResult(
+                Result.failure(exception)
+            )
+        }
+    }
+
+    @MainThread
     fun stop() {
         connectionVersion += 1
 
         val currentProvider = cameraProvider
         val currentPreview = preview
         val currentAnalysis = imageAnalysis
+        val currentCapture = imageCapture
 
         // 분석기로 새로운 프레임이 전달되는 것을 중단한다.
         currentAnalysis?.clearAnalyzer()
@@ -149,6 +252,10 @@ class CameraSession(
             it.setSurfaceProvider(null)
         }
 
+        currentCapture?.let {
+            currentProvider?.unbind(it)
+        }
+
         // 진행 중인 작업은 마치고 실행기를 종료한다.
         analysisExecutor?.shutdown()
 
@@ -156,5 +263,6 @@ class CameraSession(
         preview = null
         cameraProvider = null
         analysisExecutor = null
+        imageCapture = null
     }
 }
