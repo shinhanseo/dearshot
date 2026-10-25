@@ -38,6 +38,8 @@ class CameraSession(
         lifecycleOwner: LifecycleOwner,
         surfaceProvider: Preview.SurfaceProvider,
         viewPort: ViewPort,
+        lens: CameraLens,
+        onBound: (Boolean) -> Unit,
         onError: (Exception) -> Unit,
     ) {
         stop()
@@ -53,6 +55,16 @@ class CameraSession(
                     try {
                         val provider = providerFuture.get()
                         cameraProvider = provider
+
+                        val cameraSelector = lens.toCameraSelector()
+
+                        check(provider.hasCamera(cameraSelector)) {
+                            "Request camera is not available: $lens"
+                        }
+
+                        val canSwitchCamera =
+                            provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) &&
+                                    provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
 
                         // 분석 작업은 메인 스레드와 분리한다.
                         val executor =
@@ -101,9 +113,11 @@ class CameraSession(
 
                         provider.bindToLifecycle(
                             lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            cameraSelector,
                             useCaseGroup,
                         )
+
+                        onBound(canSwitchCamera)
                     } catch (exception: Exception) {
                         stop()
                         onError(exception)

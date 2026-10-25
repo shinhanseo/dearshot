@@ -13,6 +13,12 @@ import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
 import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.hanseo.dearshot.camera.CameraLens
 
 @Composable
 fun CameraScreen(
@@ -21,6 +27,14 @@ fun CameraScreen(
     modifier: Modifier = Modifier,
 ) {
     val permissionState = rememberCameraPermissionState()
+
+    var selectedLens by rememberSaveable {
+        mutableStateOf(CameraLens.BACK)
+    }
+
+    var canSwitchCamera by remember {
+        mutableStateOf(false)
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -47,6 +61,10 @@ fun CameraScreen(
 
             if (permissionState.isGranted) {
                 CameraPreview(
+                    lens = selectedLens,
+                    onSwitchAvailabilityChanged = { available ->
+                        canSwitchCamera = available
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -67,7 +85,8 @@ fun CameraScreen(
                 photoCount = 0,
                 captureEnabled = false,
                 isCapturing = false,
-                switchCameraEnabled = false,
+                switchCameraEnabled =
+                    permissionState.isGranted && canSwitchCamera,
                 onOpenPhotos = {
                     // 촬영 사진 목록 연결 예정
                 },
@@ -75,7 +94,10 @@ fun CameraScreen(
                     // ImageCapture 연결 예정
                 },
                 onSwitchCamera = {
-                    // 전후면 카메라 전환 연결 예정
+                    if (permissionState.isGranted && canSwitchCamera) {
+                        canSwitchCamera = false
+                        selectedLens = selectedLens.opposite()
+                    }
                 },
             )
         }

@@ -18,13 +18,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.hanseo.dearshot.camera.CameraSession
+import androidx.compose.runtime.rememberUpdatedState
+import com.hanseo.dearshot.camera.CameraLens
 
 @Composable
 fun CameraPreview(
+    lens: CameraLens,
+    onSwitchAvailabilityChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    val currentOnSwitchAvailabilityChanged by rememberUpdatedState(
+        onSwitchAvailabilityChanged
+    )
 
     val cameraSession = remember(context) {
         CameraSession(context)
@@ -54,6 +62,7 @@ fun CameraPreview(
         cameraSession,
         previewView,
         lifecycleOwner,
+        lens,
         retryCount,
     ) {
         var disposed = false
@@ -79,16 +88,25 @@ fun CameraPreview(
             lastGeometry = geometry
             hasError = false
 
+            // 연결을 준비하는 동안 전환 버튼을 비활성화한다.
+            currentOnSwitchAvailabilityChanged(false)
+
             cameraSession.start(
                 lifecycleOwner = lifecycleOwner,
                 surfaceProvider = previewView.surfaceProvider,
                 viewPort = viewPort,
+                lens = lens,
+                onBound = { canSwitchCamera ->
+                    currentOnSwitchAvailabilityChanged(canSwitchCamera)
+                },
                 onError = { exception ->
                     Log.e(
                         "CameraPreview",
                         "Failed to start camera",
                         exception,
                     )
+
+                    currentOnSwitchAvailabilityChanged(false)
                     hasError = true
                 },
             )
@@ -118,6 +136,7 @@ fun CameraPreview(
             )
 
             cameraSession.stop()
+            currentOnSwitchAvailabilityChanged(false)
         }
     }
 
