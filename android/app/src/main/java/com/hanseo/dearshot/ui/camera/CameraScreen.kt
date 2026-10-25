@@ -15,7 +15,7 @@ import com.hanseo.dearshot.ui.camera.component.CameraNavigationActions
 import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
 import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
-
+import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 @Composable
 fun CameraScreen(
     onOpenTemplates: () -> Unit,
@@ -39,6 +39,19 @@ fun CameraScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (permissionState.isGranted) {
+                CameraTopBar(
+                    placeName = null,
+                    templateName = null,
+                    flashEnabled = false,
+                    flashAvailable = false,
+                    onFlashChange = {
+                        // 실제 촬영 기능을 추가하면서 연결
+                    },
+                    onCompositionClick = onOpenTemplates,
+                    onMyPageClick = {
+                        // 마이페이지 화면을 만들면서 연결
+                    },
+                )
                 CameraPreview(
                     modifier = Modifier
                         .fillMaxWidth()
