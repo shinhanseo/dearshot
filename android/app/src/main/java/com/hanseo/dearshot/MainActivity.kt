@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.hanseo.dearshot.data.device.auth.GoogleLoginClient
 import com.hanseo.dearshot.data.device.auth.KakaoLoginClient
 import com.hanseo.dearshot.ui.navigation.AppNavigation
 import com.hanseo.dearshot.ui.theme.DearShotTheme
@@ -20,6 +21,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var kakaoLoginClient: KakaoLoginClient
 
+    @Inject
+    lateinit var googleLoginClient: GoogleLoginClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -28,6 +32,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearShotApp(
                 kakaoLoginClient = kakaoLoginClient,
+                googleLoginClient = googleLoginClient,
             )
         }
     }
@@ -36,6 +41,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DearShotApp(
     kakaoLoginClient: KakaoLoginClient,
+    googleLoginClient: GoogleLoginClient,
 ) {
     DearShotTheme {
         Surface(
@@ -43,6 +49,7 @@ private fun DearShotApp(
         ) {
             AppNavigation(
                 kakaoLoginClient = kakaoLoginClient,
+                googleLoginClient = googleLoginClient,
             )
         }
     }

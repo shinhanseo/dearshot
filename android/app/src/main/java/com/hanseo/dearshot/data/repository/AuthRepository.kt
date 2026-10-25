@@ -19,6 +19,8 @@ import com.hanseo.dearshot.data.remote.auth.AuthDevice
 import com.hanseo.dearshot.data.remote.auth.KakaoAuthRequest
 import com.hanseo.dearshot.data.remote.auth.MemberAuthResponse
 import com.hanseo.dearshot.data.remote.auth.SessionApi
+import com.hanseo.dearshot.data.remote.auth.GoogleAuthRequest
+import retrofit2.Response
 import java.io.IOException
 @Singleton
 class AuthRepository @Inject constructor(
@@ -71,33 +73,39 @@ class AuthRepository @Inject constructor(
     suspend fun loginKakao(
         kakaoAccessToken: String,
         linkGuestSession: Boolean,
+    ): ApiResult<MemberAuthResponse> = loginMember(linkGuestSession) { context, device ->
+        require(kakaoAccessToken.isNotBlank())
+        api.loginKakao(KakaoAuthRequest(kakaoAccessToken, device, context.guestAccessToken))
+    }
+
+    suspend fun loginGoogle(
+        idToken: String,
+        nonce: String,
+        linkGuestSession: Boolean,
+    ): ApiResult<MemberAuthResponse> = loginMember(linkGuestSession) { context, device ->
+        require(idToken.isNotBlank() && nonce.length in 16..256)
+        api.loginGoogle(GoogleAuthRequest(idToken, nonce, device, context.guestAccessToken))
+    }
+
+    // Both providers share guest linking and compare-and-set token persistence.
+    private suspend fun loginMember(
+        linkGuestSession: Boolean,
+        request: suspend (LoginContext, AuthDevice) -> Response<MemberAuthResponse>,
     ): ApiResult<MemberAuthResponse> = mutex.withLock {
         try {
-            require(kakaoAccessToken.isNotBlank()) {
-                "Kakao access token must not be blank"
-            }
-
-            val loginContext = when (
-                val result = resolveLoginContext(linkGuestSession)
-            ) {
+            val loginContext = when (val result = resolveLoginContext(linkGuestSession)) {
                 is ApiResult.Success -> result.data
                 is ApiResult.Failure -> return@withLock result
             }
-
-            val request = KakaoAuthRequest(
-                accessToken = kakaoAccessToken,
-                guestAccessToken = loginContext.guestAccessToken,
-                device = AuthDevice(
-                    installationId =
-                        installationStore.getOrCreatedId(),
-                    platform = "ANDROID",
-                    appVersion = appInfoProvider.getAppVersion(),
-                ),
+            val device = AuthDevice(
+                installationId = installationStore.getOrCreatedId(),
+                platform = "ANDROID",
+                appVersion = appInfoProvider.getAppVersion(),
             )
 
             when (
                 val result = apiCall {
-                    api.loginKakao(request)
+                    request(loginContext, device)
                 }
             ) {
                 is ApiResult.Success -> {

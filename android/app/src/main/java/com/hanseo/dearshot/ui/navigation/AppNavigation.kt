@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.hanseo.dearshot.data.device.auth.GoogleLoginClient
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +57,8 @@ private data class LoginRoute(
 
 @Composable
 fun AppNavigation(
-    kakaoLoginClient: KakaoLoginClient
+    kakaoLoginClient: KakaoLoginClient,
+    googleLoginClient: GoogleLoginClient,
 ) {
     val backStack = rememberNavBackStack(StartRoute)
     val context = LocalContext.current
@@ -160,6 +164,7 @@ fun AppNavigation(
             }
 
             entry<LoginRoute> { route ->
+                val loginScope = rememberCoroutineScope()
                 val viewModel: LoginViewModel = hiltViewModel()
 
                 val uiState by viewModel.uiState
@@ -186,6 +191,21 @@ fun AppNavigation(
                                     linkGuestSession = openedFromCamera,
                                 )
                             }
+                        } else if (
+                            route.provider == SocialLoginProvider.GOOGLE &&
+                            activity != null && viewModel.beginGoogleLogin()
+                        ) {
+                            loginScope.launch {
+                                try {
+                                    viewModel.onGoogleLoginResult(
+                                        googleLoginClient.login(activity),
+                                        linkGuestSession = openedFromCamera,
+                                    )
+                                } finally {
+                                    // Leaving the screen cancels the picker without leaving Loading stuck.
+                                    viewModel.cancelGoogleLogin()
+                                }
+                            }
                         }
                     },
                     onLoggedIn = {
@@ -193,9 +213,7 @@ fun AppNavigation(
                         backStack.add(CameraRoute)
                     },
                     showGuestLogin = !openedFromCamera,
-                    socialLoginEnabled =
-                        route.provider == SocialLoginProvider.KAKAO &&
-                                activity != null,
+                    socialLoginEnabled = activity != null,
                 )
             }
         },

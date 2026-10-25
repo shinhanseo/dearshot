@@ -10,6 +10,9 @@ interface AuthApi {
         @Body request: GuestAuthRequest
     ): Response<GuestAuthResponse>
 
+    @POST("auth/google")
+    suspend fun loginGoogle(@Body request: GoogleAuthRequest): Response<MemberAuthResponse>
+
     @POST("auth/kakao")
     suspend fun loginKakao(
         @Body request: KakaoAuthRequest,

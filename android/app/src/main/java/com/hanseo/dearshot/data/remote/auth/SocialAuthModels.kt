@@ -56,3 +56,13 @@ data class UserCountsResponse(
     val likedTemplates: Int = 0,
     val bookmarkedTemplates: Int = 0,
 )
+
+@Serializable
+data class GoogleAuthRequest(
+    val idToken: String,
+    val nonce: String,
+    val device: AuthDevice,
+    val guestAccessToken: String? = null,
+) {
+    override fun toString(): String = "GoogleAuthRequest(credentials=[REDACTED])"
+}

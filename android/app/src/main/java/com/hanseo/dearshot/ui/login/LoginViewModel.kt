@@ -2,6 +2,7 @@ package com.hanseo.dearshot.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hanseo.dearshot.data.device.auth.GoogleLoginResult
 import com.hanseo.dearshot.data.device.auth.KakaoLoginResult
 import com.hanseo.dearshot.data.remote.ApiFailure
 import com.hanseo.dearshot.data.remote.ApiResult
@@ -94,6 +95,43 @@ class LoginViewModel @Inject constructor(
 
                     LoginUiState.Error(failure)
                 }
+            }
+        }
+    }
+
+    fun beginGoogleLogin(): Boolean {
+        if (isBusy()) return false
+        awaitingGoogleResult = true
+        _uiState.value = LoginUiState.Loading
+        return true
+    }
+
+    private var awaitingGoogleResult = false
+
+    fun cancelGoogleLogin() {
+        if (awaitingGoogleResult) {
+            awaitingGoogleResult = false
+            _uiState.value = LoginUiState.Idle
+        }
+    }
+
+    fun onGoogleLoginResult(result: GoogleLoginResult, linkGuestSession: Boolean) {
+        if (!awaitingGoogleResult) return
+        awaitingGoogleResult = false
+        viewModelScope.launch {
+            _uiState.value = when (result) {
+                is GoogleLoginResult.Success -> when (val response = authRepository.loginGoogle(
+                    idToken = result.idToken,
+                    nonce = result.nonce,
+                    linkGuestSession = linkGuestSession,
+                )) {
+                    is ApiResult.Success -> LoginUiState.LoggedIn
+                    is ApiResult.Failure -> LoginUiState.Error(response.error)
+                }
+                GoogleLoginResult.Cancelled -> LoginUiState.Idle
+                is GoogleLoginResult.Failure -> LoginUiState.Error(
+                    if (result.cause is IOException) ApiFailure.Network else ApiFailure.Unexpected
+                )
             }
         }
     }
