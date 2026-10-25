@@ -1,6 +1,5 @@
 package com.hanseo.dearshot.ui.camera
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,14 +7,13 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.hanseo.dearshot.ui.camera.component.CameraNavigationActions
+import com.hanseo.dearshot.ui.camera.component.CameraCaptureControls
 import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
-import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
 import com.hanseo.dearshot.ui.camera.component.CameraTopBar
+import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
+
 @Composable
 fun CameraScreen(
     onOpenTemplates: () -> Unit,
@@ -32,26 +30,22 @@ fun CameraScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding(),
-            verticalArrangement = Arrangement.spacedBy(
-                space = 16.dp,
-                alignment = Alignment.CenterVertically,
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            CameraTopBar(
+                placeName = null,
+                templateName = null,
+                flashEnabled = false,
+                flashAvailable = false,
+                onFlashChange = {
+                    // 촬영용 플래시 기능 연결 예정
+                },
+                onCompositionClick = onOpenTemplates,
+                onMyPageClick = {
+                    // 마이페이지 이동 연결 예정
+                },
+            )
+
             if (permissionState.isGranted) {
-                CameraTopBar(
-                    placeName = null,
-                    templateName = null,
-                    flashEnabled = false,
-                    flashAvailable = false,
-                    onFlashChange = {
-                        // 실제 촬영 기능을 추가하면서 연결
-                    },
-                    onCompositionClick = onOpenTemplates,
-                    onMyPageClick = {
-                        // 마이페이지 화면을 만들면서 연결
-                    },
-                )
                 CameraPreview(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -60,15 +54,29 @@ fun CameraScreen(
             } else {
                 CameraPermissionContent(
                     wasDenied = permissionState.wasDenied,
-                    onRequestPermission = permissionState.requestPermission,
+                    onRequestPermission =
+                        permissionState.requestPermission,
                     onOpenSettings = permissionState.openSettings,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 )
             }
 
-            CameraNavigationActions(
-                onOpenTemplates = onOpenTemplates,
-                onOpenLogin = onOpenLogin,
+            CameraCaptureControls(
+                photoCount = 0,
+                captureEnabled = false,
+                isCapturing = false,
+                switchCameraEnabled = false,
+                onOpenPhotos = {
+                    // 촬영 사진 목록 연결 예정
+                },
+                onCapture = {
+                    // ImageCapture 연결 예정
+                },
+                onSwitchCamera = {
+                    // 전후면 카메라 전환 연결 예정
+                },
             )
         }
     }

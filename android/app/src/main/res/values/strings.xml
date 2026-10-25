@@ -49,4 +49,8 @@
     <string name="camera_flash_on">On</string>
     <string name="camera_flash_off">Off</string>
     <string name="camera_open_my_page">Open my page</string>
+    <string name="camera_open_photos">View captured photos</string>
+    <string name="camera_capture">Take a photo</string>
+    <string name="camera_capturing">Taking a photo</string>
+    <string name="camera_switch_lens">Switch camera</string>
 </resources>
