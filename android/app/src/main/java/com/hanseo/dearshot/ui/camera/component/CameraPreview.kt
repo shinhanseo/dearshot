@@ -1,6 +1,7 @@
 package com.hanseo.dearshot.ui.camera.component
 
 import android.util.Log
+import android.view.View
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,12 +32,14 @@ import com.hanseo.dearshot.camera.CameraSession
 
 @Composable
 fun CameraPreview(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val cameraSession = remember(context) { CameraSession(context) }
+    val cameraSession = remember(context) {
+        CameraSession(context)
+    }
 
     val previewView = remember(context) {
         PreviewView(context).apply {
@@ -47,32 +50,81 @@ fun CameraPreview(
         }
     }
 
-    var hasError by remember { mutableStateOf(false) }
+    var hasError by remember {
+        mutableStateOf(false)
+    }
 
-    var retryCount by remember { mutableIntStateOf(0) }
+    var retryCount by remember {
+        mutableIntStateOf(0)
+    }
 
     DisposableEffect(
         cameraSession,
         previewView,
         lifecycleOwner,
-        retryCount
+        retryCount,
     ) {
-        hasError = false
+        var disposed = false
 
-        cameraSession.start(
-            lifecycleOwner = lifecycleOwner,
-            surfaceProvider = previewView.surfaceProvider,
-            onError = { exception ->
-                Log.e(
-                    "CameraPreview",
-                    "Failed to start camera",
-                    exception
-                )
-                hasError = true
-            },
-        )
+        // 같은 화면 조건으로 중복 연결하는 것을 방지한다.
+        var lastGeometry: List<Int>? = null
+
+        fun connectIfReady() {
+            if (disposed) return
+
+            val display = previewView.display ?: return
+            val viewPort = previewView.viewPort ?: return
+
+            val geometry = listOf(
+                previewView.width,
+                previewView.height,
+                display.rotation,
+                previewView.layoutDirection,
+            )
+
+            if (geometry == lastGeometry) return
+
+            lastGeometry = geometry
+            hasError = false
+
+            cameraSession.start(
+                lifecycleOwner = lifecycleOwner,
+                surfaceProvider = previewView.surfaceProvider,
+                viewPort = viewPort,
+                onError = { exception ->
+                    Log.e(
+                        "CameraPreview",
+                        "Failed to start camera",
+                        exception,
+                    )
+                    hasError = true
+                },
+            )
+        }
+
+        val layoutListener =
+            View.OnLayoutChangeListener {
+                    _, _, _, _, _, _, _, _, _ ->
+                connectIfReady()
+            }
+
+        previewView.addOnLayoutChangeListener(layoutListener)
+
+        // 이미 배치된 View로 Effect가 다시 시작되는 경우도 처리한다.
+        val initialConnection = Runnable {
+            connectIfReady()
+        }
+
+        previewView.post(initialConnection)
 
         onDispose {
+            disposed = true
+
+            previewView.removeCallbacks(initialConnection)
+            previewView.removeOnLayoutChangeListener(
+                layoutListener
+            )
+
             cameraSession.stop()
         }
     }

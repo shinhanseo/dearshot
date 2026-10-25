@@ -13,6 +13,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.hanseo.dearshot.analysis.DebugFrameWriter
 import com.hanseo.dearshot.analysis.FrameBitmapConverter
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.ViewPort
 
 class CameraSession(
     context: Context,
@@ -35,6 +37,7 @@ class CameraSession(
     fun start(
         lifecycleOwner: LifecycleOwner,
         surfaceProvider: Preview.SurfaceProvider,
+        viewPort: ViewPort,
         onError: (Exception) -> Unit,
     ) {
         stop()
@@ -63,6 +66,7 @@ class CameraSession(
                         analysisExecutor = executor
 
                         val previewUseCase = Preview.Builder()
+                            .setTargetRotation(viewPort.rotation)
                             .build()
 
                         preview = previewUseCase
@@ -72,6 +76,7 @@ class CameraSession(
                         )
 
                         val analysisUseCase = ImageAnalysis.Builder()
+                            .setTargetRotation(viewPort.rotation)
                             .setBackpressureStrategy(
                                 ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
                             )
@@ -88,11 +93,16 @@ class CameraSession(
                         )
 
                         // 같은 카메라에 미리보기와 분석을 함께 연결.
+                        val useCaseGroup = UseCaseGroup.Builder()
+                            .setViewPort(viewPort)
+                            .addUseCase(previewUseCase)
+                            .addUseCase(analysisUseCase)
+                            .build()
+
                         provider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
-                            previewUseCase,
-                            analysisUseCase,
+                            useCaseGroup,
                         )
                     } catch (exception: Exception) {
                         stop()
