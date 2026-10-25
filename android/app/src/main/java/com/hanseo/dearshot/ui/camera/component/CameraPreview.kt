@@ -2,6 +2,7 @@ package com.hanseo.dearshot.ui.camera.component
 
 import android.util.Log
 import android.view.View
+import android.view.ViewOutlineProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,9 @@ fun CameraPreview(
                 PreviewView.ImplementationMode.COMPATIBLE
 
             scaleType = PreviewView.ScaleType.FILL_CENTER
+
+            outlineProvider = ViewOutlineProvider.BOUNDS
+            clipToOutline = true
         }
     }
 

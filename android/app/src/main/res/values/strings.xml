@@ -42,4 +42,11 @@
     <string name="camera_permission_open_settings">Open app settings</string>
     <string name="camera_preview_start_failed">Unable to start the camera. Please try again.</string>
     <string name="camera_preview_retry">Try again</string>
+    <string name="camera_brand">DEARSHOT</string>
+    <string name="camera_choose_composition">Choose a composition</string>
+    <string name="camera_open_composition_picker">Choose a place and composition</string>
+    <string name="camera_flash">Flash</string>
+    <string name="camera_flash_on">On</string>
+    <string name="camera_flash_off">Off</string>
+    <string name="camera_open_my_page">Open my page</string>
 </resources>

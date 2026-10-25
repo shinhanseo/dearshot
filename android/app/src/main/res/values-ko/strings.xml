@@ -42,4 +42,11 @@
     <string name="camera_permission_open_settings">앱 설정 열기</string>
     <string name="camera_preview_start_failed">카메라를 시작하지 못했어요. 다시 시도해 주세요.</string>
     <string name="camera_preview_retry">다시 시도</string>
+    <string name="camera_brand">DEARSHOT</string>
+    <string name="camera_choose_composition">구도 선택</string>
+    <string name="camera_open_composition_picker">장소와 구도 선택</string>
+    <string name="camera_flash">플래시</string>
+    <string name="camera_flash_on">켜짐</string>
+    <string name="camera_flash_off">꺼짐</string>
+    <string name="camera_open_my_page">마이페이지 열기</string>
 </resources>
