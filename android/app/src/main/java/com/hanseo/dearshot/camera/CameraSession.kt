@@ -120,6 +120,8 @@ class CameraSession(
                             .setFlashMode(ImageCapture.FLASH_MODE_OFF)
                             .build()
 
+                        imageCapture = captureUseCase
+
                         // 같은 카메라에 미리보기와 분석과 촬영을 함께 연결.
                         val useCaseGroup = UseCaseGroup.Builder()
                             .setViewPort(viewPort)

@@ -53,4 +53,6 @@
     <string name="camera_capture">Take a photo</string>
     <string name="camera_capturing">Taking a photo</string>
     <string name="camera_switch_lens">Switch camera</string>
+    <string name="camera_capture_failed">Unable to take the photo. Please try again.</string>
+    <string name="camera_capture_error_confirm">OK</string>
 </resources>

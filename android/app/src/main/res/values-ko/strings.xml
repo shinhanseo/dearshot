@@ -53,4 +53,6 @@
     <string name="camera_capture">사진 촬영</string>
     <string name="camera_capturing">촬영 중</string>
     <string name="camera_switch_lens">전후면 카메라 전환</string>
+    <string name="camera_capture_failed">사진을 촬영하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="camera_capture_error_confirm">확인</string>
 </resources>

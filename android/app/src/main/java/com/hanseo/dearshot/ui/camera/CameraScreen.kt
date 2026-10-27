@@ -9,16 +9,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.hanseo.dearshot.ui.camera.component.CameraCaptureControls
+import com.hanseo.dearshot.ui.camera.component.CameraCaptureErrorDialog
 import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
 import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import com.hanseo.dearshot.camera.CameraLens
 
 @Composable
 fun CameraScreen(
@@ -27,14 +22,7 @@ fun CameraScreen(
     modifier: Modifier = Modifier,
 ) {
     val permissionState = rememberCameraPermissionState()
-
-    var selectedLens by rememberSaveable {
-        mutableStateOf(CameraLens.BACK)
-    }
-
-    var canSwitchCamera by remember {
-        mutableStateOf(false)
-    }
+    val cameraState = rememberCameraScreenState()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -61,10 +49,9 @@ fun CameraScreen(
 
             if (permissionState.isGranted) {
                 CameraPreview(
-                    lens = selectedLens,
-                    onSwitchAvailabilityChanged = { available ->
-                        canSwitchCamera = available
-                    },
+                    cameraSession = cameraState.session,
+                    lens = cameraState.selectedLens,
+                    onConnectionChanged = cameraState::updateConnection,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -82,24 +69,24 @@ fun CameraScreen(
             }
 
             CameraCaptureControls(
-                photoCount = 0,
-                captureEnabled = false,
-                isCapturing = false,
+                photoCount = cameraState.photoCount,
+                captureEnabled =
+                    permissionState.isGranted && cameraState.canCapture,
+                isCapturing = cameraState.isCapturing,
                 switchCameraEnabled =
-                    permissionState.isGranted && canSwitchCamera,
+                    permissionState.isGranted && cameraState.canSwitchCamera,
                 onOpenPhotos = {
                     // 촬영 사진 목록 연결 예정
                 },
-                onCapture = {
-                    // ImageCapture 연결 예정
-                },
-                onSwitchCamera = {
-                    if (permissionState.isGranted && canSwitchCamera) {
-                        canSwitchCamera = false
-                        selectedLens = selectedLens.opposite()
-                    }
-                },
+                onCapture = cameraState::capture,
+                onSwitchCamera = cameraState::switchCamera,
             )
         }
+    }
+
+    if (cameraState.captureFailed) {
+        CameraCaptureErrorDialog(
+            onDismiss = cameraState::dismissCaptureError,
+        )
     }
 }

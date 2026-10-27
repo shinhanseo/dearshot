@@ -23,20 +23,17 @@ import com.hanseo.dearshot.camera.CameraLens
 
 @Composable
 fun CameraPreview(
+    cameraSession: CameraSession,
     lens: CameraLens,
-    onSwitchAvailabilityChanged: (Boolean) -> Unit,
+    onConnectionChanged: (Boolean, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val currentOnSwitchAvailabilityChanged by rememberUpdatedState(
-        onSwitchAvailabilityChanged
+    val currentOnConnectionChanged by rememberUpdatedState(
+        onConnectionChanged
     )
-
-    val cameraSession = remember(context) {
-        CameraSession(context)
-    }
 
     val previewView = remember(context) {
         PreviewView(context).apply {
@@ -88,8 +85,7 @@ fun CameraPreview(
             lastGeometry = geometry
             hasError = false
 
-            // 연결을 준비하는 동안 전환 버튼을 비활성화한다.
-            currentOnSwitchAvailabilityChanged(false)
+            currentOnConnectionChanged(false, false)
 
             cameraSession.start(
                 lifecycleOwner = lifecycleOwner,
@@ -97,7 +93,10 @@ fun CameraPreview(
                 viewPort = viewPort,
                 lens = lens,
                 onBound = { canSwitchCamera ->
-                    currentOnSwitchAvailabilityChanged(canSwitchCamera)
+                    currentOnConnectionChanged(
+                        true,
+                        canSwitchCamera,
+                    )
                 },
                 onError = { exception ->
                     Log.e(
@@ -106,7 +105,7 @@ fun CameraPreview(
                         exception,
                     )
 
-                    currentOnSwitchAvailabilityChanged(false)
+                    currentOnConnectionChanged(false, false)
                     hasError = true
                 },
             )
@@ -136,7 +135,7 @@ fun CameraPreview(
             )
 
             cameraSession.stop()
-            currentOnSwitchAvailabilityChanged(false)
+            currentOnConnectionChanged(false, false)
         }
     }
 
