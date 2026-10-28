@@ -1,6 +1,7 @@
 package com.hanseo.dearshot.ui.camera.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
@@ -33,7 +34,6 @@ fun CameraZoomControls(
         zoomInfo.maxRatio,
     ) {
         buildList {
-            // 1배보다 넓게 볼 수 있는 카메라라면 최소 배율 추가.
             if (zoomInfo.minRatio < 1f) {
                 add(zoomInfo.minRatio)
             }
@@ -49,65 +49,94 @@ fun CameraZoomControls(
             .sorted()
     }
 
-    // 선택지가 하나뿐이면 줌 조작부를 숨긴다.
     if (options.size < 2) return
 
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.65f),
-    ) {
-        Row(
-            modifier = Modifier
-                .selectableGroup()
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            options.forEach { ratio ->
-                val selected =
-                    abs(zoomInfo.ratio - ratio) < 0.01f
+    val selectedOption = options.firstOrNull {
+        abs(zoomInfo.ratio - it) < 0.01f
+    }
 
-                Surface(
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = 0.65f),
+        ) {
+            Row(
+                modifier = Modifier
+                    .selectableGroup()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                options.forEach { ratio ->
+                    val selected = selectedOption == ratio
+
+                    Surface(
+                        modifier = Modifier
+                            .defaultMinSize(
+                                minWidth = 48.dp,
+                                minHeight = 36.dp,
+                            )
+                            .selectable(
+                                selected = selected,
+                                enabled = enabled,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    onZoomSelected(ratio)
+                                },
+                            ),
+                        shape = CircleShape,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.background
+                        } else {
+                            Color.Transparent
+                        },
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(
+                                horizontal = 8.dp
+                            ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = zoomLabel(ratio),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onBackground
+                                } else {
+                                    Color.White.copy(
+                                        alpha = if (enabled) 1f else 0.38f
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (selectedOption == null) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                Box(
                     modifier = Modifier
                         .defaultMinSize(
-                            minWidth = 48.dp,
-                            minHeight = 36.dp,
+                            minWidth = 56.dp,
+                            minHeight = 48.dp,
                         )
-                        .selectable(
-                            selected = selected,
-                            enabled = enabled,
-                            role = Role.RadioButton,
-                            onClick = {
-                                onZoomSelected(ratio)
-                            },
-                        ),
-                    shape = CircleShape,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.background
-                    } else {
-                        Color.Transparent
-                    },
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    androidx.compose.foundation.layout.Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(
-                            horizontal = 8.dp
-                        ),
-                    ) {
-                        Text(
-                            text = zoomLabel(ratio),
-                            style =
-                                MaterialTheme.typography.labelLarge,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.onBackground
-                            } else {
-                                Color.White.copy(
-                                    alpha = if (enabled) 1f else 0.38f
-                                )
-                            },
-                        )
-                    }
+                    Text(
+                        text = zoomLabel(zoomInfo.ratio),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
                 }
             }
         }
