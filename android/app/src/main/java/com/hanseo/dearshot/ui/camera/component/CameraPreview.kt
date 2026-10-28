@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.delay
+import com.hanseo.dearshot.analysis.scene.SceneClassification
 
 @Composable
 fun CameraPreview(
@@ -38,6 +39,7 @@ fun CameraPreview(
     onZoomChanged: (CameraZoomInfo?) -> Unit,
     focusEnabled: Boolean,
     modifier: Modifier = Modifier,
+    onSceneAnalyzed: (SceneClassification) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -52,6 +54,10 @@ fun CameraPreview(
 
     val currentFocusEnabled by rememberUpdatedState(
         focusEnabled
+    )
+
+    val currentOnSceneAnalyzed by rememberUpdatedState(
+        onSceneAnalyzed
     )
 
     val previewView = remember(context) {
@@ -145,6 +151,9 @@ fun CameraPreview(
 
                     currentOnConnectionChanged(false, false, false)
                     hasError = true
+                },
+                onSceneAnalyzed = { result ->
+                    currentOnSceneAnalyzed(result)
                 },
             )
         }

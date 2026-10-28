@@ -23,6 +23,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import com.hanseo.dearshot.camera.CameraZoomInfo
+import com.hanseo.dearshot.analysis.scene.SceneClassification
+
+data class SceneCandidateUi(
+    val label: String,
+    val score: Float,
+)
+
+data class CameraAnalysisUiState(
+    val sceneCandidates: List<SceneCandidateUi> = emptyList(),
+)
 
 class CameraScreenState(
     val session: CameraSession,
@@ -54,6 +64,9 @@ class CameraScreenState(
     var photoCount by mutableStateOf(0)
         private set
 
+    var analysisUiState by mutableStateOf(CameraAnalysisUiState())
+        private set
+
     val canCapture: Boolean
         get() = isBound && !isCapturing
 
@@ -69,6 +82,7 @@ class CameraScreenState(
     val canChangeZoom: Boolean
         get() = isBound && zoomInfo != null && !isCapturing
 
+
     @MainThread
     fun updateConnection(
         bound: Boolean,
@@ -81,6 +95,7 @@ class CameraScreenState(
 
         if (!bound) {
             zoomInfo = null
+            analysisUiState = CameraAnalysisUiState()
         }
 
         if (bound) {
@@ -195,6 +210,24 @@ class CameraScreenState(
                     continuation.resume(result)
                 }
             },
+        )
+    }
+
+    @MainThread
+    fun updateSceneAnalysis(
+        result: SceneClassification,
+    ) {
+        if (!isBound) return
+
+        analysisUiState = CameraAnalysisUiState(
+            sceneCandidates = result.candidates
+                .take(3)
+                .map { candidate ->
+                    SceneCandidateUi(
+                        label = candidate.label,
+                        score = candidate.confidence,
+                    )
+                },
         )
     }
 }

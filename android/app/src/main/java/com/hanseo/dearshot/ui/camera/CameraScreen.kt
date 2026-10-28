@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
+import com.hanseo.dearshot.ui.camera.component.CameraSceneLabels
 
 @Composable
 fun CameraScreen(
@@ -63,8 +64,16 @@ fun CameraScreen(
                         onConnectionChanged =
                             cameraState::updateConnection,
                         onZoomChanged = cameraState::updateZoom,
+                        onSceneAnalyzed = cameraState::updateSceneAnalysis,
                         focusEnabled = cameraState.canCapture,
                         modifier = Modifier.fillMaxSize(),
+                    )
+
+                    CameraSceneLabels(
+                        candidates = cameraState.analysisUiState.sceneCandidates,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(16.dp),
                     )
 
                     cameraState.zoomInfo?.let { zoomInfo ->

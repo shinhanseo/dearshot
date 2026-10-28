@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import com.hanseo.dearshot.camera.motion.CameraMotionMonitor
+import com.hanseo.dearshot.analysis.scene.SceneClassification
 
 class CameraSession(
     context: Context,
@@ -72,6 +73,7 @@ class CameraSession(
         onBound: (Boolean, Boolean) -> Unit,
         onZoomChanged: (CameraZoomInfo) -> Unit,
         onError: (Exception) -> Unit,
+        onSceneAnalyzed: (SceneClassification) -> Unit = {},
     ) {
         stop()
 
@@ -132,6 +134,20 @@ class CameraSession(
                             bitmapConverter = FrameBitmapConverter(),
                             debugFrameWriter = DebugFrameWriter(appContext),
                             motionStateProvider = motionMonitor::currentState,
+
+                            onSceneAnalyzed = { result ->
+                                // 분석 스레드에서 메인 스레드로 전달한다.
+                                mainExecutor.execute {
+                                    // 이전 카메라 세션의 늦은 결과는 무시한다.
+                                    if (
+                                        requestedVersion == connectionVersion &&
+                                        lifecycleOwner.lifecycle.currentState
+                                            .isAtLeast(Lifecycle.State.RESUMED)
+                                    ) {
+                                        onSceneAnalyzed(result)
+                                    }
+                                }
+                            },
                         )
 
                         frameAnalyzer = analyzer
