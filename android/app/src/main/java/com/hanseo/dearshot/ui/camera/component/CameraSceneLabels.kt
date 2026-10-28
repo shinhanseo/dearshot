@@ -14,7 +14,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.hanseo.dearshot.ui.camera.SceneCandidateUi
 import java.text.NumberFormat
-import java.util.Locale
+import com.hanseo.dearshot.ui.camera.AnalysisLabelResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
 
 @Composable
 fun CameraSceneLabels(
@@ -23,8 +25,9 @@ fun CameraSceneLabels(
 ) {
     if (candidates.isEmpty()) return
 
+    val configuration = LocalConfiguration.current
     val percentFormat = NumberFormat.getPercentInstance(
-        Locale.getDefault()
+        configuration.locales[0]
     ).apply {
         maximumFractionDigits = 0
     }
@@ -47,7 +50,9 @@ fun CameraSceneLabels(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = candidate.label,
+                    text = AnalysisLabelResources.sceneResource(candidate.label)?.let {
+                        stringResource(it)
+                    } ?: AnalysisLabelResources.fallback(candidate.label),
                     color = Color.White,
                     style = MaterialTheme.typography.labelMedium,
                 )
