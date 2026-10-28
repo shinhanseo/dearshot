@@ -132,8 +132,12 @@ class AppSceneMapper(
 
             register(
                 AppScene.CAFE,
+                // 카페 템플릿을 적용할 수 있는 테이블 중심 다이닝 공간.
                 "coffee_shop",
                 "ice_cream_parlor",
+                "restaurant",
+                "restaurant_patio",
+                "diner/outdoor",
             )
 
             register(

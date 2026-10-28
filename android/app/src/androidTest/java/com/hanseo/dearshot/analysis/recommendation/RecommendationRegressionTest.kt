@@ -20,9 +20,21 @@ class RecommendationRegressionTest {
     @Test fun unsupportedWinnerWeakEvidenceAndCompetingScenesStayUnknown() {
         val mapper=AppSceneMapper()
         assertEquals(AppScene.UNKNOWN,mapper.map(scene("server_room" to .185f,"computer_room" to .10f,"office" to .083f)).scene)
-        assertEquals(AppScene.UNKNOWN,mapper.map(scene("restaurant" to .45f,"coffee_shop" to .40f)).scene)
+        assertEquals(AppScene.UNKNOWN,mapper.map(scene("restaurant_kitchen" to .45f,"coffee_shop" to .40f)).scene)
         assertEquals(AppScene.UNKNOWN,mapper.map(scene("coffee_shop" to .42f,"park" to .35f)).scene)
         assertEquals(AppScene.UNKNOWN,mapper.map(scene("coffee_shop" to .20f)).scene)
+    }
+    @Test fun diningSpacesShareCafeButKitchensAndFoodCourtsDoNot() {
+        val mapper = AppSceneMapper()
+        for (label in listOf("restaurant", "restaurant_patio", "diner/outdoor")) {
+            assertEquals(label, AppScene.CAFE, mapper.map(scene(label to .75f)).scene)
+        }
+        for (label in listOf("restaurant_kitchen", "kitchen", "food_court", "cafeteria")) {
+            assertEquals(label, AppScene.UNKNOWN, mapper.map(scene(label to .75f)).scene)
+        }
+        val combined = mapper.map(scene("coffee_shop" to .353f, "restaurant" to .288f, "restaurant_patio" to .082f))
+        assertEquals(AppScene.CAFE, combined.scene)
+        assertEquals(.723f, combined.scores.first().score, .0001f)
     }
     private fun pattern(offset: Int=0, shift: Int=0): Bitmap {
         val pixels=IntArray(128*128) { index ->
@@ -60,12 +72,12 @@ class RecommendationRegressionTest {
             assertFalse(detector.analyze(bitmap,2_000).isStable)
         } finally { bitmap.recycle() }
     }
-    @Test fun ambiguousGeneratedPhotoRemainsUnknown() {
+    @Test fun generatedDiningPhotoMapsToCafe() {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val bitmap=instrumentation.context.assets.open("recommendation/cafe-person.png").use { requireNotNull(BitmapFactory.decodeStream(it)) }
         try {
             val result=Places365Classifier(instrumentation.targetContext).use { it.classify(bitmap) }
-            assertEquals(AppScene.UNKNOWN,AppSceneMapper().map(result).scene)
+            assertEquals(AppScene.CAFE,AppSceneMapper().map(result).scene)
         } finally { bitmap.recycle() }
     }
     @Test fun verifiedCafePhotoPassesModelsAndRepeatedFrameReadinessOnce() {
