@@ -13,6 +13,7 @@ import java.io.Closeable
 import java.util.Locale
 import com.hanseo.dearshot.analysis.detection.YoloxDetector
 import com.hanseo.dearshot.analysis.scene.AppSceneMapper
+import com.hanseo.dearshot.analysis.recommendation.RecommendationCoordinator
 
 class FrameAnalyzer(
     context: Context,
@@ -40,6 +41,8 @@ class FrameAnalyzer(
     private var lastProcessedAt: Long? = null
 
     private val sceneMapper = AppSceneMapper()
+
+    private val recommendationCoordinator = RecommendationCoordinator()
 
     private var snapshotSaved = false
     private var closed = false
@@ -70,6 +73,10 @@ class FrameAnalyzer(
                     capturedAtMs = now,
                 )
 
+                if (!stability.isStable) {
+                    recommendationCoordinator.onScreenUnstable()
+                }
+
                 if (BuildConfig.DEBUG) {
                     val differenceText = stability.difference?.let {
                         String.format(Locale.US, "%.4f", it)
@@ -78,6 +85,7 @@ class FrameAnalyzer(
                     Log.d(
                         TAG,
                         "Stability: difference=$differenceText, " +
+                                "raw=${stability.rawDifference}, " +
                                 "duration=${stability.stableDurationMs}ms, " +
                                 "stable=${stability.isStable}",
                     )
@@ -127,8 +135,10 @@ class FrameAnalyzer(
                             )
                         }
 
+                        recommendationCoordinator.updatePerson(presence)
                         onPersonAnalyzed(presence)
                     } catch (exception: Exception) {
+                        recommendationCoordinator.invalidatePerson()
                         // 감지 실패를 '사람 없음'으로 전달하지 않는다.
                         Log.e(
                             TAG,
@@ -159,6 +169,10 @@ class FrameAnalyzer(
                     logResult(result)
 
                     val appScene = sceneMapper.map(result)
+                    recommendationCoordinator.updateScene(
+                        scene = appScene.scene,
+                        analyzedAtMs = now,
+                    )
 
                     if (BuildConfig.DEBUG) {
                         val scoreText = appScene.scores.joinToString(" | ") {
@@ -178,10 +192,26 @@ class FrameAnalyzer(
 
                     onSceneAnalyzed(result)
                 }
+
+                val ready = recommendationCoordinator.evaluate(
+                    nowMs = SystemClock.elapsedRealtime(),
+                    isStable = stability.isStable,
+                    stabilityAnalyzedAtMs = now,
+                )
+                if (ready != null) {
+                    Log.d(
+                        TAG,
+                        "Recommendation ready: scene=${ready.scene}, " +
+                            "time=${ready.decidedAtMs}",
+                    )
+                }
             } finally {
                 bitmap.recycle()
             }
         } catch (exception: Exception) {
+            // 프레임 변환이나 장소 분석이 실패하면 이전 판단을 무효화한다.
+            recommendationCoordinator.onScreenUnstable()
+            stabilityDetector.reset()
             Log.e(
                 TAG,
                 "Failed to analyze camera frame",
@@ -265,6 +295,7 @@ class FrameAnalyzer(
             } finally {
                 objectDetector = null
                 stabilityDetector.reset()
+                recommendationCoordinator.reset()
             }
         }
     }

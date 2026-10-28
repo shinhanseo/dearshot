@@ -10,6 +10,7 @@ data class FrameStability(
     val difference: Float?,
     val stableDurationMs: Long,
     val isStable: Boolean,
+    val rawDifference: Float? = null,
 )
 
 /**
@@ -22,17 +23,20 @@ class FrameStabilityDetector(
     private val differenceThreshold: Float = 0.025f,
     private val requiredStableDurationMs: Long = 1_000L,
     private val maximumFrameGapMs: Long = 750L,
+    private val maximumBrightnessShift: Float = 0.15f,
 ) {
     init {
         require(differenceThreshold in 0f..1f)
         require(requiredStableDurationMs > 0)
         require(maximumFrameGapMs > 0)
+        require(maximumBrightnessShift in 0f..1f)
     }
 
     private var previousLuminance: FloatArray? = null
     private var previousTimestampMs: Long? = null
 
     private var stableSinceMs: Long? = null
+    private var stableReference: FloatArray? = null
 
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
@@ -62,6 +66,7 @@ class FrameStabilityDetector(
             capturedAtMs - previousTime > maximumFrameGapMs
         ) {
             stableSinceMs = null
+            stableReference = null
 
             return FrameStability(
                 difference = null,
@@ -70,26 +75,36 @@ class FrameStabilityDetector(
             )
         }
 
-        var totalDifference = 0f
+        val rawDifference = meanDifference(currentLuminance, previous)
+        val brightnessShift = currentLuminance.average().toFloat() -
+            previous.average().toFloat()
 
-        for (index in currentLuminance.indices) {
-            totalDifference += kotlin.math.abs(
-                currentLuminance[index] - previous[index]
-            )
-        }
+        // 자동 노출처럼 화면 전체에 공통으로 더해진 밝기 변화만 보정한다.
+        // 안정 구간 시작 프레임과도 비교해 작은 이동의 누적을 막는다.
+        val reference = stableReference ?: previous
+        val referenceShift = currentLuminance.average().toFloat() -
+            reference.average().toFloat()
+        val difference = maxOf(
+            meanDifference(currentLuminance, previous, brightnessShift),
+            meanDifference(currentLuminance, reference, referenceShift),
+        )
 
-        val difference =
-            totalDifference / currentLuminance.size
-
-        if (difference > differenceThreshold) {
+        if (
+            difference > differenceThreshold ||
+            kotlin.math.abs(brightnessShift) > maximumBrightnessShift ||
+            kotlin.math.abs(referenceShift) > maximumBrightnessShift
+        ) {
             stableSinceMs = null
-
+            stableReference = null
             return FrameStability(
                 difference = difference,
                 stableDurationMs = 0L,
                 isStable = false,
+                rawDifference = rawDifference,
             )
         }
+
+        if (stableReference == null) stableReference = previous
 
         val stableSince = stableSinceMs
             ?: previousTime.also {
@@ -102,6 +117,7 @@ class FrameStabilityDetector(
             difference = difference,
             stableDurationMs = duration,
             isStable = duration >= requiredStableDurationMs,
+            rawDifference = rawDifference,
         )
     }
 
@@ -109,6 +125,19 @@ class FrameStabilityDetector(
         previousLuminance = null
         previousTimestampMs = null
         stableSinceMs = null
+        stableReference = null
+    }
+
+    private fun meanDifference(
+        current: FloatArray,
+        previous: FloatArray,
+        brightnessShift: Float = 0f,
+    ): Float {
+        var total = 0f
+        for (index in current.indices) {
+            total += kotlin.math.abs(current[index] - previous[index] - brightnessShift)
+        }
+        return total / current.size
     }
 
     private fun createLuminance(

@@ -70,19 +70,20 @@ class AppSceneMapper(
         val omittedScore =
             (1f - providedScore).coerceIn(0f, 1f)
 
-        // 매핑되지 않았거나 전달받지 못한 점수도
-        // 불확실성으로 고려한다.
-        val unsupportedScore =
-            (unmappedScore + omittedScore).coerceIn(0f, 1f)
+        // 서로 다른 미지원 장소의 점수를 하나의 경쟁 장소처럼 합치지 않는다.
+        // 대신 가장 강한 미지원 라벨 및 다른 지원 장소와 비교한다.
+        val strongestUnmapped = candidates
+            .filter { it.label !in LABEL_TO_SCENE }
+            .maxOfOrNull { it.confidence } ?: 0f
 
-        val strongestAlternative = maxOf(
-            runnerUp.score,
-            unsupportedScore,
-        )
+        val strongestAlternative = maxOf(runnerUp.score, strongestUnmapped)
+        val topLabel = candidates.maxByOrNull { it.confidence }?.label
+        val topLabelSupportsBest = LABEL_TO_SCENE[topLabel] == best.scene
 
         val canDecide =
-            best.score >= minimumScore &&
-                    best.score - strongestAlternative >= minimumMargin
+            topLabelSupportsBest &&
+                best.score >= minimumScore &&
+                best.score - strongestAlternative >= minimumMargin
 
         return AppSceneResult(
             scene = if (canDecide) {
