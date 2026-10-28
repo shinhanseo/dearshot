@@ -14,6 +14,11 @@ import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
 import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
 
 @Composable
 fun CameraScreen(
@@ -47,14 +52,31 @@ fun CameraScreen(
             )
 
             if (permissionState.isGranted) {
-                CameraPreview(
-                    cameraSession = cameraState.session,
-                    lens = cameraState.selectedLens,
-                    onConnectionChanged = cameraState::updateConnection,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                )
+                ) {
+                    CameraPreview(
+                        cameraSession = cameraState.session,
+                        lens = cameraState.selectedLens,
+                        onConnectionChanged =
+                            cameraState::updateConnection,
+                        onZoomChanged = cameraState::updateZoom,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    cameraState.zoomInfo?.let { zoomInfo ->
+                        CameraZoomControls(
+                            zoomInfo = zoomInfo,
+                            enabled = cameraState.canChangeZoom,
+                            onZoomSelected = cameraState::changeZoom,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 12.dp),
+                        )
+                    }
+                }
             } else {
                 CameraPermissionContent(
                     wasDenied = permissionState.wasDenied,

@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import com.hanseo.dearshot.camera.CameraZoomInfo
 
 class CameraScreenState(
     val session: CameraSession,
@@ -62,15 +63,25 @@ class CameraScreenState(
     val canChangeFlash: Boolean
         get() = isBound && supportsFlash && !isCapturing
 
+    var zoomInfo by mutableStateOf<CameraZoomInfo?>(null)
+        private set
+
+    val canChangeZoom: Boolean
+        get() = isBound && zoomInfo != null && !isCapturing
+
     @MainThread
     fun updateConnection(
         bound: Boolean,
         canSwitch: Boolean,
-        hasFlash: Boolean
+        hasFlash: Boolean,
     ) {
         isBound = bound
         supportsSwitching = bound && canSwitch
         supportsFlash = bound && hasFlash
+
+        if (!bound) {
+            zoomInfo = null
+        }
 
         if (bound) {
             if (!hasFlash) {
@@ -100,6 +111,18 @@ class CameraScreenState(
         )
 
         lensState.value = selectedLens.opposite()
+    }
+
+    @MainThread
+    fun updateZoom(info: CameraZoomInfo?) {
+        zoomInfo = info
+    }
+
+    @MainThread
+    fun changeZoom(ratio: Float) {
+        if (!canChangeZoom) return
+
+        session.setZoomRatio(ratio)
     }
 
     @MainThread

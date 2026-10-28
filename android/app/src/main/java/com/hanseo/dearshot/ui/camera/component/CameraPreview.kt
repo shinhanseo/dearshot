@@ -20,12 +20,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.hanseo.dearshot.camera.CameraSession
 import androidx.compose.runtime.rememberUpdatedState
 import com.hanseo.dearshot.camera.CameraLens
+import com.hanseo.dearshot.camera.CameraZoomInfo
 
 @Composable
 fun CameraPreview(
     cameraSession: CameraSession,
     lens: CameraLens,
     onConnectionChanged: (Boolean, Boolean, Boolean) -> Unit,
+    onZoomChanged: (CameraZoomInfo?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -33,6 +35,10 @@ fun CameraPreview(
 
     val currentOnConnectionChanged by rememberUpdatedState(
         onConnectionChanged
+    )
+
+    val currentOnZoomChanged by rememberUpdatedState(
+        onZoomChanged
     )
 
     val previewView = remember(context) {
@@ -98,6 +104,9 @@ fun CameraPreview(
                         canSwitchCamera,
                         hasFlashUnit,
                     )
+                },
+                onZoomChanged = { info ->
+                    currentOnZoomChanged(info)
                 },
                 onError = { exception ->
                     Log.e(

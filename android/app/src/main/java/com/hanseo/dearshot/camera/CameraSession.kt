@@ -18,6 +18,10 @@ import androidx.camera.core.ViewPort
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import java.io.File
+import android.util.Log
+import androidx.camera.core.Camera
+import androidx.camera.core.ZoomState
+import androidx.lifecycle.Observer
 
 class CameraSession(
     context: Context,
@@ -38,6 +42,9 @@ class CameraSession(
 
     private var analysisExecutor: ExecutorService? = null
 
+    private var boundCamera: Camera? = null
+    private var zoomObserver: Observer<ZoomState>? = null
+
     // 준비 중인 이전 연결 요청을 무효화하기 위한 번호.
     private var connectionVersion = 0L
 
@@ -48,6 +55,7 @@ class CameraSession(
         viewPort: ViewPort,
         lens: CameraLens,
         onBound: (Boolean, Boolean) -> Unit,
+        onZoomChanged: (CameraZoomInfo) -> Unit,
         onError: (Exception) -> Unit,
     ) {
         stop()
@@ -136,6 +144,25 @@ class CameraSession(
                             useCaseGroup,
                         )
 
+                        boundCamera = camera
+
+                        val observer = Observer<ZoomState> { zoom ->
+                            onZoomChanged(
+                                CameraZoomInfo(
+                                    ratio = zoom.zoomRatio,
+                                    minRatio = zoom.minZoomRatio,
+                                    maxRatio = zoom.maxZoomRatio,
+                                )
+                            )
+                        }
+
+                        zoomObserver = observer
+
+                        camera.cameraInfo.zoomState.observe(
+                            lifecycleOwner,
+                            observer,
+                        )
+
                         onBound(
                             canSwitchCamera,
                             camera.cameraInfo.hasFlashUnit(),
@@ -158,6 +185,43 @@ class CameraSession(
         } else {
             ImageCapture.FLASH_MODE_OFF
         }
+    }
+
+    @MainThread
+    fun setZoomRatio(ratio: Float) {
+        val camera = boundCamera ?: return
+        val zoom = camera.cameraInfo.zoomState.value ?: return
+
+        if (!ratio.isFinite()) return
+
+        val targetRatio = ratio.coerceIn(
+            zoom.minZoomRatio,
+            zoom.maxZoomRatio,
+        )
+
+        val requestedVersion = connectionVersion
+
+        val future = camera.cameraControl.setZoomRatio(
+            targetRatio
+        )
+
+        future.addListener(
+            {
+                // 이전 카메라에서 실행한 요청이면 결과를 무시한다.
+                if (requestedVersion == connectionVersion) {
+                    try {
+                        future.get()
+                    } catch (exception: Exception) {
+                        Log.w(
+                            "CameraZoom",
+                            "Failed to apply zoom",
+                            exception,
+                        )
+                    }
+                }
+            },
+            mainExecutor,
+        )
     }
 
     @MainThread
@@ -270,6 +334,14 @@ class CameraSession(
         currentCapture?.let {
             currentProvider?.unbind(it)
         }
+
+        zoomObserver?.let { observer ->
+            boundCamera?.cameraInfo?.zoomState
+                ?.removeObserver(observer)
+        }
+
+        zoomObserver = null
+        boundCamera = null
 
         // 진행 중인 작업은 마치고 실행기를 종료한다.
         analysisExecutor?.shutdown()
