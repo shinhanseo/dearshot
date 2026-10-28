@@ -9,6 +9,10 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.TensorInfo
 import java.io.Closeable
 import kotlinx.serialization.json.Json
+import android.graphics.Bitmap
+import android.os.SystemClock
+import ai.onnxruntime.OnnxTensor
+import kotlin.math.exp
 
 class Places365Classifier @WorkerThread constructor(
     context: Context,
@@ -23,6 +27,96 @@ class Places365Classifier @WorkerThread constructor(
     private val session: OrtSession = createSession(
         context.applicationContext
     )
+
+    private val preprocessor = Places365Preprocessor()
+
+    private var closed = false
+
+    @WorkerThread
+    @Synchronized
+    fun classify(
+        bitmap: Bitmap,
+        topK: Int = 5
+    ) : SceneClassification {
+        check(!closed) {
+            "Places365 classifier has already been closed"
+        }
+
+        require(topK in 1..CLASS_COUNT) {
+            "topK muse be between 1 and $CLASS_COUNT"
+        }
+
+        val startedAt = SystemClock.elapsedRealtimeNanos()
+
+        val inputBuffer = preprocessor.process(bitmap)
+
+        val candidates = OnnxTensor.createTensor(
+            environment,
+            inputBuffer,
+            longArrayOf(1, 3, 224, 224)
+        ).use { inputTensor ->
+            session.run(
+                mapOf(INPUT_NAME to inputTensor)
+            ).use { outputs ->
+                // 출력은 [1, 365] 형태의 float 배열.
+                val rows = outputs[0].value as? Array<*>
+
+                val logits = rows
+                    ?.singleOrNull() as? FloatArray
+
+                check(logits != null) {
+                    "Expected model output with shape [1, 365]"
+                }
+
+                check(
+                    logits.size == CLASS_COUNT &&
+                            logits.all { it.isFinite() }
+                ) {
+                    "Model returned invalid logits"
+                }
+
+                val probabilities = softmax(logits)
+
+                probabilities.indices
+                    .sortedByDescending { index ->
+                        probabilities[index]
+                    }
+                    .take(topK)
+                    .map { index ->
+                        SceneCandidate(
+                            index = index,
+                            label = labels[index],
+                            confidence = probabilities[index],
+                        )
+                    }
+            }
+        }
+
+        val elapsedNanos =
+            SystemClock.elapsedRealtimeNanos() - startedAt
+
+        return SceneClassification(
+            candidates = candidates,
+            processingTimeMs = elapsedNanos / 1_000_000.0,
+        )
+
+    }
+
+    private fun softmax(
+        logits: FloatArray,
+    ): FloatArray {
+        val maximum = logits.max().toDouble()
+
+        val exponentials = DoubleArray(logits.size) { index ->
+            exp(logits[index].toDouble() - maximum)
+        }
+
+        val sum = exponentials.sum()
+
+        return FloatArray(logits.size) { index ->
+            (exponentials[index] / sum).toFloat()
+        }
+    }
 
     // Places365의 라벨(장소) 365개를 코틀린 리스트로 변환한다.
     private fun loadLabels(
@@ -139,8 +233,12 @@ class Places365Classifier @WorkerThread constructor(
         )
     }
 
+    @Synchronized
     override fun close() {
-        session.close()
+        if (!closed) {
+            closed = true
+            session.close()
+        }
     }
 
     private companion object {
