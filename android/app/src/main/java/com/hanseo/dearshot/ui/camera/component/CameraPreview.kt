@@ -1,5 +1,6 @@
 package com.hanseo.dearshot.ui.camera.component
 
+import com.hanseo.dearshot.analysis.detection.ObjectDetection
 import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
@@ -40,6 +41,7 @@ fun CameraPreview(
     focusEnabled: Boolean,
     modifier: Modifier = Modifier,
     onSceneAnalyzed: (SceneClassification) -> Unit = {},
+    onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -59,6 +61,8 @@ fun CameraPreview(
     val currentOnSceneAnalyzed by rememberUpdatedState(
         onSceneAnalyzed
     )
+
+    val currentOnObjectsAnalyzed by rememberUpdatedState(onObjectsAnalyzed)
 
     val previewView = remember(context) {
         PreviewView(context).apply {
@@ -151,6 +155,9 @@ fun CameraPreview(
 
                     currentOnConnectionChanged(false, false, false)
                     hasError = true
+                },
+                onObjectsAnalyzed = { result ->
+                    currentOnObjectsAnalyzed(result)
                 },
                 onSceneAnalyzed = { result ->
                     currentOnSceneAnalyzed(result)

@@ -1,5 +1,9 @@
 package com.hanseo.dearshot.ui.camera
 
+import android.os.SystemClock
+import com.hanseo.dearshot.analysis.detection.ObjectDetection
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
@@ -30,8 +34,29 @@ data class SceneCandidateUi(
     val score: Float,
 )
 
+data class ObjectBoxUi(
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float,
+)
+
+data class DetectedObjectUi(
+    val label: String,
+    val score: Float,
+    val box: ObjectBoxUi,
+)
+
+data class ObjectAnalysisUi(
+    val imageWidth: Int,
+    val imageHeight: Int,
+    val objects: List<DetectedObjectUi>,
+    val receivedAtMs: Long,
+)
+
 data class CameraAnalysisUiState(
     val sceneCandidates: List<SceneCandidateUi> = emptyList(),
+    val objectAnalysis: ObjectAnalysisUi? = null,
 )
 
 class CameraScreenState(
@@ -40,6 +65,8 @@ class CameraScreenState(
     private val photoStore: CapturedPhotoStore,
     private val scope: CoroutineScope,
 ) {
+    private var objectExpiryJob: Job? = null
+
     val selectedLens: CameraLens
         get() = lensState.value
 
@@ -95,6 +122,8 @@ class CameraScreenState(
 
         if (!bound) {
             zoomInfo = null
+            objectExpiryJob?.cancel()
+            objectExpiryJob = null
             analysisUiState = CameraAnalysisUiState()
         }
 
@@ -219,7 +248,7 @@ class CameraScreenState(
     ) {
         if (!isBound) return
 
-        analysisUiState = CameraAnalysisUiState(
+        analysisUiState = analysisUiState.copy(
             sceneCandidates = result.candidates
                 .take(3)
                 .map { candidate ->
@@ -230,6 +259,40 @@ class CameraScreenState(
                 },
         )
     }
+
+    @MainThread
+    fun updateObjectAnalysis(result: ObjectDetection?) {
+        if (!isBound) return
+        objectExpiryJob?.cancel()
+        objectExpiryJob = null
+        analysisUiState = analysisUiState.copy(
+            objectAnalysis = result?.let {
+                ObjectAnalysisUi(
+                    imageWidth = it.imageWidth,
+                    imageHeight = it.imageHeight,
+                    objects = it.objects.map { detected ->
+                        DetectedObjectUi(
+                            label = detected.label,
+                            score = detected.confidence,
+                            box = ObjectBoxUi(
+                                detected.box.left, detected.box.top,
+                                detected.box.right, detected.box.bottom,
+                            ),
+                        )
+                    },
+                    receivedAtMs = SystemClock.elapsedRealtime(),
+                )
+            },
+        )
+        if (result != null) {
+            // 수신이 멈추거나 앱이 비활성화되면 이전 박스를 계속 남기지 않는다.
+            objectExpiryJob = scope.launch {
+                delay(1_500L)
+                analysisUiState = analysisUiState.copy(objectAnalysis = null)
+            }
+        }
+    }
+
 }
 
 @Composable

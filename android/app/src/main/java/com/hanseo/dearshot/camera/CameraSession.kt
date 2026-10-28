@@ -1,5 +1,6 @@
 package com.hanseo.dearshot.camera
 
+import com.hanseo.dearshot.analysis.detection.ObjectDetection
 import android.content.Context
 import androidx.annotation.MainThread
 import androidx.camera.core.CameraSelector
@@ -74,6 +75,7 @@ class CameraSession(
         onZoomChanged: (CameraZoomInfo) -> Unit,
         onError: (Exception) -> Unit,
         onSceneAnalyzed: (SceneClassification) -> Unit = {},
+        onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
     ) {
         stop()
 
@@ -134,6 +136,17 @@ class CameraSession(
                             bitmapConverter = FrameBitmapConverter(),
                             debugFrameWriter = DebugFrameWriter(appContext),
                             motionStateProvider = motionMonitor::currentState,
+                            onObjectsAnalyzed = { result ->
+                                mainExecutor.execute {
+                                    if (
+                                        requestedVersion == connectionVersion &&
+                                        lifecycleOwner.lifecycle.currentState
+                                            .isAtLeast(Lifecycle.State.RESUMED)
+                                    ) {
+                                        onObjectsAnalyzed(result)
+                                    }
+                                }
+                            },
 
                             onSceneAnalyzed = { result ->
                                 // 분석 스레드에서 메인 스레드로 전달한다.

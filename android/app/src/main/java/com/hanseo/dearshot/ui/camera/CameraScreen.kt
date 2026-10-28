@@ -1,5 +1,8 @@
 package com.hanseo.dearshot.ui.camera
 
+import com.hanseo.dearshot.ui.camera.component.CameraObjectOverlay
+import com.hanseo.dearshot.camera.CameraLens
+import com.hanseo.dearshot.BuildConfig
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,9 +68,18 @@ fun CameraScreen(
                             cameraState::updateConnection,
                         onZoomChanged = cameraState::updateZoom,
                         onSceneAnalyzed = cameraState::updateSceneAnalysis,
+                        onObjectsAnalyzed = cameraState::updateObjectAnalysis,
                         focusEnabled = cameraState.canCapture,
                         modifier = Modifier.fillMaxSize(),
                     )
+
+                    if (BuildConfig.DEBUG) {
+                        CameraObjectOverlay(
+                            analysis = cameraState.analysisUiState.objectAnalysis,
+                            mirror = cameraState.selectedLens == CameraLens.FRONT,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
 
                     CameraSceneLabels(
                         candidates = cameraState.analysisUiState.sceneCandidates,

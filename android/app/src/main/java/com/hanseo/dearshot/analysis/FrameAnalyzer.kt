@@ -14,6 +14,8 @@ import java.util.Locale
 import com.hanseo.dearshot.analysis.scene.AppSceneMapper
 import com.hanseo.dearshot.analysis.recommendation.RecommendationCoordinator
 import com.hanseo.dearshot.camera.motion.CameraMotionState
+import com.hanseo.dearshot.analysis.detection.ObjectDetection
+import com.hanseo.dearshot.analysis.detection.YoloxDetector
 
 class FrameAnalyzer(
     context: Context,
@@ -24,12 +26,16 @@ class FrameAnalyzer(
 
     // 분석 스레드에서 호출된다.
     private val onSceneAnalyzed: (SceneClassification) -> Unit = {},
+    private val onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
 ) : ImageAnalysis.Analyzer, Closeable {
 
     private val appContext = context.applicationContext
 
     // 첫 분석 시 분석 스레드에서 생성한다.
     private var classifier: Places365Classifier? = null
+
+    private var objectDetector: YoloxDetector? = null
+    private var lastObjectsAnalyzedAt: Long? = null
 
     private var lastSceneAnalyzedAt: Long? = null
 
@@ -63,6 +69,25 @@ class FrameAnalyzer(
 
             try {
                 saveDebugFrameIfNeeded(bitmap)
+
+                val previousObjectsTime = lastObjectsAnalyzedAt
+                if (previousObjectsTime == null || now - previousObjectsTime >= OBJECT_INTERVAL_MS) {
+                    lastObjectsAnalyzedAt = now
+                    val detection = try {
+                        val detector = objectDetector ?: YoloxDetector(appContext).also {
+                            objectDetector = it
+                        }
+                        detector.detect(bitmap)
+                    } catch (exception: Exception) {
+                        Log.e(TAG, "Failed to analyze objects", exception)
+                        null
+                    }
+                    // null은 분석 실패, 빈 목록은 객체 없음이다.
+                    onObjectsAnalyzed(detection)
+                    if (BuildConfig.DEBUG && detection != null) {
+                        Log.d(TAG, "Objects: count=${detection.objects.size}, processing=${detection.processingTimeMs}ms")
+                    }
+                }
 
                 // 장소 분석은 별도로 약 1초마다 실행한다.
                 val previousSceneTime = lastSceneAnalyzedAt
@@ -222,7 +247,12 @@ class FrameAnalyzer(
         } finally {
             classifier = null
 
-            recommendationCoordinator.reset()
+            try {
+                objectDetector?.close()
+            } finally {
+                objectDetector = null
+                recommendationCoordinator.reset()
+            }
         }
     }
 
@@ -231,5 +261,6 @@ class FrameAnalyzer(
 
         const val FRAME_INTERVAL_MS = 250L
         const val SCENE_INTERVAL_MS = 1_000L
+        const val OBJECT_INTERVAL_MS = 500L
     }
 }
