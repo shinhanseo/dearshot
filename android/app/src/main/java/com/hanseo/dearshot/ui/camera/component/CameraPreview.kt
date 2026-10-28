@@ -25,6 +25,10 @@ import com.hanseo.dearshot.camera.CameraLens
 import com.hanseo.dearshot.camera.CameraZoomInfo
 import android.view.GestureDetector
 import android.view.MotionEvent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.delay
 
 @Composable
 fun CameraPreview(
@@ -68,6 +72,21 @@ fun CameraPreview(
 
     var retryCount by remember {
         mutableIntStateOf(0)
+    }
+
+    var focusPosition by remember(lens) {
+        mutableStateOf<Offset?>(null)
+    }
+
+    var focusSequence by remember {
+        mutableLongStateOf(0L)
+    }
+
+    LaunchedEffect(lens, focusSequence) {
+        if (focusPosition != null) {
+            delay(1_200L)
+            focusPosition = null
+        }
     }
 
     DisposableEffect(
@@ -158,7 +177,7 @@ fun CameraPreview(
         }
     }
 
-    DisposableEffect(previewView, cameraSession) {
+    DisposableEffect(previewView, cameraSession, lens) {
         var hadMultiplePointers = false
 
         val scaleDetector = ScaleGestureDetector(
@@ -166,7 +185,12 @@ fun CameraPreview(
             object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 override fun onScaleBegin(
                     detector: ScaleGestureDetector,
-                ): Boolean = currentFocusEnabled
+                ): Boolean {
+                    if (!currentFocusEnabled) return false
+
+                    focusPosition = null
+                    return true
+                }
 
                 override fun onScale(
                     detector: ScaleGestureDetector,
@@ -192,13 +216,22 @@ fun CameraPreview(
                 override fun onSingleTapUp(
                     event: MotionEvent,
                 ): Boolean {
-                    if (!currentFocusEnabled || hadMultiplePointers) return false
+                    if (!currentFocusEnabled || hadMultiplePointers) {
+                        return false
+                    }
 
                     val point = previewView.meteringPointFactory
                         .createPoint(
                             event.x,
                             event.y,
                         )
+
+                    focusPosition = Offset(
+                        x = event.x,
+                        y = event.y,
+                    )
+
+                    focusSequence += 1
 
                     previewView.performClick()
                     cameraSession.focusAt(point)
@@ -244,6 +277,15 @@ fun CameraPreview(
                 previewView
             },
         )
+
+        focusPosition?.let { position ->
+            if (focusEnabled && !hasError) {
+                CameraFocusIndicator(
+                    position = position,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
 
         if (hasError) {
             CameraErrorContent(
