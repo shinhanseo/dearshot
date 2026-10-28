@@ -1,0 +1,126 @@
+{
+  "sha256": "c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d",
+  "bytes": 3659407,
+  "input": [
+    {
+      "name": "images",
+      "shape": [
+        1,
+        3,
+        416,
+        416
+      ],
+      "type": "tensor(float)"
+    }
+  ],
+  "output": [
+    {
+      "name": "output",
+      "shape": [
+        1,
+        3549,
+        85
+      ],
+      "type": "tensor(float)"
+    }
+  ],
+  "opset": 11,
+  "results": [
+    {
+      "image": "shoreline-sunset-walk",
+      "preprocessing": "release_rgb_normalized",
+      "personScore": 0.00019922068167943507,
+      "personBox": [
+        834.26839863337,
+        712.8952224575556,
+        918.1206247439751,
+        743.2786136636367
+      ],
+      "desktopInferenceMs": 10.03616599336965
+    },
+    {
+      "image": "shoreline-sunset-walk",
+      "preprocessing": "current_bgr_raw",
+      "personScore": 0.7906347513198853,
+      "personBox": [
+        559.8995491541349,
+        759.5128014637874,
+        718.7288951506981,
+        1223.200917830834
+      ],
+      "desktopInferenceMs": 6.838499997684266
+    },
+    {
+      "image": "cafe-cheek-rest",
+      "preprocessing": "release_rgb_normalized",
+      "personScore": 0.0007135887863114476,
+      "personBox": [
+        518.010624225323,
+        765.8296466974111,
+        1733.838603093074,
+        2313.5857642980723
+      ],
+      "desktopInferenceMs": 6.623958994168788
+    },
+    {
+      "image": "cafe-cheek-rest",
+      "preprocessing": "current_bgr_raw",
+      "personScore": 0.9198640584945679,
+      "personBox": [
+        110.4278264595912,
+        192.3096529887273,
+        881.899044568722,
+        1313.73060131073
+      ],
+      "desktopInferenceMs": 6.682042003376409
+    },
+    {
+      "image": "green-tree-lean",
+      "preprocessing": "release_rgb_normalized",
+      "personScore": 0.0006545166834257543,
+      "personBox": [
+        794.6233451549824,
+        809.3024362417368,
+        1552.8275937300461,
+        2345.3451602642353
+      ],
+      "desktopInferenceMs": 6.4871249996940605
+    },
+    {
+      "image": "green-tree-lean",
+      "preprocessing": "current_bgr_raw",
+      "personScore": 0.9180999398231506,
+      "personBox": [
+        86.05923524269691,
+        416.5547073437617,
+        474.954217507289,
+        1524.1248379120461
+      ],
+      "desktopInferenceMs": 6.581500005268026
+    },
+    {
+      "image": "urban-crosswalk-step",
+      "preprocessing": "release_rgb_normalized",
+      "personScore": 0.0006212751613929868,
+      "personBox": [
+        17.163865089416504,
+        702.9079652932974,
+        914.288174042335,
+        1491.5527230776274
+      ],
+      "desktopInferenceMs": 6.296874998952262
+    },
+    {
+      "image": "urban-crosswalk-step",
+      "preprocessing": "current_bgr_raw",
+      "personScore": 0.8721177577972412,
+      "personBox": [
+        213.56771538807797,
+        520.4271701666025,
+        541.2386377407954,
+        1411.301666039687
+      ],
+      "desktopInferenceMs": 6.5638750020298176
+    }
+  ]
+}
