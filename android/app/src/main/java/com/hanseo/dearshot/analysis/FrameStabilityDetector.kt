@@ -11,6 +11,7 @@ data class FrameStability(
     val stableDurationMs: Long,
     val isStable: Boolean,
     val rawDifference: Float? = null,
+    val hasLargeMovement: Boolean = false,
 )
 
 /**
@@ -24,19 +25,25 @@ class FrameStabilityDetector(
     private val requiredStableDurationMs: Long = 1_000L,
     private val maximumFrameGapMs: Long = 750L,
     private val maximumBrightnessShift: Float = 0.15f,
+    private val largeMovementThreshold: Float = 0.10f,
 ) {
     init {
         require(differenceThreshold in 0f..1f)
         require(requiredStableDurationMs > 0)
         require(maximumFrameGapMs > 0)
         require(maximumBrightnessShift in 0f..1f)
+        require(largeMovementThreshold > differenceThreshold && largeMovementThreshold <= 1f)
     }
 
     private var previousLuminance: FloatArray? = null
     private var previousTimestampMs: Long? = null
 
-    private var stableSinceMs: Long? = null
-    private var stableReference: FloatArray? = null
+    private data class Sample(
+        val startedAtMs: Long,
+        val isQuiet: Boolean,
+        val reference: FloatArray,
+    )
+    private val samples = ArrayDeque<Sample>()
 
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
@@ -65,8 +72,7 @@ class FrameStabilityDetector(
             capturedAtMs <= previousTime ||
             capturedAtMs - previousTime > maximumFrameGapMs
         ) {
-            stableSinceMs = null
-            stableReference = null
+            samples.clear()
 
             return FrameStability(
                 difference = null,
@@ -80,8 +86,9 @@ class FrameStabilityDetector(
             previous.average().toFloat()
 
         // 자동 노출처럼 화면 전체에 공통으로 더해진 밝기 변화만 보정한다.
-        // 안정 구간 시작 프레임과도 비교해 작은 이동의 누적을 막는다.
-        val reference = stableReference ?: previous
+        // 최근 비교 구간의 시작 프레임과도 비교해 누적된 큰 이동을 확인한다.
+        if (samples.size == WINDOW_SIZE) samples.removeFirst()
+        val reference = samples.firstOrNull()?.reference ?: previous
         val referenceShift = currentLuminance.average().toFloat() -
             reference.average().toFloat()
         val difference = maxOf(
@@ -90,33 +97,36 @@ class FrameStabilityDetector(
         )
 
         if (
-            difference > differenceThreshold ||
+            difference > largeMovementThreshold ||
             kotlin.math.abs(brightnessShift) > maximumBrightnessShift ||
             kotlin.math.abs(referenceShift) > maximumBrightnessShift
         ) {
-            stableSinceMs = null
-            stableReference = null
+            samples.clear()
             return FrameStability(
                 difference = difference,
                 stableDurationMs = 0L,
                 isStable = false,
                 rawDifference = rawDifference,
+                hasLargeMovement = true,
             )
         }
 
-        if (stableReference == null) stableReference = previous
-
-        val stableSince = stableSinceMs
-            ?: previousTime.also {
-                stableSinceMs = it
-            }
-
-        val duration = capturedAtMs - stableSince
+        samples.addLast(
+            Sample(
+                startedAtMs = previousTime,
+                isQuiet = meanDifference(currentLuminance, previous, brightnessShift) <= differenceThreshold,
+                reference = previous,
+            )
+        )
+        val duration = capturedAtMs - samples.first().startedAtMs
+        val stable = samples.size == WINDOW_SIZE &&
+            samples.count { it.isQuiet } >= REQUIRED_QUIET_SAMPLES &&
+            duration >= requiredStableDurationMs
 
         return FrameStability(
             difference = difference,
             stableDurationMs = duration,
-            isStable = duration >= requiredStableDurationMs,
+            isStable = stable,
             rawDifference = rawDifference,
         )
     }
@@ -124,8 +134,7 @@ class FrameStabilityDetector(
     fun reset() {
         previousLuminance = null
         previousTimestampMs = null
-        stableSinceMs = null
-        stableReference = null
+        samples.clear()
     }
 
     private fun meanDifference(
@@ -192,5 +201,7 @@ class FrameStabilityDetector(
 
     private companion object {
         const val SAMPLE_SIZE = 32
+        const val WINDOW_SIZE = 4
+        const val REQUIRED_QUIET_SAMPLES = 3
     }
 }

@@ -11,30 +11,25 @@ import com.hanseo.dearshot.analysis.scene.Places365Classifier
 import com.hanseo.dearshot.analysis.scene.SceneClassification
 import java.io.Closeable
 import java.util.Locale
-import com.hanseo.dearshot.analysis.detection.YoloxDetector
 import com.hanseo.dearshot.analysis.scene.AppSceneMapper
 import com.hanseo.dearshot.analysis.recommendation.RecommendationCoordinator
+import com.hanseo.dearshot.camera.motion.CameraMotionState
 
 class FrameAnalyzer(
     context: Context,
     private val bitmapConverter: FrameBitmapConverter,
     private val debugFrameWriter: DebugFrameWriter,
 
-    // 두 콜백 모두 분석 스레드에서 호출된다.
+    private val motionStateProvider: () -> CameraMotionState,
+
+    // 분석 스레드에서 호출된다.
     private val onSceneAnalyzed: (SceneClassification) -> Unit = {},
-    private val onPersonAnalyzed: (PersonPresence) -> Unit = {},
 ) : ImageAnalysis.Analyzer, Closeable {
 
     private val appContext = context.applicationContext
 
     // 첫 분석 시 분석 스레드에서 생성한다.
     private var classifier: Places365Classifier? = null
-
-    private var objectDetector: YoloxDetector? = null
-
-    private var lastPersonAnalyzedAt: Long? = null
-
-    private val stabilityDetector = FrameStabilityDetector()
 
     private var lastSceneAnalyzedAt: Long? = null
 
@@ -67,86 +62,10 @@ class FrameAnalyzer(
             val bitmap = bitmapConverter.convert(image)
 
             try {
-                // 화면 변화는 약 250ms마다 확인한다.
-                val stability = stabilityDetector.analyze(
-                    bitmap = bitmap,
-                    capturedAtMs = now,
-                )
-
-                if (!stability.isStable) {
-                    recommendationCoordinator.onScreenUnstable()
-                }
-
-                if (BuildConfig.DEBUG) {
-                    val differenceText = stability.difference?.let {
-                        String.format(Locale.US, "%.4f", it)
-                    } ?: "first"
-
-                    Log.d(
-                        TAG,
-                        "Stability: difference=$differenceText, " +
-                                "raw=${stability.rawDifference}, " +
-                                "duration=${stability.stableDurationMs}ms, " +
-                                "stable=${stability.isStable}",
-                    )
-                }
-
                 saveDebugFrameIfNeeded(bitmap)
 
                 // 장소 분석은 별도로 약 1초마다 실행한다.
                 val previousSceneTime = lastSceneAnalyzedAt
-
-                // 사람 유무는 별도로 약 500ms마다 확인한다.
-                val previousPersonTime = lastPersonAnalyzedAt
-
-                val shouldAnalyzePerson =
-                    previousPersonTime == null ||
-                            now - previousPersonTime >= PERSON_INTERVAL_MS
-
-                if (shouldAnalyzePerson) {
-                    lastPersonAnalyzedAt = now
-
-                    try {
-                        val detector = objectDetector
-                            ?: YoloxDetector(appContext).also {
-                                objectDetector = it
-                            }
-
-                        val detection = detector.detect(bitmap)
-
-                        val presence = PersonPresence(
-                            hasPerson = detection.objects.any {
-                                it.classIndex == PERSON_CLASS_INDEX
-                            },
-                            analyzedAtMs = now,
-                        )
-
-                        if (BuildConfig.DEBUG) {
-                            val processingTime = String.format(
-                                Locale.US,
-                                "%.1f",
-                                detection.processingTimeMs,
-                            )
-
-                            Log.d(
-                                TAG,
-                                "YOLOX: hasPerson=${presence.hasPerson}, " +
-                                        "processing=${processingTime}ms",
-                            )
-                        }
-
-                        recommendationCoordinator.updatePerson(presence)
-                        onPersonAnalyzed(presence)
-                    } catch (exception: Exception) {
-                        recommendationCoordinator.invalidatePerson()
-                        // 감지 실패를 '사람 없음'으로 전달하지 않는다.
-                        Log.e(
-                            TAG,
-                            "Failed to analyze person presence",
-                            exception,
-                        )
-                    }
-                }
 
                 val shouldAnalyzeScene =
                     previousSceneTime == null ||
@@ -193,10 +112,24 @@ class FrameAnalyzer(
                     onSceneAnalyzed(result)
                 }
 
+                // 모델 처리 중 움직였을 수 있으므로 최신 센서 상태를 읽는다.
+                val motion = motionStateProvider()
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        TAG,
+                        String.format(
+                            Locale.US,
+                            "Motion: status=%s, speed=%.4f rad/s, rotation=%.4f rad, window=%dms",
+                            motion.status,
+                            motion.averageAngularSpeed,
+                            motion.accumulatedRotation,
+                            motion.windowDurationMs,
+                        ),
+                    )
+                }
                 val ready = recommendationCoordinator.evaluate(
                     nowMs = SystemClock.elapsedRealtime(),
-                    isStable = stability.isStable,
-                    stabilityAnalyzedAtMs = now,
+                    motion = motion,
                 )
                 if (ready != null) {
                     Log.d(
@@ -211,7 +144,6 @@ class FrameAnalyzer(
         } catch (exception: Exception) {
             // 프레임 변환이나 장소 분석이 실패하면 이전 판단을 무효화한다.
             recommendationCoordinator.onScreenUnstable()
-            stabilityDetector.reset()
             Log.e(
                 TAG,
                 "Failed to analyze camera frame",
@@ -290,13 +222,7 @@ class FrameAnalyzer(
         } finally {
             classifier = null
 
-            try {
-                objectDetector?.close()
-            } finally {
-                objectDetector = null
-                stabilityDetector.reset()
-                recommendationCoordinator.reset()
-            }
+            recommendationCoordinator.reset()
         }
     }
 
@@ -305,8 +231,5 @@ class FrameAnalyzer(
 
         const val FRAME_INTERVAL_MS = 250L
         const val SCENE_INTERVAL_MS = 1_000L
-        const val PERSON_INTERVAL_MS = 500L
-
-        const val PERSON_CLASS_INDEX = 0
     }
 }

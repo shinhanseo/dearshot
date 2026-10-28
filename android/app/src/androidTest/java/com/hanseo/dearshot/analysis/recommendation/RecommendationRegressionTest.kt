@@ -65,6 +65,31 @@ class RecommendationRegressionTest {
             try { assertFalse(detector.analyze(bitmap,i*250L).isStable) } finally { bitmap.recycle() }
         }
     }
+    @Test fun oneSmallMovementInFourSamplesIsAllowed() {
+        val detector = FrameStabilityDetector()
+        for ((index, shift) in listOf(0, 0, 0, 1, 1).withIndex()) {
+            val bitmap = pattern(shift = shift)
+            try {
+                val result = detector.analyze(bitmap, index * 250L)
+                assertFalse(result.hasLargeMovement)
+                if (index == 4) assertTrue(result.isStable)
+            } finally { bitmap.recycle() }
+        }
+    }
+    @Test fun largeMovementImmediatelyClearsStableWindow() {
+        val detector = FrameStabilityDetector()
+        for (index in 0..5) {
+            val bitmap = pattern(shift = if (index == 5) 8 else 0)
+            try {
+                val result = detector.analyze(bitmap, index * 250L)
+                if (index == 4) assertTrue(result.isStable)
+                if (index == 5) {
+                    assertTrue(result.hasLargeMovement)
+                    assertFalse(result.isStable)
+                }
+            } finally { bitmap.recycle() }
+        }
+    }
     @Test fun longGapResetsStableHistory() {
         val detector=FrameStabilityDetector(); val bitmap=pattern()
         try {
@@ -94,8 +119,7 @@ class RecommendationRegressionTest {
             var count=0
             for(i in 0..16) {
                 val now=i*250L; val state=stability.analyze(bitmap,now)
-                if(!state.isStable) coordinator.onScreenUnstable()
-                if(i%2==0) coordinator.updatePerson(PersonPresence(true,now))
+                if(state.hasLargeMovement) coordinator.onScreenUnstable()
                 if(i%4==0) coordinator.updateScene(mapped.scene,now)
                 if(coordinator.evaluate(now,state.isStable,now)!=null) count++
             }

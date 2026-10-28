@@ -26,11 +26,20 @@ import androidx.camera.core.CameraControl
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.MeteringPoint
 import java.util.concurrent.TimeUnit
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import com.hanseo.dearshot.camera.motion.CameraMotionMonitor
 
 class CameraSession(
     context: Context,
 ) {
     private val appContext = context.applicationContext
+
+    private val motionMonitor = CameraMotionMonitor(appContext)
+
+    private var motionLifecycleOwner: LifecycleOwner? = null
+
+    private var motionLifecycleObserver: DefaultLifecycleObserver? = null
 
     private val mainExecutor =
         ContextCompat.getMainExecutor(appContext)
@@ -122,6 +131,7 @@ class CameraSession(
                             context = appContext,
                             bitmapConverter = FrameBitmapConverter(),
                             debugFrameWriter = DebugFrameWriter(appContext),
+                            motionStateProvider = motionMonitor::currentState,
                         )
 
                         frameAnalyzer = analyzer
@@ -157,6 +167,8 @@ class CameraSession(
 
                         boundCamera = camera
 
+                        attachMotionLifecycle(lifecycleOwner)
+
                         val observer = Observer<ZoomState> { zoom ->
                             onZoomChanged(
                                 CameraZoomInfo(
@@ -187,6 +199,65 @@ class CameraSession(
             },
             mainExecutor,
         )
+    }
+
+    @MainThread
+    private fun attachMotionLifecycle(
+        lifecycleOwner: LifecycleOwner,
+    ) {
+        detachMotionLifecycle()
+
+        if (
+            lifecycleOwner.lifecycle.currentState ==
+            Lifecycle.State.DESTROYED
+        ) {
+            return
+        }
+
+        val observer = object : DefaultLifecycleObserver {
+
+            override fun onResume(owner: LifecycleOwner) {
+                motionMonitor.start()
+
+                Log.d(
+                    "CameraMotion",
+                    "Motion monitoring started",
+                )
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                motionMonitor.stop()
+
+                Log.d(
+                    "CameraMotion",
+                    "Motion monitoring stopped",
+                )
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                detachMotionLifecycle()
+            }
+        }
+
+        motionLifecycleOwner = lifecycleOwner
+        motionLifecycleObserver = observer
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+    }
+
+    @MainThread
+    private fun detachMotionLifecycle() {
+        val owner = motionLifecycleOwner
+        val observer = motionLifecycleObserver
+
+        motionLifecycleOwner = null
+        motionLifecycleObserver = null
+
+        if (owner != null && observer != null) {
+            owner.lifecycle.removeObserver(observer)
+        }
+
+        motionMonitor.stop()
     }
 
     @MainThread
@@ -387,6 +458,8 @@ class CameraSession(
     @MainThread
     fun stop() {
         connectionVersion += 1
+
+        detachMotionLifecycle()
 
         val currentProvider = cameraProvider
         val currentPreview = preview
