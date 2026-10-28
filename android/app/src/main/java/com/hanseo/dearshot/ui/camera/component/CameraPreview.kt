@@ -1,8 +1,10 @@
 package com.hanseo.dearshot.ui.camera.component
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.ScaleGestureDetector
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,8 @@ import com.hanseo.dearshot.camera.CameraSession
 import androidx.compose.runtime.rememberUpdatedState
 import com.hanseo.dearshot.camera.CameraLens
 import com.hanseo.dearshot.camera.CameraZoomInfo
+import android.view.GestureDetector
+import android.view.MotionEvent
 
 @Composable
 fun CameraPreview(
@@ -28,6 +32,7 @@ fun CameraPreview(
     lens: CameraLens,
     onConnectionChanged: (Boolean, Boolean, Boolean) -> Unit,
     onZoomChanged: (CameraZoomInfo?) -> Unit,
+    focusEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -39,6 +44,10 @@ fun CameraPreview(
 
     val currentOnZoomChanged by rememberUpdatedState(
         onZoomChanged
+    )
+
+    val currentFocusEnabled by rememberUpdatedState(
+        focusEnabled
     )
 
     val previewView = remember(context) {
@@ -146,6 +155,85 @@ fun CameraPreview(
 
             cameraSession.stop()
             currentOnConnectionChanged(false, false, false)
+        }
+    }
+
+    DisposableEffect(previewView, cameraSession) {
+        var hadMultiplePointers = false
+
+        val scaleDetector = ScaleGestureDetector(
+            context,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScaleBegin(
+                    detector: ScaleGestureDetector,
+                ): Boolean = currentFocusEnabled
+
+                override fun onScale(
+                    detector: ScaleGestureDetector,
+                ): Boolean {
+                    if (!currentFocusEnabled) return false
+
+                    cameraSession.zoomBy(detector.scaleFactor)
+                    return true
+                }
+            },
+        )
+
+        val tapDetector = GestureDetector(
+            context,
+            object : GestureDetector.SimpleOnGestureListener() {
+
+                override fun onDown(
+                    event: MotionEvent,
+                ): Boolean {
+                    return true
+                }
+
+                override fun onSingleTapUp(
+                    event: MotionEvent,
+                ): Boolean {
+                    if (!currentFocusEnabled || hadMultiplePointers) return false
+
+                    val point = previewView.meteringPointFactory
+                        .createPoint(
+                            event.x,
+                            event.y,
+                        )
+
+                    previewView.performClick()
+                    cameraSession.focusAt(point)
+
+                    return true
+                }
+            },
+        )
+
+        // 단일 탭의 performClick()은 위 제스처 콜백에서 호출한다.
+        @SuppressLint("ClickableViewAccessibility")
+        val touchListener = View.OnTouchListener { _, event ->
+            if (!currentFocusEnabled) {
+                false
+            } else {
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    hadMultiplePointers = false
+                }
+
+                if (event.pointerCount > 1) {
+                    hadMultiplePointers = true
+                }
+
+                scaleDetector.onTouchEvent(event)
+                tapDetector.onTouchEvent(event)
+
+                // DOWN부터 소비해서 후속 MOVE와 UP 이벤트도 받는다.
+                true
+            }
+        }
+
+        previewView.setOnTouchListener(touchListener)
+
+        onDispose {
+            previewView.setOnTouchListener(null)
         }
     }
 

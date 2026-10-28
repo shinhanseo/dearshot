@@ -22,6 +22,10 @@ import android.util.Log
 import androidx.camera.core.Camera
 import androidx.camera.core.ZoomState
 import androidx.lifecycle.Observer
+import androidx.camera.core.CameraControl
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.MeteringPoint
+import java.util.concurrent.TimeUnit
 
 class CameraSession(
     context: Context,
@@ -217,6 +221,70 @@ class CameraSession(
                             "Failed to apply zoom",
                             exception,
                         )
+                    }
+                }
+            },
+            mainExecutor,
+        )
+    }
+
+    @MainThread
+    fun zoomBy(scaleFactor: Float) {
+        if (!scaleFactor.isFinite() || scaleFactor <= 0f) return
+
+        val camera = boundCamera ?: return
+        val zoom = camera.cameraInfo.zoomState.value ?: return
+
+        setZoomRatio(zoom.zoomRatio * scaleFactor)
+    }
+
+    @MainThread
+    fun focusAt(point: MeteringPoint) {
+        val camera = boundCamera ?: return
+
+        val action = FocusMeteringAction.Builder(
+            point,
+            FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+        ).setAutoCancelDuration(3, TimeUnit.SECONDS)
+            .build()
+
+        if (!camera.cameraInfo.isFocusMeteringSupported(action)) {
+            Log.d(
+                "CameraFocus",
+                "Focus metering is not supported",
+            )
+            return
+        }
+
+        val requestedVersion = connectionVersion
+
+        val future = camera.cameraControl.startFocusAndMetering(
+            action
+        )
+
+        future.addListener(
+            {
+                if (requestedVersion == connectionVersion) {
+                    try {
+                        val result = future.get()
+
+                        Log.d(
+                            "CameraFocus",
+                            "Focus completed: ${result.isFocusSuccessful}",
+                        )
+                    } catch (exception: Exception) {
+                        // 다른 위치를 터치하거나 카메라가 닫히면
+                        // 이전 초점 요청은 취소될 수 있다.
+                        if (
+                            exception.cause !is
+                                    CameraControl.OperationCanceledException
+                        ) {
+                            Log.w(
+                                "CameraFocus",
+                                "Failed to focus",
+                                exception,
+                            )
+                        }
                     }
                 }
             },

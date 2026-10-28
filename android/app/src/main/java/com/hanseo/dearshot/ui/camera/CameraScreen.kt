@@ -63,6 +63,7 @@ fun CameraScreen(
                         onConnectionChanged =
                             cameraState::updateConnection,
                         onZoomChanged = cameraState::updateZoom,
+                        focusEnabled = cameraState.canCapture,
                         modifier = Modifier.fillMaxSize(),
                     )
 
