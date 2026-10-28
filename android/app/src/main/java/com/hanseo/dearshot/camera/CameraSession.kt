@@ -46,6 +46,8 @@ class CameraSession(
 
     private var analysisExecutor: ExecutorService? = null
 
+    private var frameAnalyzer: FrameAnalyzer? = null
+
     private var boundCamera: Camera? = null
     private var zoomObserver: Observer<ZoomState>? = null
 
@@ -116,12 +118,17 @@ class CameraSession(
 
                         imageAnalysis = analysisUseCase
 
+                        val analyzer = FrameAnalyzer(
+                            context = appContext,
+                            bitmapConverter = FrameBitmapConverter(),
+                            debugFrameWriter = DebugFrameWriter(appContext),
+                        )
+
+                        frameAnalyzer = analyzer
+
                         analysisUseCase.setAnalyzer(
                             executor,
-                            FrameAnalyzer(
-                                bitmapConverter = FrameBitmapConverter(),
-                                debugFrameWriter = DebugFrameWriter(appContext),
-                            ),
+                            analyzer,
                         )
 
                         val captureUseCase = ImageCapture.Builder()
@@ -411,8 +418,31 @@ class CameraSession(
         zoomObserver = null
         boundCamera = null
 
-        // 진행 중인 작업은 마치고 실행기를 종료한다.
-        analysisExecutor?.shutdown()
+        val executorToClose = analysisExecutor
+        val analyzerToClose = frameAnalyzer
+
+        frameAnalyzer = null
+
+        if (executorToClose != null) {
+            try {
+                // 같은 단일 실행기에 넣으므로,
+                // 진행 중인 프레임 분석 이후에 모델을 닫는다.
+                executorToClose.execute {
+                    try {
+                        analyzerToClose?.close()
+                    } catch (exception: Exception) {
+                        Log.w(
+                            "FrameAnalyzer",
+                            "Failed to close Places365 classifier",
+                            exception,
+                        )
+                    }
+                }
+            } finally {
+                // 이미 등록한 분석·정리 작업을 마친 뒤 종료한다.
+                executorToClose.shutdown()
+            }
+        }
 
         imageAnalysis = null
         preview = null
