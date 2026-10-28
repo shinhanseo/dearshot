@@ -26,6 +26,10 @@ class FrameAnalyzer(
     // 첫 분석 시 분석 스레드에서 생성한다.
     private var classifier: Places365Classifier? = null
 
+    private val stabilityDetector = FrameStabilityDetector()
+
+    private var lastSceneAnalyzedAt: Long? = null
+
     private var lastProcessedAt: Long? = null
     private var snapshotSaved = false
     private var closed = false
@@ -40,34 +44,61 @@ class FrameAnalyzer(
 
             if (
                 previous != null &&
-                now - previous < PROCESS_INTERVAL_MS
+                now - previous < FRAME_INTERVAL_MS
             ) {
                 return
             }
 
             lastProcessedAt = now
 
-            val sceneClassifier = classifier
-                ?: Places365Classifier(appContext).also {
-                    classifier = it
-                    it.logModelInfo()
-                }
-
-            // 기존 변환기의 크롭·회전 처리를 그대로 사용한다.
             val bitmap = bitmapConverter.convert(image)
 
             try {
-                saveDebugFrameIfNeeded(bitmap)
-
-                val result = sceneClassifier.classify(
+                // 화면 변화는 약 250ms마다 확인한다.
+                val stability = stabilityDetector.analyze(
                     bitmap = bitmap,
-                    topK = 5,
+                    capturedAtMs = now,
                 )
 
-                logResult(result)
+                if (BuildConfig.DEBUG) {
+                    val differenceText = stability.difference?.let {
+                        String.format(Locale.US, "%.4f", it)
+                    } ?: "first"
 
-                // Bitmap 대신 분석 결과만 외부로 전달한다.
-                onSceneAnalyzed(result)
+                    Log.d(
+                        TAG,
+                        "Stability: difference=$differenceText, " +
+                                "duration=${stability.stableDurationMs}ms, " +
+                                "stable=${stability.isStable}",
+                    )
+                }
+
+                saveDebugFrameIfNeeded(bitmap)
+
+                // 장소 분석은 별도로 약 1초마다 실행한다.
+                val previousSceneTime = lastSceneAnalyzedAt
+
+                val shouldAnalyzeScene =
+                    previousSceneTime == null ||
+                            now - previousSceneTime >= SCENE_INTERVAL_MS
+
+                if (shouldAnalyzeScene) {
+                    lastSceneAnalyzedAt = now
+
+                    val sceneClassifier = classifier
+                        ?: Places365Classifier(appContext).also {
+                            classifier = it
+                            it.logModelInfo()
+                        }
+
+                    val result = sceneClassifier.classify(
+                        bitmap = bitmap,
+                        topK = 5,
+                    )
+
+                    logResult(result)
+                    onSceneAnalyzed(result)
+                }
             } finally {
                 bitmap.recycle()
             }
@@ -78,7 +109,6 @@ class FrameAnalyzer(
                 exception,
             )
         } finally {
-            // 건너뛴 프레임이나 실패한 프레임도 반드시 반환한다.
             image.close()
         }
     }
@@ -156,7 +186,7 @@ class FrameAnalyzer(
     private companion object {
         const val TAG = "FrameAnalyzer"
 
-        // 지금은 실제 장소 결과를 확인하기 위한 초기 실행 간격.
-        const val PROCESS_INTERVAL_MS = 1_000L
+        const val FRAME_INTERVAL_MS = 250L
+        const val SCENE_INTERVAL_MS = 1_000L
     }
 }
