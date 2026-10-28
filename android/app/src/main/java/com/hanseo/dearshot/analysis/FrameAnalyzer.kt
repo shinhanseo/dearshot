@@ -11,20 +11,26 @@ import com.hanseo.dearshot.analysis.scene.Places365Classifier
 import com.hanseo.dearshot.analysis.scene.SceneClassification
 import java.io.Closeable
 import java.util.Locale
+import com.hanseo.dearshot.analysis.detection.YoloxDetector
 
 class FrameAnalyzer(
     context: Context,
     private val bitmapConverter: FrameBitmapConverter,
     private val debugFrameWriter: DebugFrameWriter,
 
-    // 분석 스레드에서 호출된다.
+    // 두 콜백 모두 분석 스레드에서 호출된다.
     private val onSceneAnalyzed: (SceneClassification) -> Unit = {},
+    private val onPersonAnalyzed: (PersonPresence) -> Unit = {},
 ) : ImageAnalysis.Analyzer, Closeable {
 
     private val appContext = context.applicationContext
 
     // 첫 분석 시 분석 스레드에서 생성한다.
     private var classifier: Places365Classifier? = null
+
+    private var objectDetector: YoloxDetector? = null
+
+    private var lastPersonAnalyzedAt: Long? = null
 
     private val stabilityDetector = FrameStabilityDetector()
 
@@ -77,6 +83,56 @@ class FrameAnalyzer(
 
                 // 장소 분석은 별도로 약 1초마다 실행한다.
                 val previousSceneTime = lastSceneAnalyzedAt
+
+                // 사람 유무는 별도로 약 500ms마다 확인한다.
+                val previousPersonTime = lastPersonAnalyzedAt
+
+                val shouldAnalyzePerson =
+                    previousPersonTime == null ||
+                            now - previousPersonTime >= PERSON_INTERVAL_MS
+
+                if (shouldAnalyzePerson) {
+                    lastPersonAnalyzedAt = now
+
+                    try {
+                        val detector = objectDetector
+                            ?: YoloxDetector(appContext).also {
+                                objectDetector = it
+                            }
+
+                        val detection = detector.detect(bitmap)
+
+                        val presence = PersonPresence(
+                            hasPerson = detection.objects.any {
+                                it.classIndex == PERSON_CLASS_INDEX
+                            },
+                            analyzedAtMs = now,
+                        )
+
+                        if (BuildConfig.DEBUG) {
+                            val processingTime = String.format(
+                                Locale.US,
+                                "%.1f",
+                                detection.processingTimeMs,
+                            )
+
+                            Log.d(
+                                TAG,
+                                "YOLOX: hasPerson=${presence.hasPerson}, " +
+                                        "processing=${processingTime}ms",
+                            )
+                        }
+
+                        onPersonAnalyzed(presence)
+                    } catch (exception: Exception) {
+                        // 감지 실패를 '사람 없음'으로 전달하지 않는다.
+                        Log.e(
+                            TAG,
+                            "Failed to analyze person presence",
+                            exception,
+                        )
+                    }
+                }
 
                 val shouldAnalyzeScene =
                     previousSceneTime == null ||
@@ -180,6 +236,13 @@ class FrameAnalyzer(
             classifier?.close()
         } finally {
             classifier = null
+
+            try {
+                objectDetector?.close()
+            } finally {
+                objectDetector = null
+                stabilityDetector.reset()
+            }
         }
     }
 
@@ -188,5 +251,8 @@ class FrameAnalyzer(
 
         const val FRAME_INTERVAL_MS = 250L
         const val SCENE_INTERVAL_MS = 1_000L
+        const val PERSON_INTERVAL_MS = 500L
+
+        const val PERSON_CLASS_INDEX = 0
     }
 }
