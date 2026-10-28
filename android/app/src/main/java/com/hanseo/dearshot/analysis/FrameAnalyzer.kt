@@ -12,6 +12,7 @@ import com.hanseo.dearshot.analysis.scene.SceneClassification
 import java.io.Closeable
 import java.util.Locale
 import com.hanseo.dearshot.analysis.detection.YoloxDetector
+import com.hanseo.dearshot.analysis.scene.AppSceneMapper
 
 class FrameAnalyzer(
     context: Context,
@@ -37,6 +38,9 @@ class FrameAnalyzer(
     private var lastSceneAnalyzedAt: Long? = null
 
     private var lastProcessedAt: Long? = null
+
+    private val sceneMapper = AppSceneMapper()
+
     private var snapshotSaved = false
     private var closed = false
 
@@ -153,6 +157,25 @@ class FrameAnalyzer(
                     )
 
                     logResult(result)
+
+                    val appScene = sceneMapper.map(result)
+
+                    if (BuildConfig.DEBUG) {
+                        val scoreText = appScene.scores.joinToString(" | ") {
+                            String.format(
+                                Locale.US,
+                                "%s=%.1f%%",
+                                it.scene.name,
+                                it.score * 100f,
+                            )
+                        }
+
+                        Log.d(
+                            TAG,
+                            "AppScene: ${appScene.scene}, $scoreText",
+                        )
+                    }
+
                     onSceneAnalyzed(result)
                 }
             } finally {
