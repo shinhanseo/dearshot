@@ -36,11 +36,10 @@ fun CameraScreen(
             CameraTopBar(
                 placeName = null,
                 templateName = null,
-                flashEnabled = false,
-                flashAvailable = false,
-                onFlashChange = {
-                    // 촬영용 플래시 기능 연결 예정
-                },
+                flashEnabled = cameraState.flashEnabled,
+                flashAvailable =
+                    permissionState.isGranted && cameraState.canChangeFlash,
+                onFlashChange = cameraState::changeFlash,
                 onCompositionClick = onOpenTemplates,
                 onMyPageClick = {
                     // 마이페이지 이동 연결 예정

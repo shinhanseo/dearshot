@@ -47,7 +47,7 @@ class CameraSession(
         surfaceProvider: Preview.SurfaceProvider,
         viewPort: ViewPort,
         lens: CameraLens,
-        onBound: (Boolean) -> Unit,
+        onBound: (Boolean, Boolean) -> Unit,
         onError: (Exception) -> Unit,
     ) {
         stop()
@@ -130,13 +130,17 @@ class CameraSession(
                             .addUseCase(captureUseCase)
                             .build()
 
-                        provider.bindToLifecycle(
+                        val camera = provider.bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
                             useCaseGroup,
                         )
 
-                        onBound(canSwitchCamera)
+                        onBound(
+                            canSwitchCamera,
+                            camera.cameraInfo.hasFlashUnit(),
+                        )
+
                     } catch (exception: Exception) {
                         stop()
                         onError(exception)
@@ -145,6 +149,15 @@ class CameraSession(
             },
             mainExecutor,
         )
+    }
+
+    @MainThread
+    fun setFlashEnabled(enabled: Boolean) {
+        imageCapture?.flashMode = if (enabled) {
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            ImageCapture.FLASH_MODE_OFF
+        }
     }
 
     @MainThread

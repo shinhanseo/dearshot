@@ -25,7 +25,7 @@ import com.hanseo.dearshot.camera.CameraLens
 fun CameraPreview(
     cameraSession: CameraSession,
     lens: CameraLens,
-    onConnectionChanged: (Boolean, Boolean) -> Unit,
+    onConnectionChanged: (Boolean, Boolean, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -85,17 +85,18 @@ fun CameraPreview(
             lastGeometry = geometry
             hasError = false
 
-            currentOnConnectionChanged(false, false)
+            currentOnConnectionChanged(false, false, false)
 
             cameraSession.start(
                 lifecycleOwner = lifecycleOwner,
                 surfaceProvider = previewView.surfaceProvider,
                 viewPort = viewPort,
                 lens = lens,
-                onBound = { canSwitchCamera ->
+                onBound = { canSwitchCamera, hasFlashUnit ->
                     currentOnConnectionChanged(
                         true,
                         canSwitchCamera,
+                        hasFlashUnit,
                     )
                 },
                 onError = { exception ->
@@ -105,7 +106,7 @@ fun CameraPreview(
                         exception,
                     )
 
-                    currentOnConnectionChanged(false, false)
+                    currentOnConnectionChanged(false, false, false)
                     hasError = true
                 },
             )
@@ -135,7 +136,7 @@ fun CameraPreview(
             )
 
             cameraSession.stop()
-            currentOnConnectionChanged(false, false)
+            currentOnConnectionChanged(false, false, false)
         }
     }
 

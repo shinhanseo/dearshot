@@ -37,6 +37,11 @@ class CameraScreenState(
 
     private var supportsSwitching by mutableStateOf(false)
 
+    private var supportsFlash by mutableStateOf(false)
+
+    var flashEnabled by mutableStateOf(false)
+        private set
+
     var isCapturing by mutableStateOf(false)
         private set
 
@@ -54,13 +59,34 @@ class CameraScreenState(
     val canSwitchCamera: Boolean
         get() = isBound && supportsSwitching && !isCapturing
 
+    val canChangeFlash: Boolean
+        get() = isBound && supportsFlash && !isCapturing
+
     @MainThread
     fun updateConnection(
         bound: Boolean,
         canSwitch: Boolean,
+        hasFlash: Boolean
     ) {
         isBound = bound
         supportsSwitching = bound && canSwitch
+        supportsFlash = bound && hasFlash
+
+        if (bound) {
+            if (!hasFlash) {
+                flashEnabled = false
+            }
+
+            session.setFlashEnabled(flashEnabled)
+        }
+    }
+
+    @MainThread
+    fun changeFlash(enabled: Boolean) {
+        if (!canChangeFlash) return
+
+        session.setFlashEnabled(enabled)
+        flashEnabled = enabled
     }
 
     @MainThread
@@ -70,6 +96,7 @@ class CameraScreenState(
         updateConnection(
             bound = false,
             canSwitch = false,
+            hasFlash = false
         )
 
         lensState.value = selectedLens.opposite()
