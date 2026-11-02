@@ -11,6 +11,8 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.TensorInfo
 import java.io.Closeable
 import kotlinx.serialization.json.Json
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
 data class ObjectDetection(
     val objects: List<DetectedObject>,
@@ -19,8 +21,8 @@ data class ObjectDetection(
     val processingTimeMs: Double,
 )
 
-class YoloxDetector @WorkerThread constructor(
-    context: Context,
+class YoloxDetector @Inject @WorkerThread constructor(
+    @ApplicationContext context: Context,
 ) : Closeable {
 
     private val environment = OrtEnvironment.getEnvironment()

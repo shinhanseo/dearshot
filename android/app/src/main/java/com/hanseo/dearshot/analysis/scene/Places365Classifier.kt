@@ -13,9 +13,11 @@ import android.graphics.Bitmap
 import android.os.SystemClock
 import ai.onnxruntime.OnnxTensor
 import kotlin.math.exp
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class Places365Classifier @WorkerThread constructor(
-    context: Context,
+class Places365Classifier @Inject @WorkerThread constructor(
+    @ApplicationContext context: Context,
 ) : Closeable {
 
     private val environment = OrtEnvironment.getEnvironment()
