@@ -1,6 +1,11 @@
 package com.hanseo.dearshot.camera
 
 import com.hanseo.dearshot.analysis.detection.ObjectDetection
+import com.hanseo.dearshot.analysis.CameraAnalysisSession
+import com.hanseo.dearshot.analysis.recommendation.RecommendationSnapshot
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Provider
 import android.content.Context
 import androidx.annotation.MainThread
 import androidx.camera.core.CameraSelector
@@ -32,8 +37,9 @@ import androidx.lifecycle.Lifecycle
 import com.hanseo.dearshot.camera.motion.CameraMotionMonitor
 import com.hanseo.dearshot.analysis.scene.SceneClassification
 
-class CameraSession(
-    context: Context,
+class CameraSession @Inject constructor(
+    @ApplicationContext context: Context,
+    private val analysisSessionProvider: Provider<CameraAnalysisSession>,
 ) {
     private val appContext = context.applicationContext
 
@@ -76,6 +82,8 @@ class CameraSession(
         onError: (Exception) -> Unit,
         onSceneAnalyzed: (SceneClassification) -> Unit = {},
         onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
+        onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
+        onRecommendationSnapshotFailed: (Exception) -> Unit = {},
     ) {
         stop()
 
@@ -132,10 +140,24 @@ class CameraSession(
                         imageAnalysis = analysisUseCase
 
                         val analyzer = FrameAnalyzer(
-                            context = appContext,
+                            analysisSession = analysisSessionProvider.get(),
                             bitmapConverter = FrameBitmapConverter(),
                             debugFrameWriter = DebugFrameWriter(appContext),
                             motionStateProvider = motionMonitor::currentState,
+                            onRecommendationSnapshot = { snapshot ->
+                                mainExecutor.execute {
+                                    if (requestedVersion == connectionVersion &&
+                                        lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                                    ) onRecommendationSnapshot(snapshot)
+                                }
+                            },
+                            onRecommendationSnapshotFailed = { exception ->
+                                mainExecutor.execute {
+                                    if (requestedVersion == connectionVersion &&
+                                        lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                                    ) onRecommendationSnapshotFailed(exception)
+                                }
+                            },
                             onObjectsAnalyzed = { result ->
                                 mainExecutor.execute {
                                     if (

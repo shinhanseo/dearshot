@@ -1,24 +1,23 @@
 package com.hanseo.dearshot.analysis
 
-import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.WorkerThread
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.hanseo.dearshot.BuildConfig
-import com.hanseo.dearshot.analysis.scene.Places365Classifier
 import com.hanseo.dearshot.analysis.scene.SceneClassification
 import java.io.Closeable
 import java.util.Locale
+import java.time.Instant
+import com.hanseo.dearshot.analysis.recommendation.RecommendationSnapshot
 import com.hanseo.dearshot.analysis.scene.AppSceneMapper
 import com.hanseo.dearshot.analysis.recommendation.RecommendationCoordinator
 import com.hanseo.dearshot.camera.motion.CameraMotionState
 import com.hanseo.dearshot.analysis.detection.ObjectDetection
-import com.hanseo.dearshot.analysis.detection.YoloxDetector
 
 class FrameAnalyzer(
-    context: Context,
+    private val analysisSession: CameraAnalysisSession,
     private val bitmapConverter: FrameBitmapConverter,
     private val debugFrameWriter: DebugFrameWriter,
 
@@ -27,14 +26,10 @@ class FrameAnalyzer(
     // 분석 스레드에서 호출된다.
     private val onSceneAnalyzed: (SceneClassification) -> Unit = {},
     private val onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
+    private val onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
+    private val onRecommendationSnapshotFailed: (Exception) -> Unit = {},
 ) : ImageAnalysis.Analyzer, Closeable {
 
-    private val appContext = context.applicationContext
-
-    // 첫 분석 시 분석 스레드에서 생성한다.
-    private var classifier: Places365Classifier? = null
-
-    private var objectDetector: YoloxDetector? = null
     private var lastObjectsAnalyzedAt: Long? = null
 
     private var lastSceneAnalyzedAt: Long? = null
@@ -65,6 +60,7 @@ class FrameAnalyzer(
 
             lastProcessedAt = now
 
+            val frameSelectedAt = Instant.now().toString()
             val bitmap = bitmapConverter.convert(image)
 
             try {
@@ -74,10 +70,7 @@ class FrameAnalyzer(
                 if (previousObjectsTime == null || now - previousObjectsTime >= OBJECT_INTERVAL_MS) {
                     lastObjectsAnalyzedAt = now
                     val detection = try {
-                        val detector = objectDetector ?: YoloxDetector(appContext).also {
-                            objectDetector = it
-                        }
-                        detector.detect(bitmap)
+                        analysisSession.detect(bitmap)
                     } catch (exception: Exception) {
                         Log.e(TAG, "Failed to analyze objects", exception)
                         null
@@ -99,16 +92,7 @@ class FrameAnalyzer(
                 if (shouldAnalyzeScene) {
                     lastSceneAnalyzedAt = now
 
-                    val sceneClassifier = classifier
-                        ?: Places365Classifier(appContext).also {
-                            classifier = it
-                            it.logModelInfo()
-                        }
-
-                    val result = sceneClassifier.classify(
-                        bitmap = bitmap,
-                        topK = 5,
-                    )
+                    val result = analysisSession.classify(bitmap = bitmap, topK = 5)
 
                     logResult(result)
 
@@ -162,6 +146,26 @@ class FrameAnalyzer(
                         "Recommendation ready: scene=${ready.scene}, " +
                             "time=${ready.decidedAtMs}",
                     )
+                    val snapshot = try {
+                        analysisSession.createSnapshot(
+                            bitmap = bitmap,
+                            capturedAt = frameSelectedAt,
+                            expectedScene = ready.scene,
+                        )
+                    } catch (exception: Exception) {
+                        Log.e(TAG, "Failed to prepare recommendation snapshot", exception)
+                        onRecommendationSnapshotFailed(exception)
+                        null
+                    }
+                    if (snapshot != null) {
+                        Log.d(
+                            TAG,
+                            "Recommendation snapshot ready: id=${snapshot.id}, " +
+                                "scene=${snapshot.scene}, size=${snapshot.imageWidth}x${snapshot.imageHeight}, " +
+                                "bytes=${snapshot.jpegBytes.size}, objects=${snapshot.objectDetection.objects.size}",
+                        )
+                        onRecommendationSnapshot(snapshot)
+                    }
                 }
             } finally {
                 bitmap.recycle()
@@ -243,16 +247,9 @@ class FrameAnalyzer(
         closed = true
 
         try {
-            classifier?.close()
+            analysisSession.close()
         } finally {
-            classifier = null
-
-            try {
-                objectDetector?.close()
-            } finally {
-                objectDetector = null
-                recommendationCoordinator.reset()
-            }
+            recommendationCoordinator.reset()
         }
     }
 

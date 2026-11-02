@@ -1,5 +1,6 @@
 package com.hanseo.dearshot.ui.camera
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.os.SystemClock
 import com.hanseo.dearshot.analysis.detection.ObjectDetection
 import kotlinx.coroutines.Job
@@ -296,7 +297,9 @@ class CameraScreenState(
 }
 
 @Composable
-fun rememberCameraScreenState(): CameraScreenState {
+fun rememberCameraScreenState(
+    dependencies: CameraDependenciesViewModel = hiltViewModel(),
+): CameraScreenState {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -304,9 +307,13 @@ fun rememberCameraScreenState(): CameraScreenState {
         mutableStateOf(CameraLens.BACK)
     }
 
-    return remember(context, scope, lensState) {
+    val session = remember(dependencies) {
+        dependencies.createCameraSession()
+    }
+
+    return remember(context, scope, lensState, session) {
         CameraScreenState(
-            session = CameraSession(context),
+            session = session,
             lensState = lensState,
             photoStore = CapturedPhotoStore(context),
             scope = scope,

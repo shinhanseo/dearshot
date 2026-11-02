@@ -3,6 +3,8 @@ package com.hanseo.dearshot.ui.camera
 import androidx.compose.runtime.mutableStateOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.hanseo.dearshot.analysis.CameraAnalysisSession
+import javax.inject.Provider
 import com.hanseo.dearshot.analysis.detection.*
 import com.hanseo.dearshot.analysis.scene.*
 import com.hanseo.dearshot.camera.*
@@ -24,7 +26,12 @@ class CameraAnalysisStateTest {
         instrumentation.runOnMainSync {
             val context = instrumentation.targetContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-            val state = CameraScreenState(CameraSession(context), mutableStateOf(CameraLens.BACK), CapturedPhotoStore(context),scope)
+            val state = CameraScreenState(CameraSession(context, Provider {
+                CameraAnalysisSession(
+                    Provider { error("UI state test must not load scene model") },
+                    Provider { error("UI state test must not load object model") },
+                )
+            }), mutableStateOf(CameraLens.BACK), CapturedPhotoStore(context),scope)
             try { state.updateConnection(true,false,false); block(state) } finally { scope.cancel() }
         }
     }
@@ -54,7 +61,12 @@ class CameraAnalysisStateTest {
         try {
             instrumentation.runOnMainSync {
                 val context=instrumentation.targetContext
-                state=CameraScreenState(CameraSession(context),mutableStateOf(CameraLens.BACK),CapturedPhotoStore(context),scope)
+                state=CameraScreenState(CameraSession(context, Provider {
+                CameraAnalysisSession(
+                    Provider { error("UI state test must not load scene model") },
+                    Provider { error("UI state test must not load object model") },
+                )
+            }),mutableStateOf(CameraLens.BACK),CapturedPhotoStore(context),scope)
                 state.updateConnection(true,false,false)
                 state.updateSceneAnalysis(scene())
                 state.updateObjectAnalysis(detection())
