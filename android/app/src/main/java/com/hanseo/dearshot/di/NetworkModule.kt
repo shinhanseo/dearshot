@@ -9,6 +9,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.hanseo.dearshot.data.remote.upload.UploadsApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -36,5 +37,13 @@ object NetworkModule {
         apiClient: ApiClient,
     ): SessionApi {
         return apiClient.create(SessionApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun providerUploadsApi(
+        apiClient: ApiClient,
+    ) : UploadsApi {
+        return apiClient.create(UploadsApi::class.java)
     }
 }
