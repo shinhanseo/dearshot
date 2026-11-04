@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
 import com.hanseo.dearshot.ui.camera.component.CameraSceneLabels
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun CameraScreen(
@@ -32,6 +33,8 @@ fun CameraScreen(
 ) {
     val permissionState = rememberCameraPermissionState()
     val cameraState = rememberCameraScreenState()
+
+    val recommendationViewModel: CameraRecommendationViewModel = hiltViewModel()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -69,6 +72,7 @@ fun CameraScreen(
                         onZoomChanged = cameraState::updateZoom,
                         onSceneAnalyzed = cameraState::updateSceneAnalysis,
                         onObjectsAnalyzed = cameraState::updateObjectAnalysis,
+                        onRecommendationSnapshot = recommendationViewModel::onSnapshotReady,
                         focusEnabled = cameraState.canCapture,
                         modifier = Modifier.fillMaxSize(),
                     )

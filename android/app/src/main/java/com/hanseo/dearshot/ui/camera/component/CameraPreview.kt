@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.delay
 import com.hanseo.dearshot.analysis.scene.SceneClassification
+import com.hanseo.dearshot.analysis.recommendation.RecommendationSnapshot
 
 @Composable
 fun CameraPreview(
@@ -42,6 +43,7 @@ fun CameraPreview(
     modifier: Modifier = Modifier,
     onSceneAnalyzed: (SceneClassification) -> Unit = {},
     onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
+    onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -63,6 +65,10 @@ fun CameraPreview(
     )
 
     val currentOnObjectsAnalyzed by rememberUpdatedState(onObjectsAnalyzed)
+
+    val currentOnRecommendationSnapshot by rememberUpdatedState(
+        onRecommendationSnapshot,
+    )
 
     val previewView = remember(context) {
         PreviewView(context).apply {
@@ -161,6 +167,9 @@ fun CameraPreview(
                 },
                 onSceneAnalyzed = { result ->
                     currentOnSceneAnalyzed(result)
+                },
+                onRecommendationSnapshot = { snapshot ->
+                    currentOnRecommendationSnapshot(snapshot)
                 },
             )
         }
