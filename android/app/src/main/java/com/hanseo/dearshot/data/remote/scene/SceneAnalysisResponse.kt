@@ -3,12 +3,12 @@ package com.hanseo.dearshot.data.remote.scene
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SceneAnalysisResponse(
+data class CreateSceneAnalysisResponse(
     val analysisId: String,
     val sceneRevision: Int,
     val status: String,
     val pollAfterMs: Long,
-    val expiresAt: String
+    val expiresAt: String,
 )
 
 @Serializable
@@ -16,11 +16,11 @@ data class SceneAnalysisStatusResponse(
     val analysisId: String,
     val sceneRevision: Int,
     val status: String,
-    val pollAfterMs: Long,
+    val pollAfterMs: Long?,
     val expiresAt: String,
-    val result: SceneAnalysisResult,
+    val result: SceneAnalysisResult?,
     val failureCode: String?,
-    val retryable: String?,
+    val retryable: Boolean?,
 )
 
 @Serializable
