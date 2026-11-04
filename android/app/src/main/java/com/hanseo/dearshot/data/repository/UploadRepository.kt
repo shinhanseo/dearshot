@@ -17,7 +17,7 @@ class UploadRepository @Inject constructor(
         snapshot: RecommendationSnapshot
     ) : ApiResult<UploadResponse> {
         val purpose = "SCENE_ANALYSIS".toRequestBody(
-            "text/plan".toMediaType()
+            "text/plain".toMediaType()
         )
 
         val imageBody = snapshot.jpegBytes.toRequestBody(
