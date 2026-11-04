@@ -1,6 +1,7 @@
 package com.hanseo.dearshot.ui.camera
 
 import com.hanseo.dearshot.ui.camera.component.CameraObjectOverlay
+import com.hanseo.dearshot.ui.camera.component.CameraTemplateOverlay
 import com.hanseo.dearshot.camera.CameraLens
 import com.hanseo.dearshot.BuildConfig
 import androidx.compose.foundation.layout.Column
@@ -101,6 +102,13 @@ fun CameraScreen(
                         focusEnabled = cameraState.canCapture,
                         modifier = Modifier.fillMaxSize(),
                     )
+
+                    recommendedTemplate?.let { template ->
+                        CameraTemplateOverlay(
+                            guide = template.guide,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                    }
 
                     if (BuildConfig.DEBUG) {
                         CameraObjectOverlay(
