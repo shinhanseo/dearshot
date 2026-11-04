@@ -92,6 +92,13 @@ class CameraScreenState(
     var photoCount by mutableStateOf(0)
         private set
 
+    var motionStatus by mutableStateOf(com.hanseo.dearshot.camera.motion.CameraMotionStatus.WARMING_UP)
+        private set
+
+    fun updateMotion(motion: com.hanseo.dearshot.camera.motion.CameraMotionState) {
+        motionStatus = motion.status
+    }
+
     var analysisUiState by mutableStateOf(CameraAnalysisUiState())
         private set
 
@@ -122,6 +129,7 @@ class CameraScreenState(
         supportsFlash = bound && hasFlash
 
         if (!bound) {
+            motionStatus = com.hanseo.dearshot.camera.motion.CameraMotionStatus.WARMING_UP
             zoomInfo = null
             objectExpiryJob?.cancel()
             objectExpiryJob = null

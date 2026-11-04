@@ -24,6 +24,7 @@ class FrameAnalyzer(
     private val motionStateProvider: () -> CameraMotionState,
 
     // 분석 스레드에서 호출된다.
+    private val onMotionChanged: (com.hanseo.dearshot.camera.motion.CameraMotionState) -> Unit = {},
     private val onSceneAnalyzed: (SceneClassification) -> Unit = {},
     private val onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
     private val onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
@@ -123,6 +124,10 @@ class FrameAnalyzer(
 
                 // 모델 처리 중 움직였을 수 있으므로 최신 센서 상태를 읽는다.
                 val motion = motionStateProvider()
+                onMotionChanged(motion)
+                if (motion.averageAngularSpeed >= 0.5 || motion.accumulatedRotation >= 0.2) {
+                    recommendationCoordinator.onScreenUnstable()
+                }
                 if (BuildConfig.DEBUG) {
                     Log.d(
                         TAG,

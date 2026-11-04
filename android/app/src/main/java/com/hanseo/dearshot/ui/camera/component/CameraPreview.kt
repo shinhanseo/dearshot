@@ -41,6 +41,7 @@ fun CameraPreview(
     onZoomChanged: (CameraZoomInfo?) -> Unit,
     focusEnabled: Boolean,
     modifier: Modifier = Modifier,
+    onMotionChanged: (com.hanseo.dearshot.camera.motion.CameraMotionState) -> Unit = {},
     onSceneAnalyzed: (SceneClassification) -> Unit = {},
     onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
     onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
@@ -64,6 +65,7 @@ fun CameraPreview(
         onSceneAnalyzed
     )
 
+    val currentOnMotionChanged by rememberUpdatedState(onMotionChanged)
     val currentOnObjectsAnalyzed by rememberUpdatedState(onObjectsAnalyzed)
 
     val currentOnRecommendationSnapshot by rememberUpdatedState(
@@ -165,6 +167,7 @@ fun CameraPreview(
                 onObjectsAnalyzed = { result ->
                     currentOnObjectsAnalyzed(result)
                 },
+                onMotionChanged = { currentOnMotionChanged(it) },
                 onSceneAnalyzed = { result ->
                     currentOnSceneAnalyzed(result)
                 },

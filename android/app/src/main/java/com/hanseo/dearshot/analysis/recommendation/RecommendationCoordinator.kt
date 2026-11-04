@@ -25,12 +25,23 @@ class RecommendationCoordinator(
     private var latestSceneAtMs: Long? = null
     private var sceneObservationCount = 0
     private var triggered = false
+    private var unknownObservations = 0
 
     fun updateScene(scene: AppScene, analyzedAtMs: Long) {
+        if (scene == AppScene.UNKNOWN) {
+            unknownObservations += 1
+            val previousTime = latestSceneAtMs
+            if (unknownObservations > 1 || previousTime == null ||
+                analyzedAtMs - previousTime !in 0L..2_600L
+            ) invalidateScene()
+            return
+        }
+        val allowedGap = if (unknownObservations == 1) 2_600L else sceneResultTtlMs
+        unknownObservations = 0
         val previousTime = latestSceneAtMs
         val isContinuous = previousTime != null &&
             analyzedAtMs > previousTime &&
-            analyzedAtMs - previousTime <= sceneResultTtlMs
+            analyzedAtMs - previousTime <= allowedGap
 
         sceneObservationCount = when {
             scene == AppScene.UNKNOWN -> 0
@@ -46,6 +57,7 @@ class RecommendationCoordinator(
         latestScene = AppScene.UNKNOWN
         latestSceneAtMs = null
         sceneObservationCount = 0
+        unknownObservations = 0
     }
 
     fun onScreenUnstable() {
@@ -68,7 +80,7 @@ class RecommendationCoordinator(
         isStable: Boolean,
         stabilityAnalyzedAtMs: Long,
     ): RecommendationReady? {
-        if (triggered || !isStable) return null
+        if (triggered || !isStable || unknownObservations > 0) return null
         if (!isFresh(nowMs, stabilityAnalyzedAtMs, stabilityResultTtlMs)) return null
 
         val sceneTime = latestSceneAtMs ?: return null

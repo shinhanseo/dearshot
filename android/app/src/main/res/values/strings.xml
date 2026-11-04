@@ -60,4 +60,20 @@
     <string name="camera_recommendation_manual">Choose a composition manually</string>
     <string name="camera_recommendation_failed">Couldn’t get a composition recommendation</string>
     <string name="camera_recommendation_timeout">The recommendation is taking longer than expected</string>
+    <string-array name="camera_scan_stages">
+        <item>Hold steady</item>
+        <item>Scene scan</item>
+        <item>Composition</item>
+    </string-array>
+
+    <string-array name="camera_scan_messages">
+        <item>Hold the camera steady</item>
+        <item>Checking the scene</item>
+        <item>Finding a composition for this scene</item>
+        <item>Your composition is ready</item>
+    </string-array>
+
+    <string name="camera_scan_manual_selection">Choose manually</string>
+    <string name="camera_scan_checking_place">Checking the shooting location</string>
+    <string name="camera_scan_sensor_unavailable">Motion sensor unavailable. Choose a composition manually</string>
 </resources>

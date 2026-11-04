@@ -80,6 +80,7 @@ class CameraSession @Inject constructor(
         onBound: (Boolean, Boolean) -> Unit,
         onZoomChanged: (CameraZoomInfo) -> Unit,
         onError: (Exception) -> Unit,
+        onMotionChanged: (com.hanseo.dearshot.camera.motion.CameraMotionState) -> Unit = {},
         onSceneAnalyzed: (SceneClassification) -> Unit = {},
         onObjectsAnalyzed: (ObjectDetection?) -> Unit = {},
         onRecommendationSnapshot: (RecommendationSnapshot) -> Unit = {},
@@ -144,6 +145,13 @@ class CameraSession @Inject constructor(
                             bitmapConverter = FrameBitmapConverter(),
                             debugFrameWriter = DebugFrameWriter(appContext),
                             motionStateProvider = motionMonitor::currentState,
+                            onMotionChanged = { motion ->
+                                mainExecutor.execute {
+                                    if (requestedVersion == connectionVersion &&
+                                        lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                                    ) onMotionChanged(motion)
+                                }
+                            },
                             onRecommendationSnapshot = { snapshot ->
                                 mainExecutor.execute {
                                     if (requestedVersion == connectionVersion &&

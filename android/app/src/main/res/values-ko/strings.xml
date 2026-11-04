@@ -60,4 +60,20 @@
     <string name="camera_recommendation_manual">구도를 직접 선택해 주세요</string>
     <string name="camera_recommendation_failed">구도 추천을 가져오지 못했어요</string>
     <string name="camera_recommendation_timeout">구도 추천에 시간이 더 걸리고 있어요</string>
+    <string-array name="camera_scan_stages">
+        <item>화면 안정</item>
+        <item>장면 인식</item>
+        <item>구도 추천</item>
+    </string-array>
+
+    <string-array name="camera_scan_messages">
+        <item>카메라를 잠시 고정해 주세요</item>
+        <item>장소와 주변 요소를 확인하고 있어요</item>
+        <item>이 장면에 어울리는 구도를 찾고 있어요</item>
+        <item>추천 구도가 준비됐어요</item>
+    </string-array>
+
+    <string name="camera_scan_manual_selection">직접 선택</string>
+    <string name="camera_scan_checking_place">촬영 장소를 확인하고 있어요</string>
+    <string name="camera_scan_sensor_unavailable">움직임 센서를 사용할 수 없어요. 구도를 직접 선택해 주세요</string>
 </resources>
