@@ -10,14 +10,16 @@ describe("Places365 scene mapping", () => {
         modelVersion: "1",
         runtime: "onnxruntime-android",
         candidates: [
-          { label: "Beach", confidence: 0.9 },
-          { label: "restaurant/patio", confidence: 0.7 },
-          { label: "unknown place", confidence: 0.6 },
+          { label: "Beach", confidence: 0.3 },
+          { label: "restaurant/patio", confidence: 0.2 },
+          { label: "forest/broadleaf", confidence: 0.2 },
+          { label: "building facade", confidence: 0.2 },
+          { label: "cafeteria", confidence: 0.1 },
         ],
       },
     });
 
-    assert.deepEqual([...mapped], ["beach", "dev-beach", "cafe"]);
+    assert.deepEqual([...mapped], ["waterfront", "cafe", "green-space", "urban-street"]);
   });
 
   it("treats missing on-device hints as an empty preference set", () => {
