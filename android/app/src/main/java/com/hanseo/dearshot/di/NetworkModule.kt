@@ -11,6 +11,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import com.hanseo.dearshot.data.remote.upload.UploadsApi
 import com.hanseo.dearshot.data.remote.scene.SceneAnalysisApi
+import com.hanseo.dearshot.data.remote.template.TemplateApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -53,4 +54,10 @@ object NetworkModule {
     fun provideSceneAnalysisApi(
         apiClient: ApiClient,
     ): SceneAnalysisApi = apiClient.create(SceneAnalysisApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideTemplateApi(
+        apiClient: ApiClient,
+    ): TemplateApi = apiClient.create(TemplateApi::class.java)
 }
