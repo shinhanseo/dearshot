@@ -24,6 +24,13 @@ import androidx.compose.ui.unit.dp
 import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
 import com.hanseo.dearshot.ui.camera.component.CameraSceneLabels
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import android.util.Log
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hanseo.dearshot.ui.camera.component.CameraRecommendationBanner
 
 @Composable
 fun CameraScreen(
@@ -35,6 +42,21 @@ fun CameraScreen(
     val cameraState = rememberCameraScreenState()
 
     val recommendationViewModel: CameraRecommendationViewModel = hiltViewModel()
+
+    val recommendationState by
+    recommendationViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(recommendationState) {
+        val finished = recommendationState as? CameraRecommendationUiState.Finished
+        if (BuildConfig.DEBUG && finished?.response?.status == "COMPLETED") {
+            finished.response.result?.recommendation?.template?.let { template ->
+                Log.d(
+                    "SceneRecommendation",
+                    "Recommended template id=${template.id}, version=${template.version}",
+                )
+            }
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -102,6 +124,13 @@ fun CameraScreen(
                                 .padding(bottom = 12.dp),
                         )
                     }
+
+                    CameraRecommendationBanner(
+                        state = recommendationState,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
                 }
             } else {
                 CameraPermissionContent(

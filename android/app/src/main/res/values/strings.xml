@@ -55,4 +55,9 @@
     <string name="camera_switch_lens">Switch camera</string>
     <string name="camera_capture_failed">Unable to take the photo. Please try again.</string>
     <string name="camera_capture_error_confirm">OK</string>
+    <string name="camera_recommendation_loading">Finding a composition…</string>
+    <string name="camera_recommendation_ready">Composition found</string>
+    <string name="camera_recommendation_manual">Choose a composition manually</string>
+    <string name="camera_recommendation_failed">Couldn’t get a composition recommendation</string>
+    <string name="camera_recommendation_timeout">The recommendation is taking longer than expected</string>
 </resources>
