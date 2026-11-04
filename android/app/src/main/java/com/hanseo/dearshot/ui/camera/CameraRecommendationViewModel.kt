@@ -15,13 +15,17 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.hanseo.dearshot.data.remote.ApiResult
+import com.hanseo.dearshot.data.remote.template.TemplateDetailResponse
+import com.hanseo.dearshot.data.repository.TemplateRepository
 
 sealed interface CameraRecommendationUiState {
     data object Idle: CameraRecommendationUiState
     data object Loading: CameraRecommendationUiState
 
     data class Finished(
-        val response: SceneAnalysisStatusResponse
+        val response: SceneAnalysisStatusResponse,
+        val template: TemplateDetailResponse? = null,
     ) : CameraRecommendationUiState
 
     data class RequestFailed(
@@ -36,7 +40,8 @@ sealed interface CameraRecommendationUiState {
 @HiltViewModel
 class CameraRecommendationViewModel @Inject constructor(
     private val requestRecommendation: RequestSceneRecommendationUseCase,
-    private val appInfoProvider: AppInfoProvider
+    private val appInfoProvider: AppInfoProvider,
+    private val templateRepository: TemplateRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<CameraRecommendationUiState>(
         CameraRecommendationUiState.Idle
@@ -61,11 +66,13 @@ class CameraRecommendationViewModel @Inject constructor(
         _uiState.value = CameraRecommendationUiState.Loading
 
         requestJob = viewModelScope.launch {
+            val locale = appInfoProvider.getLocale()
+
             val result = try {
                 requestRecommendation.request(
                     snapshot = snapshot,
                     sceneRevision = revision,
-                    locale = appInfoProvider.getLocale()
+                    locale = locale
                 )
             } catch (_: IllegalArgumentException) {
                 _uiState.value = CameraRecommendationUiState.RequestFailed(
@@ -75,12 +82,40 @@ class CameraRecommendationViewModel @Inject constructor(
             }
 
             _uiState.value = when (result) {
-                is SceneRecommendationResult.Finished -> CameraRecommendationUiState.Finished(result.response)
+                is SceneRecommendationResult.Finished -> resolveFinished(result.response, locale)
 
                 is SceneRecommendationResult.RequestFailed -> CameraRecommendationUiState.RequestFailed(result.error)
 
                 is SceneRecommendationResult.PollingTimedOut -> CameraRecommendationUiState.TimedOut(result.analysisId)
             }
+        }
+    }
+
+    private suspend fun resolveFinished(
+        response: SceneAnalysisStatusResponse,
+        locale: String,
+    ): CameraRecommendationUiState {
+        if (response.status != "COMPLETED") {
+            return CameraRecommendationUiState.Finished(response)
+        }
+
+        val templateRef = response.result?.recommendation?.template
+            ?: return CameraRecommendationUiState.RequestFailed(ApiFailure.Unexpected)
+
+        return when (
+            val detail = templateRepository.getDetail(
+                templateId = templateRef.id,
+                version = templateRef.version,
+                locale = locale,
+            )
+        ) {
+            is ApiResult.Success -> CameraRecommendationUiState.Finished(
+                response = response,
+                template = detail.data,
+            )
+
+            is ApiResult.Failure ->
+                CameraRecommendationUiState.RequestFailed(detail.error)
         }
     }
 }

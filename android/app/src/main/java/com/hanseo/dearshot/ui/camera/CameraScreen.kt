@@ -46,6 +46,9 @@ fun CameraScreen(
     val recommendationState by
     recommendationViewModel.uiState.collectAsStateWithLifecycle()
 
+    val recommendedTemplate =
+        (recommendationState as? CameraRecommendationUiState.Finished)?.template
+
     LaunchedEffect(recommendationState) {
         val finished = recommendationState as? CameraRecommendationUiState.Finished
         if (BuildConfig.DEBUG && finished?.response?.status == "COMPLETED") {
@@ -69,7 +72,7 @@ fun CameraScreen(
         ) {
             CameraTopBar(
                 placeName = null,
-                templateName = null,
+                templateName = recommendedTemplate?.title,
                 flashEnabled = cameraState.flashEnabled,
                 flashAvailable =
                     permissionState.isGranted && cameraState.canChangeFlash,
