@@ -70,6 +70,7 @@ fun CameraScreen(
     var scanStage by remember { mutableStateOf<CameraScanStage?>(null) }
     var scanStartedAt by remember { mutableStateOf<Long?>(null) }
 
+
     LaunchedEffect(recommendationState, initialScanStage) {
         when (initialScanStage) {
             CameraScanStage.RECOGNIZING -> {
