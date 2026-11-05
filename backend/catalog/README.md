@@ -25,3 +25,11 @@ Rebuild with `node catalog/build-green-space-assets.mjs` (from `backend`), optio
 `urban-street-v1.json` contains the selected generated candidates **1, 4, 6, 7, 8, 10**, in that order: alley look-back, crossing step, campus walk, open plaza, street railing, and museum bench. Each has a WebP preview, 360 × 640 thumbnail, and fixed transparent SVG guide in the 941 × 1672 reference space. Solid lines are manually traced pose cues; dashed lines indicate spatial composition. These are composition guides, not segmentation masks.
 
 Rebuild with `node catalog/build-urban-street-assets.mjs` from `backend`, optionally passing the original generated-image directory to rebuild WebPs. Review alignment in `docs/design/urban-street-overlay-review.png`. Register locally with `docker compose exec -T api npm run catalog:import -- catalog/urban-street-v1.json`. Other scenes are preserved; Instagram screenshots are not included.
+
+## Expansion set (2026-11-05)
+
+`expansion-v1.json` adds candidates **33–50**, six each for `flower-greenhouse`, `hanok-alley`, and `stairs-architecture`. Sources are the three generated comparison sheets in `sources/`; Instagram images are research references only and are not shipped. The existing 24 curated templates are preserved by the additive importer.
+
+These sources were generated as square tiles. Number labels and gutters are trimmed to **464 × 464** without stretching or inventing portrait content. The manifest therefore advertises **1:1 only**; do not present these as native 9:16 assets. Android scene recognition and portrait viewport handling are intentionally deferred. Transparent SVG guides contain manually traced approximate pose contours and dashed environmental cues, not segmentation masks. Each asset has Korean/English instructions and normalized subject bounds.
+
+Rebuild: `node catalog/build-expansion-assets.mjs` from `backend`. To replace the source sheets, pass their directory as the first argument. Review the three `docs/design/*-overlay-review.png` files before publishing a new version. Import: `docker compose exec -T api npm run catalog:import -- catalog/expansion-v1.json`.
