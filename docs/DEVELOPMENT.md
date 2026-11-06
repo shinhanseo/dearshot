@@ -1,0 +1,92 @@
+# 로컬 개발 가이드
+
+[프로젝트 소개로 돌아가기](../README.md)
+
+### Android
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+### Backend
+
+Docker Compose v2가 권장 개발 환경입니다.
+
+```bash
+cp backend/.env.example backend/.env
+cp backend/.env.postgres.example backend/.env.postgres
+docker compose up --build
+```
+
+두 환경 파일의 PostgreSQL 사용자·비밀번호와 `DATABASE_URL`은 서로 일치해야 합니다. 예제 값은 host port가 열리지 않는 로컬 개발 전용이며 운영 환경에서 사용하지 않습니다.
+
+Compose는 다음 환경을 구성합니다.
+
+- API: `http://127.0.0.1:3000`
+- PostgreSQL: Docker private network의 `postgres:5432`
+- PostgreSQL 데이터: `dearshot_postgres_data` named volume
+- 임시 분석 이미지: `dearshot_upload_data` named volume의 `/srv/dearshot/uploads`
+
+PostgreSQL은 호스트에 `5432`를 공개하지 않습니다. DB에 직접 접속할 때는 컨테이너 안의 `psql`을 사용합니다.
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+DB schema는 Drizzle migration으로 관리합니다. 개발 DB migration과 seed는 실행 중인 API 컨테이너에서 적용합니다.
+
+```bash
+docker compose exec api npm run db:migrate
+docker compose exec api npm run db:seed
+```
+
+`db:seed`는 실제 출시 콘텐츠가 아니라 `dev-` 접두사의 개발용 템플릿 fixture를 반복 가능하게 import합니다. 별도 manifest를 적용할 때는 다음 명령을 사용합니다.
+
+```bash
+docker compose exec api npm run catalog:import -- catalog/seed.json
+```
+
+독립된 `dearshot_test` DB를 삭제·재생성하고 migration을 다시 적용하려면 다음 명령을 사용합니다. 안전을 위해 `db:test:reset`은 `TEST_DATABASE_URL`의 DB 이름이 `_test`로 끝날 때만 동작하며 운영 환경에서는 실행되지 않습니다.
+
+```bash
+docker compose exec api npm run db:test:reset
+```
+
+새 기능의 schema를 수정한 뒤 migration을 생성할 때는 다음 명령을 사용하고, 생성된 SQL을 반드시 검토합니다.
+
+```bash
+docker compose exec api npm run db:generate -- --name=feature_name
+```
+
+백엔드 unit test와 HTTP integration test는 DB 없이 서로 독립적으로 실행할 수 있습니다.
+
+```bash
+cd backend
+npm run test:unit
+npm run test:integration
+```
+
+인증 DB 통합 테스트는 `_test` 데이터베이스를 초기화한 뒤 실행합니다. 이 명령은 테스트 테이블을 비우므로 개발 DB URL로 실행하면 안 되며, 초기화 명령이 `_test` 접미사를 강제합니다.
+
+```bash
+docker compose exec api npm run db:test:reset
+docker compose exec api npm run test:database
+```
+
+로컬 `.env`의 `JWT_ACCESS_SECRET`은 저장소에 포함하지 않습니다. 새 환경에서는 `openssl rand -base64 48`처럼 충분한 난수로 생성합니다. Google 로그인용 `GOOGLE_WEB_CLIENT_ID`에는 Android Credential Manager의 `serverClientId`와 같은 Web application client ID를 넣고, `KAKAO_APP_ID`에는 Kakao Developers 앱의 숫자 앱 ID를 넣습니다. 운영 환경에서 예제 값을 사용하면 서버가 시작을 거부합니다.
+
+API 로그는 Pino JSON으로 stdout에 기록합니다. HTTP 로그에는 request ID, 메서드, query string을 제외한 경로, 상태 코드와 응답 시간만 포함하며 Authorization, Cookie와 요청 본문은 기록하지 않습니다. Docker `json-file` 로그는 컨테이너마다 파일당 10MB, 최대 5개로 회전합니다.
+
+구성과 health check, 비공개 DB port, volume 지속성을 한 번에 검증할 수 있습니다.
+
+```bash
+sh scripts/verify-compose.sh
+```
+
+서비스를 중지해도 DB volume은 유지됩니다. `docker compose down --volumes`는 로컬 DB를 모두 삭제하므로 초기화가 필요할 때만 사용합니다.
+
+Docker 없이 API를 실행하려면 접근 가능한 PostgreSQL의 `DATABASE_URL`을 설정한 뒤 `backend`에서 `npm ci && npm run dev`를 사용할 수 있습니다. 서버는 요청을 받기 전에 DB 연결을 확인하고, 종료 신호를 받으면 HTTP 서버와 connection pool을 순서대로 닫습니다.
+
+서버가 실행되면 `GET /health`, 게스트·Google·Kakao 인증, 공개 카탈로그, 회원 전용 좋아요·북마크, multipart 이미지 업로드, 비동기 장면 분석과 촬영 피드백을 사용할 수 있습니다. 장면 작업은 PostgreSQL lease worker가 처리하며 `GET /api/v1/scene-analyses/{id}`의 `pollAfterMs` 계약으로 최종 추천을 조회합니다. 실시간 장면·객체 키워드는 Android의 ONNX 모델이 담당합니다. 장면 추천은 공개된 DB 템플릿 후보만 Gemini에 전달하고, 구조화 응답을 서버 allowlist로 다시 검증한 뒤 단일 template ID/version을 확정합니다. 피드백도 선택된 불변 템플릿 버전을 기준으로 허용된 행동 하나만 반환하며 재촬영 결과를 이전 피드백과 연결합니다. 원본 이미지는 작업 종료 직후 또는 업로드 후 최대 1시간 안에 제거하고, 회원 탈퇴는 즉시 접근을 차단한 뒤 파일 우선 삭제 worker가 처리합니다. 로컬 개발은 `AI_PROVIDER=mock`, 실제 호출은 `AI_PROVIDER=gemini`와 `AI_API_KEY`를 사용합니다. 비용을 분리해 조정할 수 있도록 장면 추천은 `GEMINI_SCENE_MODEL`, 피드백은 `GEMINI_FEEDBACK_MODEL`로 설정합니다.
+
