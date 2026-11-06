@@ -1,0 +1,78 @@
+{
+  "tool": "built-in image_gen",
+  "basePrompt": "Photorealistic original Instagram editorial travel portrait, one single photo, tall portrait exact9:16 composition, no collage no text no watermarks, adult East Asian subject stylish casual clothes, realistic anatomy, natural candid mood, premium soft film color. ",
+  "candidates": [
+    {
+      "id": "library-01",
+      "scene": "woman full body small in lower middle of towering wooden library aisle, symmetrical bookcases, warm light, lots of architecture above her, complete shoes"
+    },
+    {
+      "id": "museum-01",
+      "scene": "woman full body small lower right in enormous minimalist art gallery, large abstract painting on left, ivory walls, full shoes, elegant quiet negative space"
+    },
+    {
+      "id": "greenhouse-01",
+      "scene": "man full body centered in lush indoor glass greenhouse aisle, symmetrical iron glass roof arches, huge plants at sides, soft sun, complete shoes"
+    },
+    {
+      "id": "library-02",
+      "scene": "man full body side view reaching for a book at shoulder height, beautiful tall modern bookstore shelves on left, feet fully visible, relaxed asymmetrical composition"
+    },
+    {
+      "id": "museum-02",
+      "scene": "man full body standing side-on thoughtfully viewing a sculpture on pedestal in an art museum, clear space between man and sculpture, profile, beautiful side light and tall ceiling"
+    },
+    {
+      "id": "greenhouse-02",
+      "scene": "woman three quarter portrait looking back over shoulder through large tropical leaves framing foreground corners, indoor glass greenhouse evident behind, layered depth and soft dappled light"
+    },
+    {
+      "id": "library-03",
+      "scene": "woman seated sideways at tall library window reading open book on lap, full legs and shoes included, quiet beautiful sunlight and rich wood interior"
+    },
+    {
+      "id": "museum-03",
+      "scene": "woman seated elegantly on long museum bench looking sideways at painting, entire body and shoes visible, huge gallery wall above, diagonal bench composition"
+    },
+    {
+      "id": "greenhouse-03",
+      "scene": "man threequarter side portrait near tall greenhouse window gently lifting one hand toward a hanging leaf, warm backlight and glass panes, natural effortless pose"
+    },
+    {
+      "id": "library-04",
+      "scene": "man chest-up portrait seen through a real horizontal gap between foreground books on shelves, his thoughtful face upper middle, library visible, warm light, natural hand on cheek"
+    },
+    {
+      "id": "museum-04",
+      "scene": "man fullbody walking across minimalist art gallery, long diagonal beam of sunlight on wall and floor, geometric shadows, offcenter subject, full shoes"
+    },
+    {
+      "id": "greenhouse-04",
+      "scene": "woman seated sideways on simple bench inside lush glasshouse, whole body and shoes visible, diagonal legs, surrounded by ferns, glass windows evident, elegant comfortable everyday outfit"
+    },
+    {
+      "id": "library-05",
+      "scene": "woman fullbody looking back while walking along curved library balcony, behind safe railing, sweeping wooden shelves, entire shoes visible, loose cardigan and long skirt"
+    },
+    {
+      "id": "museum-05",
+      "scene": "woman fullbody small framed through aligned open rectangular doorways between art gallery rooms, repeated frames and artwork visible, strong architectural depth, feet visible"
+    },
+    {
+      "id": "greenhouse-05",
+      "scene": "man fullbody walking toward camera along diagonal greenhouse stone path, layered giant leaves edge frame, glass roof visible, naturally looking sideways, entire shoes"
+    },
+    {
+      "id": "library-06",
+      "scene": "man seated reading open book at long communal wooden library table shot from slightly elevated diagonal angle, whole person including shoes, strong table leading line, warm reading lamps and bookshelves clearly visible"
+    },
+    {
+      "id": "museum-06",
+      "scene": "man fullbody side view under huge curved white museum atrium staircase, framed by curved architecture and daylight, one dark sculpture background, entire shoes, visually striking negative space"
+    },
+    {
+      "id": "greenhouse-06",
+      "scene": "woman fullbody near tall glasshouse door with many tropical potted plants, standing sideways looking outside, beautiful narrow rectangle of sunlight and elongated shadow, complete shoes, greenhouse roof visible"
+    }
+  ]
+}

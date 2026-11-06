@@ -36,6 +36,25 @@ describe("catalog manifest", () => {
     assert.equal(catalogManifestSchema.safeParse(invalid).success, false);
   });
 
+  it("validates all 18 new portrait templates and their indoor scene references", async () => {
+    const manifest = await readCatalogManifest(path.join(catalogRoot, "places-expansion-v1.json"));
+    await validateCatalogAssets(manifest, path.join(catalogRoot, "assets"));
+    assert.deepEqual(manifest.scenes.map((scene) => scene.key), ["library", "museum", "greenhouse"]);
+    for (const scene of manifest.scenes) {
+      assert.equal(manifest.templates.filter((template) =>
+        template.scenes.some((reference) => reference.key === scene.key)
+      ).length, 6);
+    }
+    for (const template of manifest.templates) {
+      assert.deepEqual(template.supportedAspectRatios, ["9:16"]);
+      const version = template.versions[0];
+      assert.equal(version.guide.config.referenceWidth, 941);
+      assert.equal(version.guide.config.referenceHeight, 1672);
+      assert.ok(version.localizations["ko-KR"]);
+      assert.ok(version.localizations["en-US"]);
+    }
+  });
+
   it("rejects traversal paths and versions without the required fallback locale", () => {
     const invalid = {
       catalogVersion: "bad",

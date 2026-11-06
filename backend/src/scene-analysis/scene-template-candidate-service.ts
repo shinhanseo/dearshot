@@ -11,6 +11,11 @@ import type { DeviceAnalysisSnapshot } from "../db/schema/jobs.js";
 import type { RecommendationCandidate } from "./scene-recommendation-provider.js";
 
 const places365SceneMapping: Record<string, string[]> = {
+  bookstore: ["library"],
+  library_indoor: ["library"],
+  art_gallery: ["museum"],
+  museum_indoor: ["museum"],
+  greenhouse_indoor: ["greenhouse"],
   beach: ["waterfront"],
   coast: ["waterfront"],
   ocean: ["waterfront"],

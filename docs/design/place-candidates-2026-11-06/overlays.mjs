@@ -1,0 +1,10 @@
+import sharp from '../../../backend/node_modules/sharp/dist/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=path.dirname(fileURLToPath(import.meta.url));
+const entries=JSON.parse(await readFile(path.join(root,'selection.json'),'utf8'));
+const contours=JSON.parse(await readFile(path.join(root,'contours.json'),'utf8'));
+for(const e of entries){const [pose,structure]=contours[e.id];const paths=`<path d="${pose}"/><path d="${structure}" stroke-dasharray="7 7" stroke-opacity=".5"/>`;const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="941" height="1672" viewBox="0 0 300 533" fill="none"><title>${e.id} composition guide</title><g stroke-linecap="round" stroke-linejoin="round"><g stroke="#142A29" stroke-opacity=".48" stroke-width="2.8">${paths}</g><g stroke="#FFF9ED" stroke-width="1.05">${paths}</g></g></svg>`;const dir=path.join(root,e.id);await writeFile(path.join(dir,'guide.svg'),svg);await sharp(Buffer.from(svg)).png().toFile(path.join(dir,'guide.png'));await sharp(path.join(dir,'example.png')).composite([{input:Buffer.from(svg)}]).png().toFile(path.join(dir,'review.png'));}
+for(const group of ['library','museum','greenhouse']){const layers=[];const guides=[];const items=entries.filter(e=>e.id.startsWith(group));for(let i=0;i<6;i++){for(const [filename,target] of [['review.png',layers],['guide.png',guides]]){target.push({input:await sharp(path.join(root,items[i].id,filename)).resize(300,533).png().toBuffer(),left:(i%3)*310,top:Math.floor(i/3)*563+30});target.push({input:Buffer.from(`<svg width="300" height="28"><text x="8" y="20" font-size="18" fill="white">${group.toUpperCase()} ${i+1}</text></svg>`),left:(i%3)*310,top:Math.floor(i/3)*563});}}for(const [kind,input]of [['overlay-review',layers],['guides',guides]])await sharp({create:{width:920,height:1126,channels:4,background:'#25302e'}}).composite(input).png().toFile(path.join(root,`${group}-${kind}.png`));}
+console.log('18 SVG guides, 18 transparent PNG guides and 18 alignment reviews created.');

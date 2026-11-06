@@ -1,0 +1,128 @@
+[
+  {
+    "id": "library-01",
+    "title": "책장 사이 작은 인물",
+    "sourceFile": "exec-e14e3ef3-08d9-4c9f-8e3f-5d4c102e2225.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "library-02",
+    "title": "책을 고르는 순간",
+    "sourceFile": "exec-1d48431c-bd7c-40a2-8b57-ed913adcc1f2.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "library-03",
+    "title": "창가에서 책 읽기",
+    "sourceFile": "exec-6019a887-2a9c-4e7e-acbb-d6352ab4f911.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "library-04",
+    "title": "책장 틈의 시선",
+    "sourceFile": "exec-ef5b697e-5ddf-4805-b9d3-db2b7ec2a2ee.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "library-05",
+    "title": "서가를 걷다 돌아보기",
+    "sourceFile": "exec-1ac08d77-af6c-4652-a5a6-cdec74f5c5d2.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "library-06",
+    "title": "긴 독서 테이블",
+    "sourceFile": "exec-80987e8c-c891-4f95-b873-4e63ea464417.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-01",
+    "title": "작품 옆의 여백",
+    "sourceFile": "exec-376e4996-34ea-4d09-8e70-2228ebfce92f.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-02",
+    "title": "조각과 마주보기",
+    "sourceFile": "exec-750b78fb-6bee-4a27-a722-7a0c82cea53e.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-03",
+    "title": "벤치에서 감상하기",
+    "sourceFile": "exec-6d612837-f232-4100-b363-951c4dcd28c8.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-04",
+    "title": "빛을 따라 걷기",
+    "sourceFile": "exec-21ac0b07-d5a8-4ba9-9ba9-82fcc6837e38.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-05",
+    "title": "문틀 너머의 인물",
+    "sourceFile": "exec-ddf0ae27-e066-41b3-a651-8c6d1d833578.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "museum-06",
+    "title": "곡선 아래 한 걸음",
+    "sourceFile": "exec-d36dc81c-bd2f-40b9-a823-1981d665f4fa.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-01",
+    "title": "유리 아치의 중심",
+    "sourceFile": "exec-dafbe59a-0280-494b-b33c-7c35f9f06816.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-02",
+    "title": "잎 사이로 돌아보기",
+    "sourceFile": "exec-7bbd2476-2fcd-41e7-8dac-b43b820436ad.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-03",
+    "title": "창가의 초록빛",
+    "sourceFile": "exec-573ae85d-5824-4c9b-8168-2dc162f5bc48.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-04",
+    "title": "온실 벤치의 쉼",
+    "sourceFile": "exec-81f52295-43fd-446a-b0a7-fc9f94a39c15.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-05",
+    "title": "초록 통로 걷기",
+    "sourceFile": "exec-cbbd1aa6-c534-4e29-83d0-76c537c09508.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  },
+  {
+    "id": "greenhouse-06",
+    "title": "유리문 옆 햇살",
+    "sourceFile": "exec-e0ac42b3-c8b5-4527-be53-e0f467e261f6.png",
+    "aspectRatio": "9:16",
+    "status": "CANDIDATE"
+  }
+]

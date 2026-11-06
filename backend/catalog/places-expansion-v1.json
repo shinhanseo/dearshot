@@ -1,0 +1,1273 @@
+{
+  "catalogVersion": "places-expansion-2026-11-06-v1",
+  "scenes": [
+    {
+      "key": "library",
+      "active": true,
+      "sortOrder": 8,
+      "thumbnailPath": "templates/library-01/v1/thumbnail.webp",
+      "localizations": {
+        "ko-KR": {
+          "displayName": "서점 · 도서관"
+        },
+        "en-US": {
+          "displayName": "Bookstore & library"
+        }
+      }
+    },
+    {
+      "key": "museum",
+      "active": true,
+      "sortOrder": 9,
+      "thumbnailPath": "templates/museum-01/v1/thumbnail.webp",
+      "localizations": {
+        "ko-KR": {
+          "displayName": "미술관 · 전시실"
+        },
+        "en-US": {
+          "displayName": "Museum & gallery"
+        }
+      }
+    },
+    {
+      "key": "greenhouse",
+      "active": true,
+      "sortOrder": 10,
+      "thumbnailPath": "templates/greenhouse-01/v1/thumbnail.webp",
+      "localizations": {
+        "ko-KR": {
+          "displayName": "실내 온실"
+        },
+        "en-US": {
+          "displayName": "Indoor greenhouse"
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "library-01",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 200,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 1
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-01/v1/preview.webp",
+          "thumbnailPath": "templates/library-01/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-01/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "책장 사이 작은 인물",
+              "summary": "책장을 대칭으로 담고 인물을 아래쪽에 작게 배치하세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "책장을 대칭으로 담고 인물을 아래쪽에 작게 배치하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Small between the shelves",
+              "summary": "Frame the shelves symmetrically with a small subject near the bottom.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the shelves symmetrically with a small subject near the bottom."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-02",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 201,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 2
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-02/v1/preview.webp",
+          "thumbnailPath": "templates/library-02/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-02/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "책을 고르는 순간",
+              "summary": "책장 옆에 서서 눈높이에 있는 책을 고르는 순간을 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "책장 옆에 서서 눈높이에 있는 책을 고르는 순간을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Choosing a book",
+              "summary": "Stand beside a shelf and reach for a book at eye level.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Stand beside a shelf and reach for a book at eye level."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-03",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 202,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 3
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-03/v1/preview.webp",
+          "thumbnailPath": "templates/library-03/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-03/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "창가에서 책 읽기",
+              "summary": "창가에 옆으로 앉아 책을 읽고 다리의 대각선을 살리세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "창가에 옆으로 앉아 책을 읽고 다리의 대각선을 살리세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Reading by the window",
+              "summary": "Read beside the window and follow the diagonal line of the legs.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Read beside the window and follow the diagonal line of the legs."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-04",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 203,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 4
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-04/v1/preview.webp",
+          "thumbnailPath": "templates/library-04/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-04/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "책장 틈의 시선",
+              "summary": "책 사이의 빈 공간으로 얼굴을 감싸고 가까이 촬영하세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "책 사이의 빈 공간으로 얼굴을 감싸고 가까이 촬영하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Through a gap in the books",
+              "summary": "Frame the face through a gap between foreground books.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the face through a gap between foreground books."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-05",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 204,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 5
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-05/v1/preview.webp",
+          "thumbnailPath": "templates/library-05/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-05/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "서가를 걷다 돌아보기",
+              "summary": "서가의 곡선을 배경으로 안전한 통로에서 걸으며 돌아보세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "서가의 곡선을 배경으로 안전한 통로에서 걸으며 돌아보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A look back among books",
+              "summary": "Walk along the safe aisle and look back against the curved shelves.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Walk along the safe aisle and look back against the curved shelves."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "library-06",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 205,
+      "scenes": [
+        {
+          "key": "library",
+          "sortOrder": 6
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/library-06/v1/preview.webp",
+          "thumbnailPath": "templates/library-06/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/library-06/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "긴 독서 테이블",
+              "summary": "긴 독서 테이블의 사선을 살려 앉아서 읽는 모습을 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "긴 독서 테이블의 사선을 살려 앉아서 읽는 모습을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "At the reading table",
+              "summary": "Use the long table as a leading line toward a seated reader.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Use the long table as a leading line toward a seated reader."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-01",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 206,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 1
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-01/v1/preview.webp",
+          "thumbnailPath": "templates/museum-01/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-01/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "작품 옆의 여백",
+              "summary": "작품과 인물 사이에 여백을 두고 전신을 작게 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "작품과 인물 사이에 여백을 두고 전신을 작게 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Space beside the artwork",
+              "summary": "Leave space between the artwork and a small full-body subject.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Leave space between the artwork and a small full-body subject."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-02",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 207,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 2
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-02/v1/preview.webp",
+          "thumbnailPath": "templates/museum-02/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-02/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "조각과 마주보기",
+              "summary": "조각에 손대지 않고 거리를 둔 채 옆모습을 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "조각에 손대지 않고 거리를 둔 채 옆모습을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Facing a sculpture",
+              "summary": "Photograph a side profile at a respectful distance without touching the sculpture.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Photograph a side profile at a respectful distance without touching the sculpture."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-03",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 208,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 3
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-03/v1/preview.webp",
+          "thumbnailPath": "templates/museum-03/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-03/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "벤치에서 감상하기",
+              "summary": "벤치에 편하게 앉아 작품을 바라보고 발끝까지 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "벤치에 편하게 앉아 작품을 바라보고 발끝까지 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A gallery bench",
+              "summary": "Sit on the bench looking toward the artwork and include the shoes.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Sit on the bench looking toward the artwork and include the shoes."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-04",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 209,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 4
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-04/v1/preview.webp",
+          "thumbnailPath": "templates/museum-04/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-04/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "빛을 따라 걷기",
+              "summary": "벽에 드리운 빛과 그림자를 살리고 자연스러운 걸음을 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "벽에 드리운 빛과 그림자를 살리고 자연스러운 걸음을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Walking through the light",
+              "summary": "Use the wall light and shadows to frame a natural stride.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Use the wall light and shadows to frame a natural stride."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-05",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 210,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 5
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-05/v1/preview.webp",
+          "thumbnailPath": "templates/museum-05/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-05/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "문틀 너머의 인물",
+              "summary": "문틀이 겹쳐 보이도록 정렬하고 인물을 가운데에 작게 두세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "문틀이 겹쳐 보이도록 정렬하고 인물을 가운데에 작게 두세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Through the gallery doors",
+              "summary": "Align the repeated doorways around a small centered subject.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Align the repeated doorways around a small centered subject."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "museum-06",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 211,
+      "scenes": [
+        {
+          "key": "museum",
+          "sortOrder": 6
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/museum-06/v1/preview.webp",
+          "thumbnailPath": "templates/museum-06/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/museum-06/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "곡선 아래 한 걸음",
+              "summary": "곡선 계단을 크게 담고 아래 공간을 걷는 인물을 배치하세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "곡선 계단을 크게 담고 아래 공간을 걷는 인물을 배치하세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Beneath the curve",
+              "summary": "Frame the sweeping staircase above a person walking beneath it.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the sweeping staircase above a person walking beneath it."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-01",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 212,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 1
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-01/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-01/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-01/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "유리 아치의 중심",
+              "summary": "유리 아치가 대칭이 되도록 통로 중앙에서 전신을 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "유리 아치가 대칭이 되도록 통로 중앙에서 전신을 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Under the glass arches",
+              "summary": "Frame the full body centrally beneath symmetrical glass arches.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Frame the full body centrally beneath symmetrical glass arches."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-02",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 213,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 2
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-02/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-02/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-02/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "잎 사이로 돌아보기",
+              "summary": "큰 잎을 전경 가장자리에 두고 어깨 너머로 돌아보세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "큰 잎을 전경 가장자리에 두고 어깨 너머로 돌아보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A glance through the leaves",
+              "summary": "Place large leaves at the foreground edges and look back over a shoulder.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Place large leaves at the foreground edges and look back over a shoulder."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-03",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 214,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 3
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-03/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-03/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-03/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "창가의 초록빛",
+              "summary": "유리창 옆에서 식물에 손대지 않고 손을 가볍게 들어보세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "유리창 옆에서 식물에 손대지 않고 손을 가볍게 들어보세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Green window light",
+              "summary": "Stand by the glass and gently raise a hand without touching the plants.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Stand by the glass and gently raise a hand without touching the plants."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-04",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 215,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 4
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-04/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-04/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-04/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "온실 벤치의 쉼",
+              "summary": "벤치에 비스듬히 앉아 다리의 사선과 주변 식물을 함께 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "벤치에 비스듬히 앉아 다리의 사선과 주변 식물을 함께 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "A greenhouse pause",
+              "summary": "Sit diagonally on a bench with the plants surrounding the legs.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Sit diagonally on a bench with the plants surrounding the legs."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-05",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 216,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 5
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-05/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-05/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-05/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "초록 통로 걷기",
+              "summary": "유리 지붕과 통로를 함께 담으며 자연스럽게 걸어오세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "유리 지붕과 통로를 함께 담으며 자연스럽게 걸어오세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Walking among green leaves",
+              "summary": "Walk naturally toward the camera with the glass roof and path visible.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Walk naturally toward the camera with the glass roof and path visible."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "greenhouse-06",
+      "peopleCount": 1,
+      "supportedAspectRatios": [
+        "9:16"
+      ],
+      "sortOrder": 217,
+      "scenes": [
+        {
+          "key": "greenhouse",
+          "sortOrder": 6
+        }
+      ],
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "previewPath": "templates/greenhouse-06/v1/preview.webp",
+          "thumbnailPath": "templates/greenhouse-06/v1/thumbnail.webp",
+          "guide": {
+            "type": "SVG_OVERLAY",
+            "assetPath": "templates/greenhouse-06/v1/guide.svg",
+            "config": {
+              "coordinateSpace": "NORMALIZED",
+              "referenceWidth": 941,
+              "referenceHeight": 1672,
+              "safeArea": {
+                "left": 0,
+                "top": 0,
+                "right": 1,
+                "bottom": 1
+              }
+            }
+          },
+          "publishedAt": "2026-11-06T00:00:00+09:00",
+          "localizations": {
+            "ko-KR": {
+              "title": "유리문 옆 햇살",
+              "summary": "유리문 옆에 옆으로 서서 햇빛과 긴 그림자를 함께 담으세요.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "유리문 옆에 옆으로 서서 햇빛과 긴 그림자를 함께 담으세요."
+                },
+                {
+                  "order": 2,
+                  "text": "실선에 인물의 자세를, 점선에 주변 공간의 선을 맞춰보세요."
+                }
+              ]
+            },
+            "en-US": {
+              "title": "Sunlight beside the glass door",
+              "summary": "Stand side-on by the glass door with sunlight and a long shadow.",
+              "instructions": [
+                {
+                  "order": 1,
+                  "text": "Stand side-on by the glass door with sunlight and a long shadow."
+                },
+                {
+                  "order": 2,
+                  "text": "Align the pose to the solid guide and the surroundings to the dashed lines."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
