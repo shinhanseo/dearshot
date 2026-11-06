@@ -1,0 +1,5 @@
+# Android is the primary application; omit the supporting backend from language statistics.
+backend/** linguist-detectable=false
+
+# Omit documentation, design assets, and their generation scripts from language statistics.
+docs/** linguist-detectable=false
