@@ -41,6 +41,7 @@ import com.hanseo.dearshot.ui.camera.component.CameraScanDetections
 import com.hanseo.dearshot.ui.camera.component.cameraScanMessage
 import com.hanseo.dearshot.ui.camera.component.cameraExplorationMessage
 import com.hanseo.dearshot.ui.camera.component.CameraRecommendationSelectionCard
+import com.hanseo.dearshot.ui.camera.component.CameraGuideSettingsSheet
 
 @Composable
 fun CameraScreen(
@@ -60,6 +61,13 @@ fun CameraScreen(
 
     val recommendedTemplate =
         (recommendationState as? CameraRecommendationUiState.Finished)?.template
+
+    var showGuideSettings by remember(
+        recommendedTemplate?.id,
+        recommendedTemplate?.version,
+    ) {
+        mutableStateOf(false)
+    }
 
     val finishedState =
         recommendationState as? CameraRecommendationUiState.Finished
@@ -174,7 +182,13 @@ fun CameraScreen(
                 flashEnabled = cameraState.flashEnabled,
                 flashAvailable = permissionState.isGranted && cameraState.canChangeFlash,
                 onFlashChange = cameraState::changeFlash,
-                onCompositionClick = onOpenTemplates,
+                onCompositionClick = {
+                    if (recommendedTemplate != null && !isScanning) {
+                        showGuideSettings = true
+                    } else {
+                        onOpenTemplates()
+                    }
+                },
                 onMyPageClick = {
                     // 마이페이지 이동 연결 예정
                 },
@@ -359,5 +373,19 @@ fun CameraScreen(
         CameraCaptureErrorDialog(
             onDismiss = cameraState::dismissCaptureError,
         )
+    }
+
+    if (showGuideSettings && !isScanning) {
+        recommendedTemplate?.let { template ->
+            CameraGuideSettingsSheet(
+                template = template,
+                isGuideVisible = cameraState.isGuideVisible,
+                onGuideVisibilityChange =
+                    cameraState::changeGuideVisibility,
+                onDismiss = {
+                    showGuideSettings = false
+                },
+            )
+        }
     }
 }
