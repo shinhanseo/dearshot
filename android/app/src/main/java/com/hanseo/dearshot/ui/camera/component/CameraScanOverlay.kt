@@ -32,6 +32,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
 
 enum class CameraScanStage {
     STABILIZING,
@@ -71,9 +76,12 @@ fun CameraScanOverlay(
                 color = Color(0xDD17242D),
                 contentColor = Color.White,
             ) {
-                Text(
-                    text = message,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
+                CameraScanMessageText(
+                    message = message,
+                    modifier = Modifier.padding(
+                        horizontal = 18.dp,
+                        vertical = 9.dp,
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -96,8 +104,8 @@ fun CameraScanOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = message,
+                    CameraScanMessageText(
+                        message = message,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.titleSmall,
                     )
@@ -125,55 +133,141 @@ private fun CameraScanProgress(
     labels: List<String>,
     modifier: Modifier = Modifier,
 ) {
+    if (labels.size < 2) return
+
     val colors = MaterialTheme.colorScheme
+    val lastIndex = labels.lastIndex
+
+    val targetProgress = when (stage) {
+        CameraScanStage.STABILIZING -> 0f
+
+        CameraScanStage.RECOGNIZING -> {
+            lastIndex * 0.5f
+        }
+
+        CameraScanStage.RECOMMENDING -> {
+            lastIndex * 0.85f
+        }
+
+        CameraScanStage.COMPLETE -> {
+            lastIndex.toFloat()
+        }
+    }
+
+    val progress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(
+            durationMillis = 650,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "scan progress",
+    )
 
     Box(modifier = modifier) {
-        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
-            if (labels.size < 2) return@Canvas
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp),
+        ) {
             val slotWidth = size.width / labels.size
+            val startX = slotWidth * 0.5f
+            val endX = slotWidth * (lastIndex + 0.5f)
+            val progressX = startX + slotWidth * progress
 
-            for (index in 0 until labels.lastIndex) {
+            // 아직 진행하지 않은 전체 연결선.
+            drawLine(
+                color = colors.outlineVariant,
+                start = Offset(startX, center.y),
+                end = Offset(endX, center.y),
+                strokeWidth = 2.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+
+            // 현재 진행 위치까지 부드럽게 채워지는 선.
+            if (progress > 0f) {
                 drawLine(
-                    color = if (index < stage.ordinal) colors.primary else colors.outlineVariant,
-                    start = Offset(slotWidth * (index + 0.5f), center.y),
-                    end = Offset(slotWidth * (index + 1.5f), center.y),
+                    color = colors.primary,
+                    start = Offset(startX, center.y),
+                    end = Offset(progressX, center.y),
                     strokeWidth = 2.dp.toPx(),
+                    cap = StrokeCap.Round,
                 )
             }
         }
 
-        Row(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             labels.forEachIndexed { index, label ->
-                val completed = index < stage.ordinal
-                val current = index == stage.ordinal
+                val reached =
+                    progress >= index.toFloat() - 0.01f
+
+                val completed =
+                    progress > index.toFloat() + 0.01f ||
+                            (
+                                    stage == CameraScanStage.COMPLETE &&
+                                            reached
+                                    )
+
+                val current = reached && !completed
+
+                val dotFill by animateFloatAsState(
+                    targetValue = if (completed) 1f else 0f,
+                    animationSpec = tween(
+                        durationMillis = 220,
+                    ),
+                    label = "scan dot $index",
+                )
 
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(14.dp)
-                            .background(
-                                if (completed) colors.primary else colors.surface,
-                                CircleShape,
-                            )
-                            .border(
-                                2.dp,
-                                if (completed || current) colors.primary else colors.outlineVariant,
-                                CircleShape,
-                            ),
-                        contentAlignment = Alignment.Center,
+                    Canvas(
+                        modifier = Modifier.size(14.dp),
                     ) {
+                        val radius = size.minDimension / 2f
+
+                        // 선이 점 내부를 통과해 보이지 않도록 배경을 덮는다.
+                        drawCircle(
+                            color = colors.surface,
+                            radius = radius,
+                        )
+
+                        drawCircle(
+                            color = colors.primary,
+                            radius = radius * dotFill,
+                        )
+
+                        drawCircle(
+                            color = if (reached) {
+                                colors.primary
+                            } else {
+                                colors.outlineVariant
+                            },
+                            radius = radius - 1.dp.toPx(),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.dp.toPx(),
+                            ),
+                        )
+
                         if (current) {
-                            Box(Modifier.size(5.dp).background(colors.primary, CircleShape))
+                            drawCircle(
+                                color = colors.primary,
+                                radius = 2.5.dp.toPx(),
+                            )
                         }
                     }
+
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (current) colors.primary else colors.onSurfaceVariant,
+                        color = if (reached) {
+                            colors.primary
+                        } else {
+                            colors.onSurfaceVariant
+                        },
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -238,5 +332,26 @@ private fun CameraScanLine(
             drawCircle(Color.White, radius, point)
             drawCircle(if (index == 0) Color(0xFF79BCD9) else color, radius - 1.dp.toPx(), point)
         }
+    }
+}
+
+@Composable
+private fun CameraScanMessageText(
+    message: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+) {
+    Crossfade(
+        targetState = message,
+        animationSpec = tween(
+            durationMillis = 280,
+        ),
+        modifier = modifier,
+        label = "scan message",
+    ) { displayedMessage ->
+        Text(
+            text = displayedMessage,
+            style = style,
+        )
     }
 }
