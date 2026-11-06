@@ -38,6 +38,8 @@ import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
 import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
+import com.hanseo.dearshot.ui.camera.component.CameraScanDetections
 
 @Composable
 fun CameraScreen(
@@ -71,28 +73,52 @@ fun CameraScreen(
     var scanStartedAt by remember { mutableStateOf<Long?>(null) }
 
 
+    var scanPresentation by remember {
+        mutableStateOf<CameraScanPresentation?>(null)
+    }
+
+    val latestAnalysis by rememberUpdatedState(
+        cameraState.analysisUiState,
+    )
+
     LaunchedEffect(recommendationState, initialScanStage) {
         when (initialScanStage) {
             CameraScanStage.RECOGNIZING -> {
+                // 요청이 시작되는 순간의 인식 결과를 저장한다.
+                scanPresentation = CameraScanPresentation.from(
+                    analysis = latestAnalysis,
+                )
+
                 scanStartedAt = SystemClock.elapsedRealtime()
                 scanStage = CameraScanStage.RECOGNIZING
+
                 delay(650)
+
                 scanStage = CameraScanStage.RECOMMENDING
             }
 
             CameraScanStage.COMPLETE -> {
                 scanStartedAt?.let { startedAt ->
-                    val elapsed = SystemClock.elapsedRealtime() - startedAt
-                    delay((1_200L - elapsed).coerceAtLeast(0))
+                    val elapsed =
+                        SystemClock.elapsedRealtime() - startedAt
+
+                    delay(
+                        (1_200L - elapsed).coerceAtLeast(0L),
+                    )
                 }
+
                 scanStartedAt = null
                 scanStage = CameraScanStage.COMPLETE
+
                 delay(800)
+
                 scanStage = null
+                scanPresentation = null
             }
 
             else -> {
                 scanStartedAt = null
+                scanPresentation = null
                 scanStage = initialScanStage
             }
         }
@@ -151,26 +177,13 @@ fun CameraScreen(
                     val stage = scanStage
 
                     if (isScanning) {
-                        val analysis = cameraState.analysisUiState
-
-                        analysis.objectAnalysis?.let { objects ->
-                            CameraObjectOverlay(
-                                analysis = objects.copy(
-                                    objects = objects.objects
-                                        .sortedByDescending { it.score }
-                                        .take(1),
-                                ),
+                        scanPresentation?.let { presentation ->
+                            CameraScanDetections(
+                                presentation = presentation,
                                 mirror = cameraState.selectedLens == CameraLens.FRONT,
                                 modifier = Modifier.matchParentSize(),
                             )
                         }
-
-                        CameraSceneLabels(
-                            candidates = analysis.sceneCandidates.take(1),
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(start = 16.dp, top = 64.dp),
-                        )
                     }
 
                     if (stage != null) {
