@@ -65,26 +65,22 @@
         <item>Scene scan</item>
         <item>Composition</item>
     </string-array>
-
     <string-array name="camera_scan_messages">
         <item>Hold the camera steady</item>
         <item>Checking the scene</item>
         <item>Finding a composition for this scene</item>
         <item>Your composition is ready</item>
     </string-array>
-
     <string name="camera_scan_manual_selection">Choose manually</string>
     <string name="camera_scan_checking_place">Checking the shooting location</string>
     <string name="camera_scan_sensor_unavailable">Motion sensor unavailable. Choose a composition manually</string>
     <string name="camera_scan_place_found">Place identified · %1$s</string>
     <string name="camera_scan_choosing_composition">Finding a composition for this space</string>
-
     <string name="camera_exploration_preparing">Getting the camera ready</string>
     <string name="camera_exploration_searching">Point the camera at a scene you want to capture</string>
     <string name="camera_exploration_place_found">%1$s found · Hold briefly</string>
     <string name="camera_exploration_holding">%1$s · Checking the scene for a recommendation</string>
     <string name="camera_exploration_sensor_unavailable">Motion unavailable · Choose a composition manually</string>
-
     <string name="camera_place_waterfront">Waterfront</string>
     <string name="camera_place_cafe">Cafe</string>
     <string name="camera_place_green_space">Green space</string>
@@ -93,9 +89,11 @@
     <string name="camera_place_museum">Museum / gallery</string>
     <string name="camera_place_greenhouse">Indoor greenhouse</string>
     <string name="camera_place_unknown">Surroundings</string>
-
     <string name="camera_selection_title">We couldn’t confidently choose a composition</string>
     <string name="camera_selection_description">Try a different camera angle or choose a composition yourself.</string>
     <string name="camera_selection_retry">Try again</string>
     <string name="camera_selection_manual">Choose manually</string>
+    <string name="camera_guide_settings_title">Current composition</string>
+    <string name="camera_guide_visibility">Show guide</string>
+    <string name="camera_guide_visibility_description">Hiding the guide keeps your selected composition</string>
 </resources>
