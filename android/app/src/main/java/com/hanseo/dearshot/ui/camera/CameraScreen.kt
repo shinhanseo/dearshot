@@ -73,6 +73,15 @@ fun CameraScreen(
         mutableStateOf(false)
     }
 
+    LaunchedEffect(
+        recommendedTemplate?.id,
+        recommendedTemplate?.version,
+    ) {
+        if (recommendedTemplate != null) {
+            cameraState.changeGuideVisibility(true)
+        }
+    }
+
     // 카메라가 끊기거나 요청 상태가 바뀌면 재시도 버튼 잠금을 해제한다.
     LaunchedEffect(cameraState.isBound, recommendationState) {
         isResettingRecommendation = false
@@ -190,11 +199,13 @@ fun CameraScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
 
-                    recommendedTemplate?.takeUnless { isScanning }?.let { template ->
-                        CameraTemplateOverlay(
-                            guide = template.guide,
-                            modifier = Modifier.matchParentSize(),
-                        )
+                    if (cameraState.isGuideVisible && !isScanning) {
+                        recommendedTemplate?.let { template ->
+                            CameraTemplateOverlay(
+                                guide = template.guide,
+                                modifier = Modifier.matchParentSize(),
+                            )
+                        }
                     }
 
                     val stage = scanStage

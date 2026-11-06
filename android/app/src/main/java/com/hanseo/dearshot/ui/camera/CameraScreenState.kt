@@ -125,6 +125,14 @@ class CameraScreenState(
     var recognizedScene by mutableStateOf(AppScene.UNKNOWN)
         private set
 
+    var isGuideVisible by mutableStateOf(true)
+        private set
+
+    @MainThread
+    fun changeGuideVisibility(visible: Boolean) {
+        isGuideVisible = visible
+    }
+
     @MainThread
     fun updateConnection(
         bound: Boolean,
