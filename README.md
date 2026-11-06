@@ -34,17 +34,21 @@ DearShot은 **장소 인식 → 구도 추천 → 오버레이 촬영**을 하�
 
 > **개인 프로젝트 · 개발 중** — 기획, UI/UX 디자인, Kotlin Android 앱과 TypeScript 백엔드를 함께 개발하고 있습니다. Android 구현을 중심으로 카메라, 온디바이스 ML, 비동기 상태 관리와 사용자 경험을 다룹니다.
 
-## Preview
+## Demo
 
 <p align="center">
-  <img src="./docs/design/scene-analysis-motion-v2.gif" width="280" alt="장소 스캔과 구도 추천 과정의 디자인 모션 미리보기" />
-  &nbsp;&nbsp;
-  <img src="./docs/design/scene-analysis-motion-final.png" width="280" alt="인물 오버레이를 활용한 촬영 화면 디자인" />
+  <img src="./docs/screens/camera-recommendation-demo.gif" width="300" alt="Android 실기기에서 카페 장면 인식, 서버 구도 추천, 인물 오버레이 표시까지 이어지는 실제 동작" />
 </p>
 
-<p align="center"><sub>Figma에 반영한 디자인·모션 참고 자료입니다. Android 실기기 녹화와는 구분됩니다.</sub></p>
+<p align="center">
+  <a href="./docs/screens/camera-recommendation-demo.mp4">실기기 데모 영상 보기 (MP4)</a>
+  · <a href="./docs/screens/camera-recommendation-result.png">추천 완료 화면</a>
+  · <a href="./docs/design/scene-analysis-motion-v2.gif">Figma 디자인 모션</a>
+</p>
 
-카메라 미리보기, 장소·객체 인식, 서버 추천과 SVG 오버레이 연결은 실기기에서 확인했습니다. 현재는 탐색 안내, 스캔 진행 애니메이션과 재분석 흐름을 다듬고 있습니다.
+**장소·객체 인식 → 서버 구도 추천 → 투명 오버레이 표시**까지 연결한 Android 실기기 녹화입니다. 2026-11-04 카페 예시 사진을 화면에 띄워 카메라로 비추며 테스트한 영상으로, 실제 카페 현장 촬영이나 최신 UI 전체의 검증 영상은 아닙니다. 시스템 상태·내비게이션 바를 제외하고 추천 흐름 약 7초를 담았습니다.
+
+현재는 탐색 안내, 스캔 진행 애니메이션과 재분석 흐름을 다듬고 있습니다.
 
 ## Key Features
 
