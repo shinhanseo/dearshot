@@ -5,6 +5,9 @@ enum class AppScene {
     CAFE,
     GREEN_SPACE,
     URBAN_STREET,
+    LIBRARY,
+    MUSEUM,
+    GREENHOUSE,
     UNKNOWN,
 }
 

@@ -103,6 +103,9 @@ class AppSceneMapper(
             AppScene.CAFE,
             AppScene.GREEN_SPACE,
             AppScene.URBAN_STREET,
+            AppScene.LIBRARY,
+            AppScene.MUSEUM,
+            AppScene.GREENHOUSE,
         )
 
         val LABEL_TO_SCENE: Map<String, AppScene> = buildMap {
@@ -172,6 +175,23 @@ class AppSceneMapper(
                 "residential_neighborhood",
                 "apartment_building/outdoor",
                 "office_building",
+            )
+
+            register(
+                AppScene.LIBRARY,
+                "bookstore",
+                "library/indoor",
+            )
+
+            register(
+                AppScene.MUSEUM,
+                "art_gallery",
+                "museum/indoor",
+            )
+
+            register(
+                AppScene.GREENHOUSE,
+                "greenhouse/indoor",
             )
         }
     }
