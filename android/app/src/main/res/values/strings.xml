@@ -76,4 +76,6 @@
     <string name="camera_scan_manual_selection">Choose manually</string>
     <string name="camera_scan_checking_place">Checking the shooting location</string>
     <string name="camera_scan_sensor_unavailable">Motion sensor unavailable. Choose a composition manually</string>
+    <string name="camera_scan_place_found">Place identified · %1$s</string>
+    <string name="camera_scan_choosing_composition">Finding a composition for this space</string>
 </resources>

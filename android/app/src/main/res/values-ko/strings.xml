@@ -76,4 +76,6 @@
     <string name="camera_scan_manual_selection">직접 선택</string>
     <string name="camera_scan_checking_place">촬영 장소를 확인하고 있어요</string>
     <string name="camera_scan_sensor_unavailable">움직임 센서를 사용할 수 없어요. 구도를 직접 선택해 주세요</string>
+    <string name="camera_scan_place_found">장소를 찾았어요 · %1$s</string>
+    <string name="camera_scan_choosing_composition">이 공간에 어울리는 구도를 고르고 있어요</string>
 </resources>

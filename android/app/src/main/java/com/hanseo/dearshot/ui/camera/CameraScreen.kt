@@ -26,13 +26,11 @@ import com.hanseo.dearshot.R
 import com.hanseo.dearshot.camera.CameraLens
 import com.hanseo.dearshot.ui.camera.component.CameraCaptureControls
 import com.hanseo.dearshot.ui.camera.component.CameraCaptureErrorDialog
-import com.hanseo.dearshot.ui.camera.component.CameraObjectOverlay
 import com.hanseo.dearshot.ui.camera.component.CameraPermissionContent
 import com.hanseo.dearshot.ui.camera.component.CameraPreview
 import com.hanseo.dearshot.ui.camera.component.CameraRecommendationBanner
 import com.hanseo.dearshot.ui.camera.component.CameraScanOverlay
 import com.hanseo.dearshot.ui.camera.component.CameraScanStage
-import com.hanseo.dearshot.ui.camera.component.CameraSceneLabels
 import com.hanseo.dearshot.ui.camera.component.CameraTemplateOverlay
 import com.hanseo.dearshot.ui.camera.component.CameraTopBar
 import com.hanseo.dearshot.ui.camera.component.CameraZoomControls
@@ -40,6 +38,7 @@ import com.hanseo.dearshot.ui.camera.permission.rememberCameraPermissionState
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberUpdatedState
 import com.hanseo.dearshot.ui.camera.component.CameraScanDetections
+import com.hanseo.dearshot.ui.camera.component.cameraScanMessage
 
 @Composable
 fun CameraScreen(
@@ -189,15 +188,36 @@ fun CameraScreen(
                     if (stage != null) {
                         val messages = stringArrayResource(R.array.camera_scan_messages)
 
+                        val fallbackMessage =
+                            if (
+                                stage == CameraScanStage.STABILIZING &&
+                                cameraState.motionStatus ==
+                                com.hanseo.dearshot.camera.motion.CameraMotionStatus.STABLE
+                            ) {
+                                stringResource(
+                                    R.string.camera_scan_checking_place,
+                                )
+                            } else if (
+                                stage == CameraScanStage.STABILIZING &&
+                                cameraState.motionStatus ==
+                                com.hanseo.dearshot.camera.motion.CameraMotionStatus.UNAVAILABLE
+                            ) {
+                                stringResource(
+                                    R.string.camera_scan_sensor_unavailable,
+                                )
+                            } else {
+                                messages[stage.ordinal]
+                            }
+
+                        val scanMessage = cameraScanMessage(
+                            stage = stage,
+                            presentation = scanPresentation,
+                            fallbackMessage = fallbackMessage,
+                        )
+
                         CameraScanOverlay(
                             stage = stage,
-                            message = if (stage == CameraScanStage.STABILIZING &&
-                                cameraState.motionStatus == com.hanseo.dearshot.camera.motion.CameraMotionStatus.STABLE
-                            ) stringResource(R.string.camera_scan_checking_place)
-                            else if (stage == CameraScanStage.STABILIZING &&
-                                cameraState.motionStatus == com.hanseo.dearshot.camera.motion.CameraMotionStatus.UNAVAILABLE
-                            ) stringResource(R.string.camera_scan_sensor_unavailable)
-                            else messages[stage.ordinal],
+                            message = scanMessage,
                             stepLabels = stringArrayResource(R.array.camera_scan_stages).toList(),
                             manualSelectionLabel = stringResource(
                                 R.string.camera_scan_manual_selection,
