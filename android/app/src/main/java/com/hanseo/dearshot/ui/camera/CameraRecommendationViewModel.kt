@@ -91,6 +91,26 @@ class CameraRecommendationViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 이전 추천 결과를 비우고 새 스냅샷을 받을 준비를 한다.
+     *
+     * 카메라 분석 쪽의 추천 잠금 초기화는 별도로 필요하다.
+     */
+    @MainThread
+    fun prepareForRetry() {
+        // 이미 요청 중이면 중복 재시도를 막는다.
+        if (_uiState.value == CameraRecommendationUiState.Loading) {
+            return
+        }
+
+        requestJob?.cancel()
+        requestJob = null
+
+        lastSnapshotId = null
+
+        _uiState.value = CameraRecommendationUiState.Idle
+    }
+
     private suspend fun resolveFinished(
         response: SceneAnalysisStatusResponse,
         locale: String,

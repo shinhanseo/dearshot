@@ -93,4 +93,9 @@
     <string name="camera_place_museum">미술관·전시실</string>
     <string name="camera_place_greenhouse">실내 온실</string>
     <string name="camera_place_unknown">주변 공간</string>
+
+    <string name="camera_selection_title">어울리는 구도를 확실히 고르지 못했어요</string>
+    <string name="camera_selection_description">카메라 방향을 조금 바꾸거나 직접 골라보세요.</string>
+    <string name="camera_selection_retry">다시 분석</string>
+    <string name="camera_selection_manual">직접 선택</string>
 </resources>

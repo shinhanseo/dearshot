@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import com.hanseo.dearshot.ui.camera.component.CameraScanDetections
 import com.hanseo.dearshot.ui.camera.component.cameraScanMessage
 import com.hanseo.dearshot.ui.camera.component.cameraExplorationMessage
+import com.hanseo.dearshot.ui.camera.component.CameraRecommendationSelectionCard
 
 @Composable
 fun CameraScreen(
@@ -59,6 +60,23 @@ fun CameraScreen(
 
     val recommendedTemplate =
         (recommendationState as? CameraRecommendationUiState.Finished)?.template
+
+    val finishedState =
+        recommendationState as? CameraRecommendationUiState.Finished
+
+    val needsManualSelection =
+        finishedState?.response?.status == "NEEDS_USER_SELECTION" &&
+                finishedState.response.result?.reasonCode ==
+                "LOW_RECOMMENDATION_CONFIDENCE"
+
+    var isResettingRecommendation by remember {
+        mutableStateOf(false)
+    }
+
+    // 카메라가 끊기거나 요청 상태가 바뀌면 재시도 버튼 잠금을 해제한다.
+    LaunchedEffect(cameraState.isBound, recommendationState) {
+        isResettingRecommendation = false
+    }
 
     val initialScanStage = when (recommendationState) {
         CameraRecommendationUiState.Idle -> {
@@ -239,24 +257,65 @@ fun CameraScreen(
                             modifier = Modifier.matchParentSize(),
                         )
                     } else {
-                        cameraState.zoomInfo?.let { zoomInfo ->
-                            CameraZoomControls(
-                                zoomInfo = zoomInfo,
-                                enabled = cameraState.canChangeZoom,
-                                onZoomSelected = cameraState::changeZoom,
+                        if (needsManualSelection) {
+                            CameraRecommendationSelectionCard(
+                                onRetry = {
+                                    if (
+                                        !isResettingRecommendation &&
+                                        cameraState.isBound
+                                    ) {
+                                        isResettingRecommendation = true
+
+                                        val accepted =
+                                            cameraState.session.resetRecommendation(
+                                                onReset = {
+                                                    // 분석기의 추천 잠금이 풀린 다음
+                                                    // ViewModel도 새 요청을 받을 상태로 변경한다.
+                                                    recommendationViewModel.prepareForRetry()
+
+                                                    isResettingRecommendation = false
+                                                },
+                                            )
+
+                                        if (!accepted) {
+                                            // 초기화 작업을 등록하지 못했다면
+                                            // 현재 안내를 유지하고 다시 누를 수 있게 한다.
+                                            isResettingRecommendation = false
+                                        }
+                                    }
+                                },
+                                onSelectManually = onOpenTemplates,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = 12.dp),
+                                    .padding(
+                                        horizontal = 16.dp,
+                                        vertical = 12.dp,
+                                    )
+                                    .fillMaxWidth(),
                             )
-                        }
+                        } else {
+                            cameraState.zoomInfo?.let { zoomInfo ->
+                                CameraZoomControls(
+                                    zoomInfo = zoomInfo,
+                                    enabled = cameraState.canChangeZoom,
+                                    onZoomSelected = cameraState::changeZoom,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 12.dp),
+                                )
+                            }
 
-                        if (recommendedTemplate == null) {
-                            CameraRecommendationBanner(
-                                state = recommendationState,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                            )
+                            if (recommendedTemplate == null) {
+                                CameraRecommendationBanner(
+                                    state = recommendationState,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(
+                                            horizontal = 16.dp,
+                                            vertical = 12.dp,
+                                        ),
+                                )
+                            }
                         }
                     }
                 }

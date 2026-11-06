@@ -44,6 +44,31 @@ class FrameAnalyzer(
     private var snapshotSaved = false
     private var closed = false
 
+    /**
+     * 새 프레임으로 추천 조건을 다시 판단한다.
+     *
+     * 반드시 analyze()와 같은 단일 분석 실행기에서 호출한다.
+     */
+    @WorkerThread
+    fun resetRecommendation() {
+        if (closed) return
+
+        // 이미 추천을 시작했다는 잠금과 이전 장소 판단을 초기화한다.
+        recommendationCoordinator.reset()
+
+        // 다음 프레임에서 장소·객체 분석을 바로 다시 수행한다.
+        lastSceneAnalyzedAt = null
+        lastObjectsAnalyzedAt = null
+        lastProcessedAt = null
+
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                TAG,
+                "Recommendation reset: waiting for a fresh scene",
+            )
+        }
+    }
+
     @WorkerThread
     override fun analyze(image: ImageProxy) {
         try {

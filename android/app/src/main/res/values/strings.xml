@@ -93,4 +93,9 @@
     <string name="camera_place_museum">Museum / gallery</string>
     <string name="camera_place_greenhouse">Indoor greenhouse</string>
     <string name="camera_place_unknown">Surroundings</string>
+
+    <string name="camera_selection_title">We couldn’t confidently choose a composition</string>
+    <string name="camera_selection_description">Try a different camera angle or choose a composition yourself.</string>
+    <string name="camera_selection_retry">Try again</string>
+    <string name="camera_selection_manual">Choose manually</string>
 </resources>

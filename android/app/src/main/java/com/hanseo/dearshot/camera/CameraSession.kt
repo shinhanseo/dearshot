@@ -36,6 +36,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import com.hanseo.dearshot.camera.motion.CameraMotionMonitor
 import com.hanseo.dearshot.analysis.scene.SceneClassification
+import java.util.concurrent.RejectedExecutionException
 
 class CameraSession @Inject constructor(
     @ApplicationContext context: Context,
@@ -511,6 +512,55 @@ class CameraSession @Inject constructor(
             onResult(
                 Result.failure(exception)
             )
+        }
+    }
+
+    /**
+     * 추천 초기화를 분석 실행기에 등록한다.
+     *
+     * 반환값은 작업 등록 성공 여부다.
+     * 실제 초기화 완료는 메인 스레드의 onReset으로 알린다.
+     */
+    @MainThread
+    fun resetRecommendation(
+        onReset: () -> Unit,
+    ): Boolean {
+        val executor = analysisExecutor ?: return false
+        val analyzer = frameAnalyzer ?: return false
+
+        if (boundCamera == null || executor.isShutdown) {
+            return false
+        }
+
+        val requestedVersion = connectionVersion
+
+        return try {
+            executor.execute {
+                // analyze()와 같은 단일 분석 스레드에서 실행한다.
+                analyzer.resetRecommendation()
+
+                mainExecutor.execute {
+                    // 기다리는 동안 카메라가 종료되거나
+                    // 다른 분석기로 교체됐다면 완료 처리를 하지 않는다.
+                    if (
+                        requestedVersion == connectionVersion &&
+                        frameAnalyzer === analyzer &&
+                        boundCamera != null
+                    ) {
+                        onReset()
+                    }
+                }
+            }
+
+            true
+        } catch (exception: RejectedExecutionException) {
+            Log.w(
+                "CameraSession",
+                "Could not schedule recommendation reset",
+                exception,
+            )
+
+            false
         }
     }
 
