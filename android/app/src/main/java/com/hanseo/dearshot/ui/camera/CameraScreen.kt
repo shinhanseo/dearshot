@@ -39,6 +39,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberUpdatedState
 import com.hanseo.dearshot.ui.camera.component.CameraScanDetections
 import com.hanseo.dearshot.ui.camera.component.cameraScanMessage
+import com.hanseo.dearshot.ui.camera.component.cameraExplorationMessage
 
 @Composable
 fun CameraScreen(
@@ -48,6 +49,11 @@ fun CameraScreen(
 ) {
     val permissionState = rememberCameraPermissionState()
     val cameraState = rememberCameraScreenState()
+    val explorationState = resolveCameraExplorationState(
+        isCameraReady = cameraState.isBound,
+        scene = cameraState.recognizedScene,
+        motionStatus = cameraState.motionStatus,
+    )
     val recommendationViewModel: CameraRecommendationViewModel = hiltViewModel()
     val recommendationState by recommendationViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -209,11 +215,18 @@ fun CameraScreen(
                                 messages[stage.ordinal]
                             }
 
-                        val scanMessage = cameraScanMessage(
-                            stage = stage,
-                            presentation = scanPresentation,
-                            fallbackMessage = fallbackMessage,
-                        )
+                        val scanMessage =
+                            if (stage == CameraScanStage.STABILIZING) {
+                                cameraExplorationMessage(
+                                    state = explorationState,
+                                )
+                            } else {
+                                cameraScanMessage(
+                                    stage = stage,
+                                    presentation = scanPresentation,
+                                    fallbackMessage = fallbackMessage,
+                                )
+                            }
 
                         CameraScanOverlay(
                             stage = stage,

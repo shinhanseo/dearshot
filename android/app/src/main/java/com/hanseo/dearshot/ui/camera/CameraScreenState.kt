@@ -29,6 +29,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import com.hanseo.dearshot.camera.CameraZoomInfo
 import com.hanseo.dearshot.analysis.scene.SceneClassification
+import com.hanseo.dearshot.analysis.scene.AppScene
+import com.hanseo.dearshot.analysis.scene.AppSceneMapper
 
 data class SceneCandidateUi(
     val label: String,
@@ -118,6 +120,11 @@ class CameraScreenState(
         get() = isBound && zoomInfo != null && !isCapturing
 
 
+    private val sceneMapper = AppSceneMapper()
+
+    var recognizedScene by mutableStateOf(AppScene.UNKNOWN)
+        private set
+
     @MainThread
     fun updateConnection(
         bound: Boolean,
@@ -129,10 +136,16 @@ class CameraScreenState(
         supportsFlash = bound && hasFlash
 
         if (!bound) {
-            motionStatus = com.hanseo.dearshot.camera.motion.CameraMotionStatus.WARMING_UP
+            recognizedScene = AppScene.UNKNOWN
+
+            motionStatus =
+                com.hanseo.dearshot.camera.motion.CameraMotionStatus.WARMING_UP
+
             zoomInfo = null
+
             objectExpiryJob?.cancel()
             objectExpiryJob = null
+
             analysisUiState = CameraAnalysisUiState()
         }
 
@@ -257,6 +270,10 @@ class CameraScreenState(
     ) {
         if (!isBound) return
 
+        // 전체 후보를 사용해서 지원 장소를 판단한다.
+        recognizedScene = sceneMapper.map(result).scene
+
+        // 화면에 표시할 원본 후보는 기존처럼 따로 보관한다.
         analysisUiState = analysisUiState.copy(
             sceneCandidates = result.candidates
                 .take(3)

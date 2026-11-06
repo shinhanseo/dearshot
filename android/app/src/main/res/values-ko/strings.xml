@@ -78,4 +78,19 @@
     <string name="camera_scan_sensor_unavailable">움직임 센서를 사용할 수 없어요. 구도를 직접 선택해 주세요</string>
     <string name="camera_scan_place_found">장소를 찾았어요 · %1$s</string>
     <string name="camera_scan_choosing_composition">이 공간에 어울리는 구도를 고르고 있어요</string>
+
+    <string name="camera_exploration_preparing">카메라를 준비하고 있어요</string>
+    <string name="camera_exploration_searching">찍고 싶은 풍경을 비춰보세요</string>
+    <string name="camera_exploration_place_found">%1$s 발견 · 잠깐 유지해주세요</string>
+    <string name="camera_exploration_holding">%1$s · 추천할 장면을 확인하고 있어요</string>
+    <string name="camera_exploration_sensor_unavailable">움직임을 확인할 수 없어요 · 직접 선택해주세요</string>
+
+    <string name="camera_place_waterfront">물가</string>
+    <string name="camera_place_cafe">카페</string>
+    <string name="camera_place_green_space">녹지 공간</string>
+    <string name="camera_place_urban_street">거리</string>
+    <string name="camera_place_library">서점·도서관</string>
+    <string name="camera_place_museum">미술관·전시실</string>
+    <string name="camera_place_greenhouse">실내 온실</string>
+    <string name="camera_place_unknown">주변 공간</string>
 </resources>
