@@ -385,6 +385,9 @@ fun CameraScreen(
                 onDismiss = {
                     showGuideSettings = false
                 },
+                onReanalyze = {
+                    // 재분석 로직 연결
+                },
             )
         }
     }

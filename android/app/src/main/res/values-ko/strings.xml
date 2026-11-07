@@ -96,4 +96,5 @@
     <string name="camera_guide_settings_title">현재 구도</string>
     <string name="camera_guide_visibility">가이드 표시</string>
     <string name="camera_guide_visibility_description">선만 숨겨도 선택한 구도는 유지돼요</string>
+    <string name="camera_guide_reanalyze">현재 장면 다시 분석</string>
 </resources>

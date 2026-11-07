@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.hanseo.dearshot.R
 import com.hanseo.dearshot.data.remote.template.TemplateDetailResponse
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,7 @@ fun CameraGuideSettingsSheet(
     template: TemplateDetailResponse,
     isGuideVisible: Boolean,
     onGuideVisibilityChange: (Boolean) -> Unit,
+    onReanalyze: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -129,6 +131,37 @@ fun CameraGuideSettingsSheet(
                 Switch(
                     checked = isGuideVisible,
                     onCheckedChange = onGuideVisibilityChange,
+                )
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        role = androidx.compose.ui.semantics.Role.Button,
+                        onClick = onReanalyze,
+                    )
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.camera_guide_reanalyze,
+                    ),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                Text(
+                    text = "›",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
