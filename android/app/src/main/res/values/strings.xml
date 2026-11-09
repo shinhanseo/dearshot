@@ -104,4 +104,12 @@
     <string name="template_selection_retry">Try again</string>
     <string name="template_selection_more">Show more</string>
     <string name="template_selection_preview">Preview composition</string>
+    <string name="template_selection_back_to_list">Back to list</string>
+    <string name="template_selection_apply">Use this composition</string>
+    <string name="template_selection_applying">Applying…</string>
+    <string name="template_selection_apply_error">Couldn’t apply this composition. Please try again.</string>
+    <string name="template_selection_choose_scene">Choose a location</string>
+    <string name="template_selection_location_label">LOCATION</string>
+    <string name="template_selection_change_location">Change</string>
+    <string name="template_selection_location_count">%1$d compositions</string>
 </resources>

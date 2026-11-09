@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -22,11 +26,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.hanseo.dearshot.ui.camera.TemplateSceneSelectionState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,11 +45,15 @@ import com.hanseo.dearshot.ui.camera.TemplateSelectionUiState
 @Composable
 fun CameraTemplateSelectionSheet(
     uiState: TemplateSelectionUiState,
+    sceneState: TemplateSceneSelectionState,
+    onSceneSelected: (String) -> Unit,
     onTemplateClick: (TemplateSummaryResponse) -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // 시트 위치에 따라 달라지는 내부 제약 대신 화면 높이를 기준으로 한다.
+    val contentHeight = LocalConfiguration.current.screenHeightDp.dp * 0.85f
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
     )
@@ -52,9 +62,15 @@ fun CameraTemplateSelectionSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
+        // 기본 상단 inset은 시트 offset과 연동된다. 높이 재측정 루프를 피한다.
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            // 내용 변경과 무관하게 시트의 펼침 기준 높이를 유지한다.
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(contentHeight)
+                .navigationBarsPadding(),
         ) {
             Text(
                 text = stringResource(
@@ -67,43 +83,54 @@ fun CameraTemplateSelectionSheet(
                 ),
             )
 
-            when (uiState) {
-                TemplateSelectionUiState.Idle,
-                TemplateSelectionUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 220.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
+            CameraTemplateSceneSelector(
+                state = sceneState,
+                onSceneSelected = onSceneSelected,
+            )
+
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                when (uiState) {
+                    TemplateSelectionUiState.Idle -> {
+                        TemplateSelectionMessage(
+                            message = stringResource(R.string.template_selection_choose_scene),
                         )
                     }
-                }
 
-                is TemplateSelectionUiState.Error -> {
-                    TemplateSelectionMessage(
-                        message = stringResource(
-                            R.string.template_selection_error,
-                        ),
-                        onRetry = onRetry,
-                    )
-                }
+                    TemplateSelectionUiState.Loading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
+                    }
 
-                is TemplateSelectionUiState.Success -> {
-                    if (uiState.templates.isEmpty()) {
+                    is TemplateSelectionUiState.Error -> {
                         TemplateSelectionMessage(
                             message = stringResource(
-                                R.string.template_selection_empty,
+                                R.string.template_selection_error,
                             ),
+                            onRetry = onRetry,
                         )
-                    } else {
-                        TemplateSelectionGrid(
-                            state = uiState,
-                            onTemplateClick = onTemplateClick,
-                            onLoadMore = onLoadMore,
-                        )
+                    }
+
+                    is TemplateSelectionUiState.Success -> {
+                        if (uiState.templates.isEmpty()) {
+                            TemplateSelectionMessage(
+                                message = stringResource(
+                                    R.string.template_selection_empty,
+                                ),
+                            )
+                        } else {
+                            TemplateSelectionGrid(
+                                state = uiState,
+                                onTemplateClick = onTemplateClick,
+                                onLoadMore = onLoadMore,
+                            )
+                        }
                     }
                 }
             }
@@ -119,9 +146,7 @@ private fun TemplateSelectionGrid(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 520.dp),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 24.dp,
             end = 24.dp,
@@ -192,7 +217,6 @@ private fun TemplateSelectionItem(
 ) {
     Column(
         modifier = Modifier
-            .clip(MaterialTheme.shapes.medium)
             .clickable(
                 onClickLabel = stringResource(
                     R.string.template_selection_preview,
@@ -207,9 +231,7 @@ private fun TemplateSelectionItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    Modifier.aspectRatio(3f / 4f),
-                )
+                .aspectRatio(3f / 4f)
                 .clip(MaterialTheme.shapes.medium),
         )
 

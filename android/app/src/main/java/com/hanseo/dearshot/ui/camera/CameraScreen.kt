@@ -1,6 +1,7 @@
 package com.hanseo.dearshot.ui.camera
 
 import android.os.SystemClock
+import com.hanseo.dearshot.analysis.scene.AppScene
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,10 +43,12 @@ import com.hanseo.dearshot.ui.camera.component.cameraScanMessage
 import com.hanseo.dearshot.ui.camera.component.cameraExplorationMessage
 import com.hanseo.dearshot.ui.camera.component.CameraRecommendationSelectionCard
 import com.hanseo.dearshot.ui.camera.component.CameraGuideSettingsSheet
+import com.hanseo.dearshot.data.remote.template.TemplateSummaryResponse
+import com.hanseo.dearshot.ui.camera.component.CameraTemplatePreviewDialog
+import com.hanseo.dearshot.ui.camera.component.CameraTemplateSelectionSheet
 
 @Composable
 fun CameraScreen(
-    onOpenTemplates: () -> Unit,
     onOpenLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -59,8 +62,28 @@ fun CameraScreen(
     val recommendationViewModel: CameraRecommendationViewModel = hiltViewModel()
     val recommendationState by recommendationViewModel.uiState.collectAsStateWithLifecycle()
 
-    val recommendedTemplate =
-        (recommendationState as? CameraRecommendationUiState.Finished)?.template
+    val manualTemplateState by
+        recommendationViewModel.manualTemplateState.collectAsStateWithLifecycle()
+
+    val recommendedTemplate = manualTemplateState.template
+        ?: (recommendationState as? CameraRecommendationUiState.Finished)?.template
+
+    val templateSelectionViewModel: TemplateSelectionViewModel =
+        hiltViewModel()
+
+    val templateSelectionState by
+    templateSelectionViewModel.uiState.collectAsStateWithLifecycle()
+
+    val templateSceneState by
+        templateSelectionViewModel.sceneState.collectAsStateWithLifecycle()
+
+    var showTemplateSelection by remember {
+        mutableStateOf(false)
+    }
+
+    var previewTemplate by remember {
+        mutableStateOf<TemplateSummaryResponse?>(null)
+    }
 
     var showGuideSettings by remember(
         recommendedTemplate?.id,
@@ -69,10 +92,48 @@ fun CameraScreen(
         mutableStateOf(false)
     }
 
+    fun openTemplateSelection() {
+        if (showTemplateSelection) {
+            return
+        }
+
+        showGuideSettings = false
+
+        val detectedSceneKey = when (cameraState.recognizedScene) {
+            AppScene.WATERFRONT -> "waterfront"
+            AppScene.CAFE -> "cafe"
+            AppScene.GREEN_SPACE -> "green-space"
+            AppScene.URBAN_STREET -> "urban-street"
+            AppScene.LIBRARY -> "library"
+            AppScene.MUSEUM -> "museum"
+            AppScene.GREENHOUSE -> "greenhouse"
+            AppScene.UNKNOWN -> null
+        }
+        val initialSceneKey =
+            (recommendationState as? CameraRecommendationUiState.Finished)
+                ?.response?.result?.scene?.sceneKey
+                ?.takeIf { it in (recommendedTemplate?.sceneKeys ?: emptyList()) }
+                ?: recommendedTemplate?.sceneKeys?.firstOrNull()
+                ?: detectedSceneKey
+        templateSelectionViewModel.loadTemplates(scene = initialSceneKey)
+
+        showTemplateSelection = true
+    }
+
+    LaunchedEffect(manualTemplateState.applicationVersion) {
+        if (manualTemplateState.template != null) {
+            previewTemplate = null
+            showTemplateSelection = false
+            showGuideSettings = false
+            cameraState.changeGuideVisibility(true)
+        }
+    }
+
     val finishedState =
         recommendationState as? CameraRecommendationUiState.Finished
 
     val needsManualSelection =
+        manualTemplateState.template == null &&
         finishedState?.response?.status == "NEEDS_USER_SELECTION" &&
                 finishedState.response.result?.reasonCode ==
                 "LOW_RECOMMENDATION_CONFIDENCE"
@@ -128,7 +189,9 @@ fun CameraScreen(
         isResettingRecommendation = false
     }
 
-    val initialScanStage = when (recommendationState) {
+    val initialScanStage = if (manualTemplateState.template != null) {
+        null
+    } else when (recommendationState) {
         CameraRecommendationUiState.Idle -> {
             if (cameraState.canCapture) CameraScanStage.STABILIZING else null
         }
@@ -197,8 +260,10 @@ fun CameraScreen(
         }
     }
 
-    val isScanning = scanStage == CameraScanStage.RECOGNIZING ||
-        scanStage == CameraScanStage.RECOMMENDING
+    val isScanning = manualTemplateState.template == null && (
+        scanStage == CameraScanStage.RECOGNIZING ||
+            scanStage == CameraScanStage.RECOMMENDING
+        )
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -219,7 +284,7 @@ fun CameraScreen(
                     if (recommendedTemplate != null && !isScanning) {
                         showGuideSettings = true
                     } else {
-                        onOpenTemplates()
+                        openTemplateSelection()
                     }
                 },
                 onMyPageClick = {
@@ -311,7 +376,7 @@ fun CameraScreen(
                             manualSelectionLabel = stringResource(
                                 R.string.camera_scan_manual_selection,
                             ),
-                            onManualSelection = onOpenTemplates,
+                            onManualSelection = ::openTemplateSelection,
                             modifier = Modifier.matchParentSize(),
                         )
                     } else {
@@ -320,7 +385,7 @@ fun CameraScreen(
                                 onRetry = {
                                     restartRecommendation()
                                 },
-                                onSelectManually = onOpenTemplates,
+                                onSelectManually = ::openTemplateSelection,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .padding(
@@ -396,10 +461,43 @@ fun CameraScreen(
                 onDismiss = {
                     showGuideSettings = false
                 },
+                onSelectTemplate = ::openTemplateSelection,
                 onReanalyze = {
                     restartRecommendation()
                 },
             )
         }
+    }
+    if (showTemplateSelection) {
+        CameraTemplateSelectionSheet(
+            uiState = templateSelectionState,
+            sceneState = templateSceneState,
+            onSceneSelected = templateSelectionViewModel::selectScene,
+            onTemplateClick = {
+                recommendationViewModel.clearTemplateApplyError()
+                previewTemplate = it
+            },
+            onRetry = templateSelectionViewModel::retry,
+            onLoadMore = templateSelectionViewModel::loadMore,
+            onDismiss = {
+                showTemplateSelection = false
+                previewTemplate = null
+            },
+        )
+    }
+
+    previewTemplate?.let { template ->
+        CameraTemplatePreviewDialog(
+            template = template,
+            isApplying = manualTemplateState.isApplying,
+            hasError = manualTemplateState.error != null,
+            onApply = {
+                recommendationViewModel.applyTemplate(template.id, template.version)
+            },
+            onDismiss = {
+                recommendationViewModel.clearTemplateApplyError()
+                previewTemplate = null
+            },
+        )
     }
 }

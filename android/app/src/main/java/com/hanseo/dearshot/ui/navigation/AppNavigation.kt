@@ -126,9 +126,6 @@ fun AppNavigation(
 
             entry<CameraRoute> {
                 CameraScreen(
-                    onOpenTemplates = {
-                        backStack.add(TemplatesRoute)
-                    },
                     onOpenLogin = {
                         backStack.add(
                             LoginRoute(provider = loginProvider)

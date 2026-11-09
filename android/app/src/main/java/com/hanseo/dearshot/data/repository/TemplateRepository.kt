@@ -5,11 +5,16 @@ import com.hanseo.dearshot.data.remote.apiCall
 import com.hanseo.dearshot.data.remote.template.TemplateApi
 import com.hanseo.dearshot.data.remote.template.TemplateDetailResponse
 import com.hanseo.dearshot.data.remote.template.TemplateListResponse
+import com.hanseo.dearshot.data.remote.template.TemplateSceneResponse
 import javax.inject.Inject
 
 class TemplateRepository @Inject constructor(
     private val api: TemplateApi,
 ) {
+
+    suspend fun getScenes(locale: String): ApiResult<TemplateSceneResponse> = apiCall {
+        api.getScenes(locale)
+    }
 
     suspend fun getTemplates(
         locale: String,

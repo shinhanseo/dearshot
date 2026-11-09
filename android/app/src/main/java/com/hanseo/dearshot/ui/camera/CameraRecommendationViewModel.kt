@@ -18,6 +18,14 @@ import kotlinx.coroutines.launch
 import com.hanseo.dearshot.data.remote.ApiResult
 import com.hanseo.dearshot.data.remote.template.TemplateDetailResponse
 import com.hanseo.dearshot.data.repository.TemplateRepository
+import kotlinx.coroutines.ensureActive
+
+data class ManualTemplateUiState(
+    val template: TemplateDetailResponse? = null,
+    val isApplying: Boolean = false,
+    val applicationVersion: Long = 0,
+    val error: ApiFailure? = null,
+)
 
 sealed interface CameraRecommendationUiState {
     data object Idle: CameraRecommendationUiState
@@ -53,11 +61,24 @@ class CameraRecommendationViewModel @Inject constructor(
     private var lastSnapshotId: String? = null
     private var sceneRevision = 0
 
+    private val _manualTemplateState =
+        MutableStateFlow(ManualTemplateUiState())
+
+    val manualTemplateState = _manualTemplateState.asStateFlow()
+
+    private var applyJob: Job? = null
+
     @MainThread
     fun onSnapshotReady(snapshot: RecommendationSnapshot) {
-        if (requestJob?.isActive == true || lastSnapshotId == snapshot.id) {
+        // 직접 선택한 구도를 사용하는 동안 자동 추천을 받지 않는다.
+        if (
+            _manualTemplateState.value.template != null ||
+            requestJob?.isActive == true ||
+            lastSnapshotId == snapshot.id
+        ) {
             return
         }
+
 
         lastSnapshotId = snapshot.id
 
@@ -81,13 +102,15 @@ class CameraRecommendationViewModel @Inject constructor(
                 return@launch
             }
 
-            _uiState.value = when (result) {
+            val nextState = when (result) {
                 is SceneRecommendationResult.Finished -> resolveFinished(result.response, locale)
 
                 is SceneRecommendationResult.RequestFailed -> CameraRecommendationUiState.RequestFailed(result.error)
 
                 is SceneRecommendationResult.PollingTimedOut -> CameraRecommendationUiState.TimedOut(result.analysisId)
             }
+            ensureActive()
+            _uiState.value = nextState
         }
     }
 
@@ -102,6 +125,10 @@ class CameraRecommendationViewModel @Inject constructor(
         if (_uiState.value == CameraRecommendationUiState.Loading) {
             return
         }
+
+        applyJob?.cancel()
+        applyJob = null
+        _manualTemplateState.value = ManualTemplateUiState()
 
         requestJob?.cancel()
         requestJob = null
@@ -137,5 +164,62 @@ class CameraRecommendationViewModel @Inject constructor(
             is ApiResult.Failure ->
                 CameraRecommendationUiState.RequestFailed(detail.error)
         }
+    }
+
+    @MainThread
+    fun applyTemplate(
+        templateId: String,
+        version: Int,
+    ) {
+        if (_manualTemplateState.value.isApplying) {
+            return
+        }
+
+        _manualTemplateState.value =
+            _manualTemplateState.value.copy(
+                isApplying = true,
+                error = null,
+            )
+
+        applyJob = viewModelScope.launch {
+            val result = templateRepository.getDetail(
+                templateId = templateId,
+                version = version,
+                locale = appInfoProvider.getLocale(),
+            )
+
+            ensureActive()
+
+            when (result) {
+                is ApiResult.Success -> {
+                    // 직접 선택이 성공하면 자동 추천 요청을 취소한다.
+                    requestJob?.cancel()
+                    requestJob = null
+
+                    _manualTemplateState.value = ManualTemplateUiState(
+                        template = result.data,
+                        applicationVersion =
+                            _manualTemplateState.value.applicationVersion + 1,
+                    )
+
+                    _uiState.value = CameraRecommendationUiState.Idle
+                }
+
+                is ApiResult.Failure -> {
+                    // 실패하면 기존에 적용한 구도는 유지한다.
+                    _manualTemplateState.value =
+                        _manualTemplateState.value.copy(
+                            isApplying = false,
+                            error = result.error,
+                        )
+                }
+            }
+        }
+    }
+
+    @MainThread
+    fun clearTemplateApplyError() {
+        _manualTemplateState.value =
+            _manualTemplateState.value.copy(error = null)
     }
 }

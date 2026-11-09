@@ -7,6 +7,12 @@ import retrofit2.http.Query
 
 interface TemplateApi {
 
+    @GET("scenes")
+    suspend fun getScenes(
+        @Query("locale") locale: String,
+    ): Response<TemplateSceneResponse>
+
+
     @GET("templates")
     suspend fun getTemplates(
         @Query("locale") locale: String,

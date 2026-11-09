@@ -33,6 +33,7 @@ fun CameraGuideSettingsSheet(
     isGuideVisible: Boolean,
     onGuideVisibilityChange: (Boolean) -> Unit,
     onReanalyze: () -> Unit,
+    onSelectTemplate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -136,6 +137,18 @@ fun CameraGuideSettingsSheet(
 
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
+            )
+
+            Text(
+                text = stringResource(R.string.template_selection_title),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        role = androidx.compose.ui.semantics.Role.Button,
+                        onClick = onSelectTemplate,
+                    )
+                    .padding(vertical = 12.dp),
             )
 
             Row(

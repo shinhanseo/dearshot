@@ -104,4 +104,12 @@
     <string name="template_selection_retry">다시 시도</string>
     <string name="template_selection_more">더 보기</string>
     <string name="template_selection_preview">구도 예시 보기</string>
+    <string name="template_selection_back_to_list">목록으로</string>
+    <string name="template_selection_apply">이 구도 적용</string>
+    <string name="template_selection_applying">적용 중…</string>
+    <string name="template_selection_apply_error">구도를 적용하지 못했어요. 다시 시도해주세요.</string>
+    <string name="template_selection_choose_scene">장소를 선택해주세요</string>
+    <string name="template_selection_location_label">현재 장소</string>
+    <string name="template_selection_change_location">장소 변경</string>
+    <string name="template_selection_location_count">구도 %1$d개</string>
 </resources>
