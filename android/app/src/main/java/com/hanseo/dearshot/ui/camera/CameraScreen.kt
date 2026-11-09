@@ -81,6 +81,39 @@ fun CameraScreen(
         mutableStateOf(false)
     }
 
+    LaunchedEffect(cameraState.isBound, recommendationState) {
+        isResettingRecommendation = false
+    }
+
+    fun restartRecommendation() {
+        // 초기화 중이거나 카메라가 연결되지 않았다면 실행하지 않는다.
+        if (
+            isResettingRecommendation ||
+            !cameraState.isBound ||
+            recommendationState == CameraRecommendationUiState.Loading
+        ) {
+            return
+        }
+
+        isResettingRecommendation = true
+
+        val accepted = cameraState.session.resetRecommendation(
+            onReset = {
+                // 분석기의 추천 잠금이 풀린 뒤,
+                // 기존 결과를 지우고 새 스냅샷을 받을 준비를 한다.
+                recommendationViewModel.prepareForRetry()
+
+                showGuideSettings = false
+                isResettingRecommendation = false
+            },
+        )
+
+        if (!accepted) {
+            // 초기화 요청을 등록하지 못하면 기존 결과를 유지한다.
+            isResettingRecommendation = false
+        }
+    }
+
     LaunchedEffect(
         recommendedTemplate?.id,
         recommendedTemplate?.version,
@@ -285,29 +318,7 @@ fun CameraScreen(
                         if (needsManualSelection) {
                             CameraRecommendationSelectionCard(
                                 onRetry = {
-                                    if (
-                                        !isResettingRecommendation &&
-                                        cameraState.isBound
-                                    ) {
-                                        isResettingRecommendation = true
-
-                                        val accepted =
-                                            cameraState.session.resetRecommendation(
-                                                onReset = {
-                                                    // 분석기의 추천 잠금이 풀린 다음
-                                                    // ViewModel도 새 요청을 받을 상태로 변경한다.
-                                                    recommendationViewModel.prepareForRetry()
-
-                                                    isResettingRecommendation = false
-                                                },
-                                            )
-
-                                        if (!accepted) {
-                                            // 초기화 작업을 등록하지 못했다면
-                                            // 현재 안내를 유지하고 다시 누를 수 있게 한다.
-                                            isResettingRecommendation = false
-                                        }
-                                    }
+                                    restartRecommendation()
                                 },
                                 onSelectManually = onOpenTemplates,
                                 modifier = Modifier
@@ -386,7 +397,7 @@ fun CameraScreen(
                     showGuideSettings = false
                 },
                 onReanalyze = {
-                    // 재분석 로직 연결
+                    restartRecommendation()
                 },
             )
         }
