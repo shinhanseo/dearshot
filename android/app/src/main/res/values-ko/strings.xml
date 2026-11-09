@@ -97,4 +97,11 @@
     <string name="camera_guide_visibility">가이드 표시</string>
     <string name="camera_guide_visibility_description">선만 숨겨도 선택한 구도는 유지돼요</string>
     <string name="camera_guide_reanalyze">현재 장면 다시 분석</string>
+    <string name="template_selection_title">다른 구도 선택</string>
+    <string name="template_selection_error">구도 목록을 불러오지 못했어요.</string>
+    <string name="template_selection_empty">표시할 구도가 없어요.</string>
+    <string name="template_selection_more_error">추가 구도를 불러오지 못했어요.</string>
+    <string name="template_selection_retry">다시 시도</string>
+    <string name="template_selection_more">더 보기</string>
+    <string name="template_selection_preview">구도 예시 보기</string>
 </resources>

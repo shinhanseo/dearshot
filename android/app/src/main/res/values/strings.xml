@@ -97,4 +97,11 @@
     <string name="camera_guide_visibility">Show guide</string>
     <string name="camera_guide_visibility_description">Hiding the guide keeps your selected composition</string>
     <string name="camera_guide_reanalyze">Analyze this scene again</string>
+    <string name="template_selection_title">Choose a composition</string>
+    <string name="template_selection_error">Couldn’t load compositions.</string>
+    <string name="template_selection_empty">No compositions available.</string>
+    <string name="template_selection_more_error">Couldn’t load more compositions.</string>
+    <string name="template_selection_retry">Try again</string>
+    <string name="template_selection_more">Show more</string>
+    <string name="template_selection_preview">Preview composition</string>
 </resources>
