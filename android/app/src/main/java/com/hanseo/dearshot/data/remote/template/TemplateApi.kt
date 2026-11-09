@@ -7,6 +7,15 @@ import retrofit2.http.Query
 
 interface TemplateApi {
 
+    @GET("templates")
+    suspend fun getTemplates(
+        @Query("locale") locale: String,
+        @Query("scene") scene: String? = null,
+        @Query("sort") sort: String = "recommended",
+        @Query("cursor") cursor: String? = null,
+        @Query("limit") limit: Int = 20,
+    ): Response<TemplateListResponse>
+
     @GET("templates/{templateId}")
     suspend fun getDetail(
         @Path("templateId") templateId: String,
