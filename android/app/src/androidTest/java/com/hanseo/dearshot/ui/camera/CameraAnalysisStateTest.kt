@@ -8,6 +8,7 @@ import javax.inject.Provider
 import com.hanseo.dearshot.analysis.detection.*
 import com.hanseo.dearshot.analysis.scene.*
 import com.hanseo.dearshot.camera.*
+import com.hanseo.dearshot.data.local.photo.CaptureSessionStore
 import com.hanseo.dearshot.data.local.photo.CapturedPhotoStore
 import kotlinx.coroutines.*
 import org.junit.Assert.*
@@ -31,7 +32,7 @@ class CameraAnalysisStateTest {
                     Provider { error("UI state test must not load scene model") },
                     Provider { error("UI state test must not load object model") },
                 )
-            }), mutableStateOf(CameraLens.BACK), CapturedPhotoStore(context),scope)
+            }), mutableStateOf(CameraLens.BACK), CapturedPhotoStore(context, CaptureSessionStore()),scope)
             try { state.updateConnection(true,false,false); block(state) } finally { scope.cancel() }
         }
     }
@@ -66,7 +67,7 @@ class CameraAnalysisStateTest {
                     Provider { error("UI state test must not load scene model") },
                     Provider { error("UI state test must not load object model") },
                 )
-            }),mutableStateOf(CameraLens.BACK),CapturedPhotoStore(context),scope)
+            }),mutableStateOf(CameraLens.BACK),CapturedPhotoStore(context, CaptureSessionStore()),scope)
                 state.updateConnection(true,false,false)
                 state.updateSceneAnalysis(scene())
                 state.updateObjectAnalysis(detection())

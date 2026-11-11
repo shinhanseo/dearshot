@@ -48,6 +48,8 @@ import com.hanseo.dearshot.data.local.photo.CapturedPhoto
 import com.hanseo.dearshot.ui.photos.PhotoListScreen
 import com.hanseo.dearshot.ui.photos.PhotoListViewModel
 import com.hanseo.dearshot.ui.photos.PhotoPreviewDialog
+import com.hanseo.dearshot.ui.photos.PhotoGalleryViewModel
+import com.hanseo.dearshot.ui.photos.PhotoListUiState
 
 @Serializable
 private data object StartRoute : NavKey
@@ -152,8 +154,12 @@ fun AppNavigation(
 
             entry<PhotoListRoute> {
                 val viewModel: PhotoListViewModel = hiltViewModel()
+                val galleryViewModel: PhotoGalleryViewModel = hiltViewModel()
+                val saveStates by galleryViewModel.saveStates.collectAsStateWithLifecycle()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                var previewPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+                // 열었던 순서가 조회 갱신으로 바뀌지 않도록 목록을 고정한다.
+                var previewPhotos by remember { mutableStateOf<List<CapturedPhoto>>(emptyList()) }
+                var previewPhotoId by remember { mutableStateOf<String?>(null) }
 
                 PhotoListScreen(
                     uiState = uiState,
@@ -162,14 +168,24 @@ fun AppNavigation(
                             backStack.removeLastOrNull()
                         }
                     },
-                    onPhotoClick = { previewPhoto = it },
+                    onPhotoClick = {
+                        previewPhotos = (uiState as? PhotoListUiState.Success)?.photos.orEmpty()
+                        previewPhotoId = it.id
+                    },
                     onRetry = viewModel::refresh,
                 )
 
-                previewPhoto?.let { photo ->
+                previewPhotoId?.let { photoId ->
                     PhotoPreviewDialog(
-                        photo = photo,
-                        onDismiss = { previewPhoto = null },
+                        photos = previewPhotos,
+                        initialPhotoId = photoId,
+                        saveStates = saveStates,
+                        onPhotoOpened = galleryViewModel::onPhotoOpened,
+                        onSave = galleryViewModel::savePhoto,
+                        onDismiss = {
+                            previewPhotoId = null
+                            previewPhotos = emptyList()
+                        },
                     )
                 }
             }

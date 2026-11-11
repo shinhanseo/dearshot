@@ -126,4 +126,14 @@
     <string name="photo_list_open_photo">사진 크게 보기</string>
     <string name="photo_list_photo_description">%1$d번째 사진</string>
     <string name="photo_list_image_error">이미지를 표시할 수 없어요</string>
+    <string name="photo_gallery_save">갤러리에 저장</string>
+    <string name="photo_gallery_saving">저장 중…</string>
+    <string name="photo_gallery_saved">저장 완료</string>
+    <string name="photo_gallery_retry">다시 저장</string>
+    <string name="photo_gallery_error">사진을 저장하지 못했어요. 다시 시도해주세요.</string>
+    <string name="photo_gallery_permission_required">사진을 저장하려면 저장소 권한이 필요해요. 설정에서 허용해주세요.</string>
+    <string name="photo_gallery_open_settings">설정 열기</string>
+    <string name="photo_preview_previous">이전 사진</string>
+    <string name="photo_preview_next">다음 사진</string>
+    <string name="photo_preview_position">%1$d / %2$d</string>
 </resources>

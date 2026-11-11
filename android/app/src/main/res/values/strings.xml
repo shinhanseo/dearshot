@@ -126,4 +126,14 @@
     <string name="photo_list_open_photo">View photo</string>
     <string name="photo_list_photo_description">Photo %1$d</string>
     <string name="photo_list_image_error">Image unavailable</string>
+    <string name="photo_gallery_save">Save to gallery</string>
+    <string name="photo_gallery_saving">Saving…</string>
+    <string name="photo_gallery_saved">Saved</string>
+    <string name="photo_gallery_retry">Try saving again</string>
+    <string name="photo_gallery_error">Couldn’t save your photo. Please try again.</string>
+    <string name="photo_gallery_permission_required">Storage permission is required to save photos. Allow it in Settings.</string>
+    <string name="photo_gallery_open_settings">Open settings</string>
+    <string name="photo_preview_previous">Previous photo</string>
+    <string name="photo_preview_next">Next photo</string>
+    <string name="photo_preview_position">%1$d / %2$d</string>
 </resources>
