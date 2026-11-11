@@ -112,4 +112,10 @@
     <string name="template_selection_location_label">LOCATION</string>
     <string name="template_selection_change_location">Change</string>
     <string name="template_selection_location_count">%1$d compositions</string>
+    <string name="camera_previous_recommendation">Previous composition</string>
+    <string name="camera_next_recommendation">Next composition</string>
+    <string name="camera_recommendation_position">%1$d/%2$d</string>
+    <string name="camera_recommendation_switch_error_title">Couldn’t switch compositions</string>
+    <string name="camera_recommendation_switch_error_message">Your current composition is still selected. Please try the arrow again.</string>
+    <string name="camera_recommendation_switch_error_confirm">OK</string>
 </resources>

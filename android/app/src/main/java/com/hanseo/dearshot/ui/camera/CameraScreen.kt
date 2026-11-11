@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -132,6 +135,13 @@ fun CameraScreen(
     val finishedState =
         recommendationState as? CameraRecommendationUiState.Finished
 
+    // 직접 선택한 구도를 사용 중이면 AI 추천 전환은 표시하지 않는다.
+    val activeRecommendation = finishedState?.takeIf {
+        manualTemplateState.template == null &&
+                it.template != null &&
+                it.recommendations.isNotEmpty()
+    }
+
     val needsManualSelection =
         manualTemplateState.template == null &&
         finishedState?.response?.status == "NEEDS_USER_SELECTION" &&
@@ -217,7 +227,10 @@ fun CameraScreen(
         cameraState.analysisUiState,
     )
 
-    LaunchedEffect(recommendationState, initialScanStage) {
+    LaunchedEffect(
+        initialScanStage,
+        finishedState?.response?.analysisId,
+    ) {
         when (initialScanStage) {
             CameraScanStage.RECOGNIZING -> {
                 // 요청이 시작되는 순간의 인식 결과를 저장한다.
@@ -276,9 +289,11 @@ fun CameraScreen(
         ) {
             CameraTopBar(
                 placeName = null,
-                templateName = recommendedTemplate?.title?.takeUnless { isScanning },
+                templateName = recommendedTemplate?.title
+                    ?.takeUnless { isScanning },
                 flashEnabled = cameraState.flashEnabled,
-                flashAvailable = permissionState.isGranted && cameraState.canChangeFlash,
+                flashAvailable =
+                    permissionState.isGranted && cameraState.canChangeFlash,
                 onFlashChange = cameraState::changeFlash,
                 onCompositionClick = {
                     if (recommendedTemplate != null && !isScanning) {
@@ -290,6 +305,19 @@ fun CameraScreen(
                 onMyPageClick = {
                     // 마이페이지 이동 연결 예정
                 },
+                recommendationCount = if (isScanning) {
+                    0
+                } else {
+                    activeRecommendation?.recommendations?.size ?: 0
+                },
+                selectedIndex = activeRecommendation?.selectedIndex ?: 0,
+                isSwitching =
+                    activeRecommendation?.isSwitching == true ||
+                            manualTemplateState.isApplying,
+                onPreviousRecommendation =
+                    recommendationViewModel::selectPreviousRecommendation,
+                onNextRecommendation =
+                    recommendationViewModel::selectNextRecommendation,
             )
 
             if (permissionState.isGranted) {
@@ -497,6 +525,42 @@ fun CameraScreen(
             onDismiss = {
                 recommendationViewModel.clearTemplateApplyError()
                 previewTemplate = null
+            },
+        )
+    }
+
+    if (
+        manualTemplateState.template == null &&
+        finishedState?.switchError != null
+    ) {
+        AlertDialog(
+            onDismissRequest =
+                recommendationViewModel::clearRecommendationSwitchError,
+            title = {
+                Text(
+                    stringResource(
+                        R.string.camera_recommendation_switch_error_title,
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.camera_recommendation_switch_error_message,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick =
+                        recommendationViewModel::clearRecommendationSwitchError,
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.camera_recommendation_switch_error_confirm,
+                        ),
+                    )
+                }
             },
         )
     }

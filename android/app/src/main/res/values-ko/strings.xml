@@ -112,4 +112,10 @@
     <string name="template_selection_location_label">현재 장소</string>
     <string name="template_selection_change_location">장소 변경</string>
     <string name="template_selection_location_count">구도 %1$d개</string>
+    <string name="camera_previous_recommendation">이전 추천 구도</string>
+    <string name="camera_next_recommendation">다음 추천 구도</string>
+    <string name="camera_recommendation_position">%1$d/%2$d</string>
+    <string name="camera_recommendation_switch_error_title">구도를 바꾸지 못했어요</string>
+    <string name="camera_recommendation_switch_error_message">현재 구도는 그대로 유지했어요. 화살표를 눌러 다시 시도해주세요.</string>
+    <string name="camera_recommendation_switch_error_confirm">확인</string>
 </resources>

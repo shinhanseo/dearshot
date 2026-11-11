@@ -28,6 +28,7 @@ data class SceneAnalysisResult(
     val outcome: String,
     val scene: RecommendedScene? = null,
     val recommendation: SceneRecommendation? = null,
+    val recommendations: List<SceneRecommendation> = emptyList(),
     val reasonCode: String? = null,
     val sceneCandidates: List<String> = emptyList(),
 )
