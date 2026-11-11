@@ -53,10 +53,12 @@ import com.hanseo.dearshot.ui.camera.component.CameraTemplateSelectionSheet
 @Composable
 fun CameraScreen(
     onOpenLogin: () -> Unit,
+    onOpenPhotos: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val permissionState = rememberCameraPermissionState()
     val cameraState = rememberCameraScreenState()
+    val photoCount by cameraState.photoCount.collectAsStateWithLifecycle()
     val explorationState = resolveCameraExplorationState(
         isCameraReady = cameraState.isBound,
         scene = cameraState.recognizedScene,
@@ -460,13 +462,11 @@ fun CameraScreen(
             }
 
             CameraCaptureControls(
-                photoCount = cameraState.photoCount,
+                photoCount = photoCount,
                 captureEnabled = permissionState.isGranted && cameraState.canCapture,
                 isCapturing = cameraState.isCapturing,
                 switchCameraEnabled = permissionState.isGranted && cameraState.canSwitchCamera,
-                onOpenPhotos = {
-                    // 촬영 사진 목록 연결 예정
-                },
+                onOpenPhotos = onOpenPhotos,
                 onCapture = cameraState::capture,
                 onSwitchCamera = cameraState::switchCamera,
             )

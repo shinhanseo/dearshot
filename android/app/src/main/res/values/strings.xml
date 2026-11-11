@@ -118,4 +118,12 @@
     <string name="camera_recommendation_switch_error_title">Couldn’t switch compositions</string>
     <string name="camera_recommendation_switch_error_message">Your current composition is still selected. Please try the arrow again.</string>
     <string name="camera_recommendation_switch_error_confirm">OK</string>
+    <string name="photo_list_title">Your photos</string>
+    <string name="photo_list_back">Back</string>
+    <string name="photo_list_empty">No photos yet.\nTake your first photo with a composition guide.</string>
+    <string name="photo_list_error">Couldn’t load your photos.</string>
+    <string name="photo_list_retry">Try again</string>
+    <string name="photo_list_open_photo">View photo</string>
+    <string name="photo_list_photo_description">Photo %1$d</string>
+    <string name="photo_list_image_error">Image unavailable</string>
 </resources>

@@ -118,4 +118,12 @@
     <string name="camera_recommendation_switch_error_title">구도를 바꾸지 못했어요</string>
     <string name="camera_recommendation_switch_error_message">현재 구도는 그대로 유지했어요. 화살표를 눌러 다시 시도해주세요.</string>
     <string name="camera_recommendation_switch_error_confirm">확인</string>
+    <string name="photo_list_title">촬영한 사진</string>
+    <string name="photo_list_back">뒤로</string>
+    <string name="photo_list_empty">아직 촬영한 사진이 없어요.\n구도 가이드와 함께 첫 사진을 찍어보세요.</string>
+    <string name="photo_list_error">사진을 불러오지 못했어요.</string>
+    <string name="photo_list_retry">다시 시도</string>
+    <string name="photo_list_open_photo">사진 크게 보기</string>
+    <string name="photo_list_photo_description">%1$d번째 사진</string>
+    <string name="photo_list_image_error">이미지를 표시할 수 없어요</string>
 </resources>

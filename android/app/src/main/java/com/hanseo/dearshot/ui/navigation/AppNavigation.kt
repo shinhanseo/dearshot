@@ -16,6 +16,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.hanseo.dearshot.data.device.auth.GoogleLoginClient
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -41,12 +44,19 @@ import com.hanseo.dearshot.ui.login.LoginScreen
 import androidx.activity.compose.LocalActivity
 import com.hanseo.dearshot.data.device.auth.KakaoLoginClient
 import com.hanseo.dearshot.ui.camera.CameraScreen
+import com.hanseo.dearshot.data.local.photo.CapturedPhoto
+import com.hanseo.dearshot.ui.photos.PhotoListScreen
+import com.hanseo.dearshot.ui.photos.PhotoListViewModel
+import com.hanseo.dearshot.ui.photos.PhotoPreviewDialog
 
 @Serializable
 private data object StartRoute : NavKey
 
 @Serializable
 private data object CameraRoute : NavKey
+
+@Serializable
+private data object PhotoListRoute : NavKey
 
 @Serializable
 private data object TemplatesRoute : NavKey
@@ -126,6 +136,11 @@ fun AppNavigation(
 
             entry<CameraRoute> {
                 CameraScreen(
+                    onOpenPhotos = {
+                        if (backStack.lastOrNull() == CameraRoute) {
+                            backStack.add(PhotoListRoute)
+                        }
+                    },
                     onOpenLogin = {
                         backStack.add(
                             LoginRoute(provider = loginProvider)
@@ -133,6 +148,30 @@ fun AppNavigation(
                     },
                     modifier = Modifier
                 )
+            }
+
+            entry<PhotoListRoute> {
+                val viewModel: PhotoListViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                var previewPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
+
+                PhotoListScreen(
+                    uiState = uiState,
+                    onBack = {
+                        if (backStack.lastOrNull() == PhotoListRoute) {
+                            backStack.removeLastOrNull()
+                        }
+                    },
+                    onPhotoClick = { previewPhoto = it },
+                    onRetry = viewModel::refresh,
+                )
+
+                previewPhoto?.let { photo ->
+                    PhotoPreviewDialog(
+                        photo = photo,
+                        onDismiss = { previewPhoto = null },
+                    )
+                }
             }
 
             entry<TemplatesRoute> {

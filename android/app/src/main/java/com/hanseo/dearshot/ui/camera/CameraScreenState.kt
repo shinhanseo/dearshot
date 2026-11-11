@@ -89,10 +89,8 @@ class CameraScreenState(
     var captureFailed by mutableStateOf(false)
         private set
 
-    // 현재 화면에서 촬영한 개수.
-    // 영구 저장된 전체 개수는 사진 목록 기능에서 연결한다.
-    var photoCount by mutableStateOf(0)
-        private set
+    // 카메라 화면이 재생성되어도 현재 세션의 촬영 개수를 유지한다.
+    val photoCount = photoStore.photoCount
 
     var motionStatus by mutableStateOf(com.hanseo.dearshot.camera.motion.CameraMotionStatus.WARMING_UP)
         private set
@@ -221,7 +219,7 @@ class CameraScreenState(
 
                 result.fold(
                     onSuccess = { file ->
-                        photoCount += 1
+                        photoStore.onPhotoSaved()
 
                         Log.d(
                             "CameraCapture",
@@ -333,7 +331,6 @@ class CameraScreenState(
 fun rememberCameraScreenState(
     dependencies: CameraDependenciesViewModel = hiltViewModel(),
 ): CameraScreenState {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val lensState = rememberSaveable {
@@ -344,11 +341,18 @@ fun rememberCameraScreenState(
         dependencies.createCameraSession()
     }
 
-    return remember(context, scope, lensState, session) {
+    val photoStore = dependencies.photoStore
+
+    return remember(
+        scope,
+        lensState,
+        session,
+        photoStore,
+    ) {
         CameraScreenState(
             session = session,
             lensState = lensState,
-            photoStore = CapturedPhotoStore(context),
+            photoStore = photoStore,
             scope = scope,
         )
     }
