@@ -37,13 +37,13 @@ describe("GeminiSceneRecommendationProvider", () => {
       url = String(requestUrl);
       init = requestInit;
       return new Response(JSON.stringify({
-        candidates: [{ content: { parts: [{ text: JSON.stringify({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({ recommendations: [{
           sceneKey: "beach",
           templateId: "beach-horizon",
           templateVersion: 2,
           confidence: 0.87,
           reasonCode: "BACKGROUND_BALANCE",
-        }) }] } }],
+        }] }) }] } }],
         usageMetadata: { promptTokenCount: 123, candidatesTokenCount: 18 },
       }), { status: 200, headers: { "content-type": "application/json" } });
     });
@@ -54,8 +54,11 @@ describe("GeminiSceneRecommendationProvider", () => {
     assert.equal(new Headers(init?.headers).get("x-goog-api-key"), "secret-key");
     const body = JSON.parse(String(init?.body));
     assert.equal(body.contents[0].parts[0].inlineData.data, input.image.toString("base64"));
-    assert.deepEqual(body.generationConfig.responseSchema.properties.templateId.enum, ["beach-horizon"]);
-    assert.equal(result.recommendation.templateId, "beach-horizon");
+    assert.deepEqual(body.generationConfig.responseSchema.properties.recommendations.items.properties.templateId.enum, ["beach-horizon"]);
+    assert.equal(result.recommendations[0].templateId, "beach-horizon");
+    assert.equal(body.generationConfig.candidateCount, 1);
+    assert.equal(body.generationConfig.responseSchema.properties.recommendations.maxItems, 3);
+    assert.match(body.systemInstruction.parts[0].text, /SAME sceneKey/u);
     assert.deepEqual(result.usage, { inputTokens: 123, outputTokens: 18 });
   });
 

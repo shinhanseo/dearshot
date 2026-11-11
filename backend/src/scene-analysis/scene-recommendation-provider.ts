@@ -44,7 +44,7 @@ export type SceneRecommendation = {
 export type ProviderUsage = { inputTokens: number | null; outputTokens: number | null };
 
 export type SceneRecommendationProviderResult = {
-  recommendation: SceneRecommendation;
+  recommendations: SceneRecommendation[];
   usage: ProviderUsage;
 };
 
@@ -75,6 +75,41 @@ export const sceneRecommendationSchema = z.object({
   reasonCode: z.enum(recommendationReasonCodes),
 }).strict();
 
+export const sceneRecommendationsSchema = z.object({
+  recommendations: z.array(sceneRecommendationSchema).min(1).max(3),
+}).strict();
+
+/** Validate every choice before applying the confidence cutoff. Never pad with arbitrary templates. */
+export function validateSceneRecommendations(
+  recommendations: SceneRecommendation[],
+  candidates: RecommendationCandidate[],
+  minimumConfidence: number,
+): SceneRecommendation[] {
+  const parsed = sceneRecommendationsSchema.safeParse({ recommendations });
+  if (!parsed.success) {
+    throw new SceneProviderError("PROVIDER_INVALID_RESPONSE", false, "VALIDATION");
+  }
+  const seen = new Set<string>();
+  const sceneKey = recommendations[0].sceneKey;
+  for (const item of recommendations) {
+    const allowed = candidates.some((candidate) =>
+      candidate.templateId === item.templateId &&
+      candidate.templateVersion === item.templateVersion &&
+      candidate.sceneKeys.includes(item.sceneKey)
+    );
+    if (!allowed) {
+      throw new SceneProviderError("PROVIDER_SELECTED_DISALLOWED_TEMPLATE", false, "VALIDATION");
+    }
+    if (seen.has(item.templateId) || item.sceneKey !== sceneKey) {
+      throw new SceneProviderError("PROVIDER_INCONSISTENT_RECOMMENDATIONS", false, "VALIDATION");
+    }
+    seen.add(item.templateId);
+  }
+  // The first item is the primary recommendation; do not silently promote alternatives.
+  if (recommendations[0].confidence < minimumConfidence) return [];
+  return recommendations.filter((item) => item.confidence >= minimumConfidence);
+}
+
 export class MockSceneRecommendationProvider implements SceneRecommendationProvider {
   readonly providerName = "mock";
   readonly modelName = "deterministic-b16";
@@ -88,14 +123,19 @@ export class MockSceneRecommendationProvider implements SceneRecommendationProvi
     if (!candidate) {
       throw new SceneProviderError("NO_TEMPLATE_CANDIDATES", false, "VALIDATION");
     }
+    const sceneKey = candidate.sceneKeys[0] ?? "unknown";
     return {
-      recommendation: {
-        sceneKey: candidate.sceneKeys[0] ?? "unknown",
-        templateId: candidate.templateId,
-        templateVersion: candidate.templateVersion,
-        confidence: 0.9,
-        reasonCode: "SCENE_MATCH",
-      },
+      recommendations: input.candidates
+        .filter((item) => item.sceneKeys.includes(sceneKey))
+        .filter((item, index, all) => all.findIndex((other) => other.templateId === item.templateId) === index)
+        .slice(0, 3)
+        .map((item) => ({
+          sceneKey,
+          templateId: item.templateId,
+          templateVersion: item.templateVersion,
+          confidence: 0.9,
+          reasonCode: "SCENE_MATCH" as const,
+        })),
       usage: { inputTokens: 0, outputTokens: 0 },
     };
   }

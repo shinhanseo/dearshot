@@ -56,13 +56,16 @@ class TestProvider implements SceneRecommendationProvider {
     this.lastInput = input;
     const selected = input.candidates[0]!;
     return {
-      recommendation: {
-        sceneKey: this.disallowed ? "invented-scene" : selected.sceneKeys[0]!,
-        templateId: this.disallowed ? "invented-template" : selected.templateId,
-        templateVersion: selected.templateVersion,
-        confidence: this.confidence,
-        reasonCode: "SCENE_MATCH" as const,
-      },
+      recommendations: input.candidates
+        .filter((candidate) => candidate.sceneKeys.includes(selected.sceneKeys[0]!))
+        .slice(0, 3)
+        .map((candidate) => ({
+          sceneKey: this.disallowed ? "invented-scene" : selected.sceneKeys[0]!,
+          templateId: this.disallowed ? "invented-template" : candidate.templateId,
+          templateVersion: candidate.templateVersion,
+          confidence: this.confidence,
+          reasonCode: "SCENE_MATCH" as const,
+        })),
       usage: { inputTokens: 120, outputTokens: 16 },
     };
   }
@@ -181,6 +184,14 @@ describe("scene recommendation pipeline", { concurrency: 1 }, () => {
     const [upload] = await connection.db.select().from(imageUploads)
       .where(eq(imageUploads.id, job.uploadId));
     assert.equal(analysis.status, "COMPLETED");
+    const choices = analysis.result?.recommendations as Array<{ template: { id: string; version: number } }>;
+    assert.equal(choices.length, 3);
+    assert.equal(new Set(choices.map((item) => item.template.id)).size, 3);
+    assert.deepEqual(analysis.result?.recommendation, choices[0]);
+    const scene = analysis.result?.scene as { sceneKey: string };
+    assert.ok(choices.every((item) => provider.lastInput?.candidates.some((candidate) =>
+      candidate.templateId === item.template.id && candidate.sceneKeys.includes(scene.sceneKey)
+    )));
     assert.equal(analysis.deviceAnalysis, null);
     assert.equal(analysis.timezone, null);
     assert.equal(analysis.latitude, null);

@@ -1597,6 +1597,46 @@ components:
           type: string
           enum: [SCENE_MATCH, SUBJECT_PLACEMENT, BACKGROUND_BALANCE, LIGHTING_CONTEXT, FALLBACK_BEST_FIT]
 
+    SceneRecommendationResult:
+      type: object
+      required: [outcome, scene, recommendation, source]
+      properties:
+        outcome:
+          type: string
+          const: RECOMMENDED
+        scene:
+          $ref: '#/components/schemas/SceneCandidate'
+        recommendation:
+          description: 기존 앱 호환용 첫 번째 구도. recommendations[0]과 동일하다.
+          allOf:
+            - $ref: '#/components/schemas/SceneRecommendation'
+        recommendations:
+          type: array
+          minItems: 1
+          maxItems: 3
+          description: 같은 scene.sceneKey에 속한 서로 다른 구도를 추천 순서대로 반환한다. 적합한 후보가 부족하면 1~2개만 반환하며, 이전 저장 결과에는 이 필드가 없을 수 있다.
+          items:
+            $ref: '#/components/schemas/SceneRecommendation'
+        source:
+          type: string
+
+    SceneManualSelectionResult:
+      type: object
+      required: [outcome, reasonCode, sceneCandidates, source]
+      properties:
+        outcome:
+          type: string
+          const: NEEDS_USER_SELECTION
+        reasonCode:
+          type: string
+          enum: [NO_TEMPLATE_CANDIDATES, LOW_RECOMMENDATION_CONFIDENCE]
+        sceneCandidates:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+
     SceneAnalysis:
       type: object
       required: [analysisId, sceneRevision, status, pollAfterMs, capturedAt, createdAt, startedAt, completedAt, cancelledAt, expiresAt, result, failureCode, retryable]
@@ -1620,7 +1660,10 @@ components:
           items:
             $ref: '#/components/schemas/SceneCandidate'
         result:
-          type: [object, 'null']
+          oneOf:
+            - $ref: '#/components/schemas/SceneRecommendationResult'
+            - $ref: '#/components/schemas/SceneManualSelectionResult'
+            - type: 'null'
         fallback:
           type: object
           properties:

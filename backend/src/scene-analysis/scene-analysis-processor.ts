@@ -30,6 +30,10 @@ export type SceneProcessingResult =
         template: { id: string; version: number };
         reasonCode: string;
       };
+      recommendations?: Array<{
+        template: { id: string; version: number };
+        reasonCode: string;
+      }>;
       source: string;
     }
   | {

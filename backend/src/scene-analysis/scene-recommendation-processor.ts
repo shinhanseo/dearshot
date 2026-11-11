@@ -12,12 +12,13 @@ import {
 } from "./scene-analysis-processor.js";
 import {
   SceneProviderError,
+  validateSceneRecommendations,
   type SceneRecommendationProvider,
 } from "./scene-recommendation-provider.js";
 import { SceneTemplateCandidateService } from "./scene-template-candidate-service.js";
 
-const PROMPT_VERSION = "scene-recommendation-v1";
-const SCHEMA_VERSION = "scene-recommendation-v1";
+const PROMPT_VERSION = "scene-recommendation-v2";
+const SCHEMA_VERSION = "scene-recommendation-v2";
 
 export type SceneRecommendationProcessorConfig = { minimumConfidence: number };
 
@@ -88,19 +89,14 @@ export class SceneRecommendationProcessor implements SceneAnalysisProcessor {
         deviceAnalysis: analysis.deviceAnalysis,
         candidates,
       }, context.signal);
-      const selected = candidates.find((candidate) =>
-        candidate.templateId === result.recommendation.templateId &&
-        candidate.templateVersion === result.recommendation.templateVersion &&
-        candidate.sceneKeys.includes(result.recommendation.sceneKey)
+      const recommendations = validateSceneRecommendations(
+        result.recommendations, candidates, this.config.minimumConfidence,
       );
-      if (!selected) {
-        throw new SceneProviderError("PROVIDER_SELECTED_DISALLOWED_TEMPLATE", false, "VALIDATION");
-      }
       await this.finishAttempt(analysis, "SUCCEEDED", startedAt, {
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
       });
-      if (result.recommendation.confidence < this.config.minimumConfidence) {
+      if (recommendations.length === 0) {
         return {
           outcome: "NEEDS_USER_SELECTION",
           reasonCode: "LOW_RECOMMENDATION_CONFIDENCE",
@@ -108,19 +104,17 @@ export class SceneRecommendationProcessor implements SceneAnalysisProcessor {
           source: this.provider.providerName,
         };
       }
+      const primary = recommendations[0];
+      const choices = recommendations.map((item) => ({
+        template: { id: item.templateId, version: item.templateVersion },
+        reasonCode: item.reasonCode,
+      }));
       return {
         outcome: "RECOMMENDED",
-        scene: {
-          sceneKey: result.recommendation.sceneKey,
-          confidence: result.recommendation.confidence,
-        },
-        recommendation: {
-          template: {
-            id: result.recommendation.templateId,
-            version: result.recommendation.templateVersion,
-          },
-          reasonCode: result.recommendation.reasonCode,
-        },
+        scene: { sceneKey: primary.sceneKey, confidence: primary.confidence },
+        // Keep the first choice for existing Android versions.
+        recommendation: choices[0],
+        recommendations: choices,
         source: this.provider.providerName,
       };
     } catch (error) {
